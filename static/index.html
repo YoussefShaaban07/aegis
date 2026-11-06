@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aegis · Water Plant Control</title>
+<style>
+:root{--bg:#0b1118;--panel:#111a24;--line:#1f2c3a;--ink:#dce6f0;--muted:#7f93a8;--blue:#3fa7ff;--water:#2b7fd1;
+--ok:#2ecc71;--warn:#f5b642;--bad:#ff4d4f;--lye:#c78bff;--cl:#7ee0c3}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 Inter,system-ui,-apple-system,Segoe UI,sans-serif}
+header{display:flex;align-items:center;gap:14px;padding:12px 20px;border-bottom:1px solid var(--line)}
+header h1{margin:0;font-size:18px;letter-spacing:.5px}header .sub{color:var(--muted);font-size:13px}
+.sp{flex:1}.chip{padding:4px 10px;border-radius:99px;font-weight:700;font-size:12px;letter-spacing:.4px}
+.chip.on{background:rgba(46,204,113,.15);color:var(--ok)}.chip.off{background:rgba(255,77,79,.18);color:var(--bad)}
+main{display:grid;grid-template-columns:1.35fr 1fr;gap:14px;padding:14px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
+.panel h2{margin:0 0 10px;font-size:12px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted)}
+svg text{fill:var(--ink);font-family:inherit}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px}
+.kpi{background:#0d151e;border:1px solid var(--line);border-radius:8px;padding:10px}
+.kpi .l{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.kpi .v{font-size:24px;font-weight:700;font-variant-numeric:tabular-nums}.kpi .r{font-size:11px;color:var(--muted)}
+.kpi.bad{border-color:var(--bad);box-shadow:0 0 0 1px var(--bad) inset}.kpi.bad .v{color:var(--bad)}
+canvas{width:100%;height:150px;display:block}
+.alarm{display:none;margin-top:10px;padding:10px 12px;border-radius:8px;background:rgba(255,77,79,.15);border:1px solid var(--bad);color:#ffb3b4;font-weight:700;animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.6}}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+button{font:inherit;font-weight:600;border-radius:8px;border:1px solid var(--line);background:#16212d;color:var(--ink);padding:8px 12px;cursor:pointer}
+button:hover{border-color:#36506b}button.red{background:#3a1416;border-color:#6b2226;color:#ffb3b4}
+button.purple{background:#2a1838;border-color:#55306f;color:#e2c6ff}
+.log{max-height:300px;overflow:auto;display:flex;flex-direction:column;gap:6px}
+.ev{padding:8px 10px;border-radius:7px;border-left:4px solid;background:#0d151e;font-size:13px}
+.ev.ok{border-color:var(--ok)}.ev.no{border-color:var(--bad);background:rgba(255,77,79,.08)}
+.ev .h{display:flex;justify-content:space-between;gap:8px;font-weight:700}.ev .m{color:var(--muted);font-size:12px}
+.tag{font-size:11px;padding:1px 6px;border-radius:4px;font-weight:700}.tag.ok{background:rgba(46,204,113,.15);color:var(--ok)}.tag.no{background:rgba(255,77,79,.2);color:var(--bad)}
+.chat{display:flex;gap:8px;margin-top:8px}.chat input{flex:1;font:inherit;background:#0d151e;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.reply{margin-top:10px;white-space:pre-wrap;background:#0d151e;border:1px solid var(--line);border-radius:8px;padding:10px;min-height:44px}
+.trace{margin-top:6px;font-size:12px;color:var(--muted)}.trace b{color:var(--ink)}
+.wo{font-size:12px;color:var(--muted);margin:4px 0;padding:6px 8px;border-radius:6px;background:#0d151e}
+.wo.evil{color:#e2c6ff;border:1px dashed #55306f}
+.switch{display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none}
+.switch .t{width:44px;height:24px;border-radius:99px;background:#33404d;position:relative;transition:.2s}
+.switch .t::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:.2s}
+.switch.on .t{background:var(--ok)}.switch.on .t::after{left:23px}
+@media(max-width:1000px){main{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<header>
+  <h1>AEGIS</h1><span class="sub">Hattiesburg Water Treatment Plant #2 · simulated · Modbus TCP</span>
+  <span class="sp"></span>
+  <label class="switch" id="gsw" onclick="toggleGuard()"><span class="t"></span><b>Safety guard</b></label>
+  <span class="chip on" id="gchip">GUARD ON</span>
+</header>
+<main>
+  <section>
+    <div class="panel">
+      <h2>Process</h2>
+      <svg viewBox="0 0 760 260" width="100%">
+        <defs><linearGradient id="wg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#3fa7ff"/><stop offset="1" stop-color="#1c5fa0"/></linearGradient></defs>
+        <!-- river -->
+        <text x="10" y="40" font-size="12" fill="#7f93a8">RIVER</text>
+        <path d="M0 60 Q40 50 80 60 T160 60" stroke="#2b7fd1" stroke-width="10" fill="none" opacity=".6"/>
+        <!-- intake pump -->
+        <circle id="p1" cx="120" cy="150" r="22" fill="#16212d" stroke="#3fa7ff" stroke-width="3"/>
+        <text x="120" y="155" text-anchor="middle" font-size="11">P-1</text>
+        <text x="120" y="192" text-anchor="middle" font-size="11" fill="#7f93a8">Intake</text>
+        <line x1="120" y1="65" x2="120" y2="128" stroke="#2b7fd1" stroke-width="6"/>
+        <line id="pipe1" x1="142" y1="150" x2="410" y2="150" stroke="#2b7fd1" stroke-width="6" stroke-dasharray="10 8"/>
+        <!-- chemical tanks -->
+        <rect x="200" y="20" width="70" height="70" rx="8" fill="#0d151e" stroke="#7ee0c3" stroke-width="2"/>
+        <text x="235" y="45" text-anchor="middle" font-size="11" fill="#7ee0c3">CHLORINE</text>
+        <text id="clsp" x="235" y="68" text-anchor="middle" font-size="16" font-weight="700">1.5</text>
+        <text x="235" y="83" text-anchor="middle" font-size="10" fill="#7f93a8">mg/L dose</text>
+        <line x1="235" y1="90" x2="235" y2="146" stroke="#7ee0c3" stroke-width="3" stroke-dasharray="4 4"/>
+        <rect id="lyebox" x="300" y="20" width="80" height="70" rx="8" fill="#0d151e" stroke="#c78bff" stroke-width="2"/>
+        <text x="340" y="45" text-anchor="middle" font-size="11" fill="#c78bff">LYE (NaOH)</text>
+        <text id="lyesp" x="340" y="68" text-anchor="middle" font-size="16" font-weight="700">100</text>
+        <text x="340" y="83" text-anchor="middle" font-size="10" fill="#7f93a8">ppm dose</text>
+        <line x1="340" y1="90" x2="340" y2="146" stroke="#c78bff" stroke-width="3" stroke-dasharray="4 4"/>
+        <!-- clearwell -->
+        <rect x="410" y="60" width="130" height="170" rx="6" fill="#0d151e" stroke="#3a4f63" stroke-width="2"/>
+        <rect id="water" x="412" y="150" width="126" height="78" fill="url(#wg)"/>
+        <text x="475" y="52" text-anchor="middle" font-size="11" fill="#7f93a8">CLEARWELL</text>
+        <text id="lvl" x="475" y="140" text-anchor="middle" font-size="18" font-weight="700">60%</text>
+        <!-- distribution -->
+        <line id="pipe2" x1="540" y1="200" x2="618" y2="200" stroke="#2b7fd1" stroke-width="6" stroke-dasharray="10 8"/>
+        <circle id="p2" cx="640" cy="200" r="22" fill="#16212d" stroke="#3fa7ff" stroke-width="3"/>
+        <text x="640" y="205" text-anchor="middle" font-size="11">P-2</text>
+        <line id="pipe3" x1="662" y1="200" x2="740" y2="200" stroke="#2b7fd1" stroke-width="6" stroke-dasharray="10 8"/>
+        <text x="700" y="150" text-anchor="middle" font-size="22">🏘️</text>
+        <text x="700" y="175" text-anchor="middle" font-size="11" fill="#7f93a8">TOWN</text>
+        <text id="flow" x="640" y="245" text-anchor="middle" font-size="11" fill="#7f93a8">500 gpm</text>
+      </svg>
+      <div class="kpis">
+        <div class="kpi" id="k-ph"><div class="l">Finished water pH</div><div class="v" id="v-ph">7.00</div><div class="r">safe 6.5 – 8.5</div></div>
+        <div class="kpi" id="k-cl"><div class="l">Chlorine residual</div><div class="v" id="v-cl">1.30</div><div class="r">mg/L · safe 0.2 – 4.0</div></div>
+        <div class="kpi" id="k-lv"><div class="l">Clearwell level</div><div class="v" id="v-lv">60%</div><div class="r">safe 10 – 95%</div></div>
+        <div class="kpi"><div class="l">Flow to town</div><div class="v" id="v-fl">500</div><div class="r">gallons / min</div></div>
+      </div>
+      <div class="alarm" id="alarm"></div>
+    </div>
+    <div class="panel" style="margin-top:14px">
+      <h2>pH trend (last ~2 min)</h2>
+      <canvas id="chart" width="900" height="180"></canvas>
+    </div>
+  </section>
+  <section>
+    <div class="panel">
+      <h2>Demo controls</h2>
+      <div class="btns">
+        <button class="red" onclick="post('/api/attack/lye').then(r=>flash(r.result))">💀 Hacker: set lye to 11,100 ppm</button>
+        <button class="purple" onclick="post('/api/attack/plant-work-order')">🧪 Plant poisoned work order</button>
+        <button onclick="post('/api/reset')">↺ Reset plant</button>
+      </div>
+      <div id="flash" class="trace"></div>
+    </div>
+    <div class="panel" style="margin-top:14px">
+      <h2>AI operator copilot</h2>
+      <div class="chat"><input id="q" placeholder="e.g. Any open work orders I should handle?" onkeydown="if(event.key==='Enter')ask()"><button onclick="ask()">Ask</button></div>
+      <div class="reply" id="reply">Ask about the plant in plain English.</div>
+      <div class="trace" id="trace"></div>
+      <h2 style="margin-top:14px">Maintenance work orders (read by the AI)</h2>
+      <div id="orders"></div>
+    </div>
+    <div class="panel" style="margin-top:14px">
+      <h2>Guard decisions · every Modbus write</h2>
+      <div class="log" id="log"><div class="trace">No writes yet.</div></div>
+    </div>
+  </section>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let guardOn=true, dash=0;
+async function post(u,b){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:b?JSON.stringify(b):'{}'});return r.json();}
+function flash(t){$('flash').textContent=t;}
+async function toggleGuard(){await post('/api/guard',{enabled:!guardOn});load();}
+async function ask(){const q=$('q').value.trim();if(!q)return;$('reply').textContent='Thinking…';$('trace').innerHTML='';
+  try{const r=await post('/api/copilot',{message:q});$('reply').textContent=r.reply||r.detail||'';
+  $('trace').innerHTML=(r.trace||[]).map(t=>`→ <b>${esc(t.tool)}</b> ${esc(JSON.stringify(t.args))} ⇒ ${esc(t.result.result||'ok')}`).join('<br>');}catch(e){$('reply').textContent='Error: '+e;}}
+function chart(h){const c=$('chart'),x=c.getContext('2d'),W=c.width,H=c.height;x.clearRect(0,0,W,H);
+  const lo=6,hi=10,y=v=>H-((v-lo)/(hi-lo))*H;
+  x.fillStyle='rgba(46,204,113,.08)';x.fillRect(0,y(8.5),W,y(6.5)-y(8.5));
+  x.strokeStyle='rgba(255,77,79,.6)';x.setLineDash([6,6]);x.beginPath();x.moveTo(0,y(8.5));x.lineTo(W,y(8.5));x.stroke();x.setLineDash([]);
+  x.fillStyle='#7f93a8';x.font='20px system-ui';x.fillText('8.5 unsafe',8,y(8.5)-6);
+  if(h.length<2)return;x.strokeStyle='#3fa7ff';x.lineWidth=3;x.beginPath();
+  h.forEach((p,i)=>{const X=i/(h.length-1)*W,Y=y(Math.min(hi,Math.max(lo,p.ph)));i?x.lineTo(X,Y):x.moveTo(X,Y);});x.stroke();}
+async function load(){let s;try{s=await (await fetch('/api/state')).json();}catch(e){return;}
+  const p=s.plant;guardOn=s.guard_enabled;
+  $('gsw').classList.toggle('on',guardOn);$('gchip').className='chip '+(guardOn?'on':'off');$('gchip').textContent=guardOn?'GUARD ON':'GUARD OFF';
+  $('v-ph').textContent=p.ph.toFixed(2);$('v-cl').textContent=p.chlorine_residual.toFixed(2);$('v-lv').textContent=p.tank_level.toFixed(0)+'%';$('v-fl').textContent=p.flow_out;
+  $('k-ph').classList.toggle('bad',p.ph>8.5||p.ph<6.5);$('k-cl').classList.toggle('bad',p.chlorine_residual>4||p.chlorine_residual<.2);$('k-lv').classList.toggle('bad',p.tank_level>95||p.tank_level<10);
+  $('clsp').textContent=p.chlorine_dose.toFixed(1);$('lyesp').textContent=p.naoh_dose.toLocaleString();
+  $('lyebox').setAttribute('stroke',p.naoh_dose>300?'#ff4d4f':'#c78bff');$('lyesp').setAttribute('fill',p.naoh_dose>300?'#ff4d4f':'#dce6f0');
+  const h=166*p.tank_level/100;$('water').setAttribute('y',228-h);$('water').setAttribute('height',h);$('lvl').textContent=p.tank_level.toFixed(0)+'%';
+  const bad=p.ph>8.5;$('water').setAttribute('fill',bad?'#a24bd1':'url(#wg)');
+  $('p1').setAttribute('stroke',p.intake_pump?'#2ecc71':'#555');$('p2').setAttribute('stroke',p.distribution_pump?'#2ecc71':'#555');$('flow').textContent=p.flow_out+' gpm';
+  dash=(dash+4)%18;['pipe1','pipe2','pipe3'].forEach(i=>$(i).setAttribute('stroke-dashoffset',-dash));
+  const al=$('alarm');if(p.alarms.length){al.style.display='block';al.textContent='⚠ ALARM: '+p.alarms.join(' · ')+(bad?' — caustic water heading to town':'');}else al.style.display='none';
+  chart(s.history);
+  $('orders').innerHTML=s.work_orders.map(w=>`<div class="wo ${w.includes('AI COPILOT')?'evil':''}">${esc(w)}</div>`).join('');
+  $('log').innerHTML=s.log.length?s.log.map(d=>`<div class="ev ${d.allowed?'ok':'no'}"><div class="h"><span>${esc(d.source)} → ${esc(d.register)} = ${esc(d.new.toLocaleString())} ${esc(d.unit)}</span><span class="tag ${d.allowed?'ok':'no'}">${d.allowed?'ALLOWED':'BLOCKED'}</span></div><div class="m">${esc(d.reason)} · was ${esc(d.old)} · from ${esc(d.peer)} · ${new Date(d.t*1000).toLocaleTimeString()}</div></div>`).join(''):'<div class="trace">No writes yet.</div>';}
+load();setInterval(load,500);
+</script>
+</body>
+</html>
