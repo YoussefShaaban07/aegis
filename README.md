@@ -102,7 +102,7 @@ Every write is checked in this order; the first failure blocks it:
 pip install -r requirements.txt
 cp .env.example .env          # add GROQ_API_KEY for the AI copilot (free at console.groq.com)
 python -m aegis.server        # open http://127.0.0.1:8000
-python -m pytest -q           # 140 tests
+python -m pytest -q           # 146 tests
 python -m aegis.evaluate      # attack/operator evaluation (~10 min)
 python -m aegis.redteam       # prompt-injection red team against the real copilot (needs GROQ_API_KEY)
 python scripts/bench.py       # latency on your machine
@@ -131,13 +131,28 @@ Point the HMI and AI at the gateway instead of the PLC, and firewall the PLC so 
 
 ## Measured numbers (this repo, not marketing)
 
-| What | Result | How to reproduce |
+**Evaluation on held-out seeds** (`python -m aegis.evaluate --seed-offset 100000`; seeds never looked at during development). 200 randomized attack episodes per guard: attackers who know the static rules (stepper, boundary-prober, weather-timed) going for caustic water, no disinfection, chlorine overdose, draining the clearwell, or cycling equipment. Plus 30 episodes of a simulated operator. Ground truth from the simulated "true" plant; an attack counts only if it caused harm or made it clearly worse than the same weather with no attacker. **Nobody responds to alarms in these runs**, which overstates harm.
+
+| | Static rules only | Rules + digital twin |
 |---|---|---|
-| Latency added per write, static checks | p50 0.17 ms, p99 0.4 ms over direct | `python scripts/bench.py` (cloud x86 VM, Python 3.13) |
-| Latency added per write, with digital twin | p50 2.8 ms, p99 5.3 ms | same |
+| Attacks that made the water unsafe, standard simulator | 49% (98/200) | **24%** (48/200) |
+| Same, high-fidelity simulator (physics the twin gets wrong) | 49% | **29%** (58/200) |
+| caustic / no disinfection | 38/46, 24/32 | 10/46, 5/32 (high-fidelity: 20/46, 5/32) |
+| chlorine overdose / equipment cycling | 0/37, 0/46 | 0/37, 0/46 |
+| clearwell drain | 36/39 | 33/39. **Not stopped**, but the twin's early warning comes a median **148 min** before harm vs 13 min for the alarm |
+| Operator writes blocked | 0 of 396 | 21 of 395: **7 justified, 14 false**. Biggest open weakness |
+
+Development-seed runs looked better (e.g. 10% vs 24%); that gap is why held-out results are the ones reported. Full output: `docs/eval/`.
+
+| Other measurements | Result | How to reproduce |
+|---|---|---|
+| Latency added per write, static checks | p50 0.25 ms, p99 0.55 ms | `python scripts/bench.py` (cloud x86 VM, Python 3.13) |
+| Latency added per write, with digital twin (5-model ensemble) | p50 13.5 ms, p99 21 ms; time budget 500 ms, then static fallback | same |
 | Reads | +0.04 ms (pass through) | same |
-| Twin forecast error vs simulator, pH, 30–120 min ahead after a lye step | under 0.15 pH | `tests/test_twin.py::test_forecast_accuracy_against_simulator` |
-| Parser robustness | 50,000 random PDUs, 200 malformed frames, server keeps serving | `tests/test_protocol.py` |
+| Integrity monitor, 20 × 10 h runs per simulator | 0 false alarms; hidden lye attack caught 20/20, 77–84 sim-min | `docs/ARCHITECTURE.md` |
+| Random-traffic safety invariants | 20,000 random requests, 0 violations | `AEGIS_FUZZ_N=20000 pytest tests/test_invariants.py` |
+| Parser robustness | 50,000 random PDUs, 200 malformed frames | `tests/test_protocol.py` |
+| AI red team (scripted maximally gullible model) | tried unsafe in 7/8 cases, 0 reached the PLC; 2/2 "persuade the operator" replies flagged | `tests/test_redteam.py`; real model: `python -m aegis.redteam` |
 
 ## Done / not done (honest status)
 
