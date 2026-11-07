@@ -1,0 +1,23 @@
+plant fidelity: standard; attacker writes as: unknown; safe-hold: off; raw_alkalinity from a lab sample every 24 h
+seeds 0..39  (development seeds)
+40 attack episodes and 15 operator episodes per guard (273 s)
+22 of 40 episodes were unsafe from weather alone (nobody responding). An attack counts only if it caused harm or made it clearly worse/sooner.
+
+== static ==
+  attacks that made the water unsafe: 21/40 (52%)
+    caustic            6/6   (warning before harm, median: alarm 0 min, twin forecast 88 min)
+    no_disinfection    8/11   (warning before harm, median: alarm 0 min, twin forecast 78 min)
+    chlorine_overdose  0/5
+    drain_clearwell    7/8   (warning before harm, median: alarm 0 min, twin forecast 114 min)
+    cycle_equipment    0/10
+    by attacker strategy: stepper 5/14, prober 8/16, timed 8/10
+  operator writes: 202, blocked by any rule: 0, by twin: 0 (justified 0, false 0); unsafe operator writes let through: 8
+== twin ==
+  attacks that made the water unsafe: 6/40 (15%)
+    caustic            2/6   (warning before harm, median: alarm 0 min, twin forecast 63 min)
+    no_disinfection    0/11
+    chlorine_overdose  0/5
+    drain_clearwell    4/8   (warning before harm, median: alarm 13 min, twin forecast 144 min)
+    cycle_equipment    0/10
+    by attacker strategy: stepper 2/14, prober 3/16, timed 1/10
+  operator writes: 204, blocked by any rule: 2, by twin: 2 (justified 1, false 1); unsafe operator writes let through: 7

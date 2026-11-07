@@ -222,3 +222,21 @@ At the hatchathon kickoff VOXO asked for the project's flow first, then took eac
   After: **9.6 texts/week, 0.05 per calm day, 3.7 per storm/bloom day, 0 safe-hold actions against the engaged operator, 0 hold refusals.** Unattended (the attack evaluation), safe-hold behaves as before.
 - Already answered in earlier rounds and kept: Oldsmar caveat (now framed as "attack or mistake, the guard catches both"); Tofino named as prior art; supervisor + break-glass bypass for a dead box (Round 1); second high-fidelity simulator (Round 2).
 - **Still open, said plainly:** no real plant data; no real MicroLogix; the copilot has not been run with a real model key; the evaluation's attackers are ours.
+
+## Round 11: the VOXO method again, on v13
+
+Flow: *Aegis sits between the HMI and a MicroLogix (Modbus or EtherNet/IP) → rules → twin forecast → texts → safe-hold.*
+
+1. **Twin.** "It needs online raw pH, alkalinity and turbidity analyzers. A 3-person plant has pH and chlorine online; alkalinity is a titration someone does each morning. So at the plants you're pitching to, your twin is off."
+2. **Day one.** "The HMI also writes alarm-ack words and timer presets. Your allowlist blocks every write it doesn't know, the HMI throws comms errors, and the operators rip the box out on the first morning."
+3. **Onboarding.** "Your tag drafting reads Modbus maps. A Rockwell plant hands you an RSLogix 500 export."
+4. **EtherNet/IP latency.** "You added a 13 ms twin to every write. HMIs time out."
+5. **Round 10's changes.** "You changed when safe-hold acts. Did attack protection get worse?"
+
+### What we did about it (v14)
+
+1. **Lab inputs** (`aegis/labinputs.py`, `policy.lab_inputs`): any twin input can come from a lab sample, with who entered it (audited), up to `max_age_h`; then the twin's chemistry pauses and the operator is texted. The evaluation got `--lab-hours`: Aegis sees only a sample every N hours. Dev seeds 0–39, twin only: **online 5/40 harmful; alkalinity from a daily sample 6/40; alkalinity and turbidity from the lab 9/40** (clearwell drains 7/8 vs 4/8: the twin follows storms through turbidity). Static rules: 21/40. Advice in the README: lab alkalinity is fine; keep turbidity online.
+2. **`pass_writes`**: housekeeping addresses (`"N7:50-N7:59"`, `"holding 40-49"`) are forwarded, logged as `pass`, not judged; flood and writer rules still apply; a guarded tag can't be put on the list (validated). The EtherNet/IP proxy now records every data-file word read or written into `data/discovery.json`, so monitor mode shows the engineer exactly what to put there.
+3. **Onboarding** reads `N7:1` / `F8:0` / `B3:0/1` addresses (RSLogix 500 / CCW exports) and drafts `pccc` tags; tags no longer need a Modbus address.
+4. **Measured** with pycomm3 (`scripts/bench_cip.py`): direct 0.05 ms; through Aegis static p50 0.21 / p99 0.55 ms; with the twin p50 12.9 / p99 16 ms. CIP explicit-message timeouts are measured in seconds.
+5. **Re-ran dev seeds with the HMI attacker and safe-hold: 1/40 harmful** (v11 was 4/40); safe-hold undid 12 operator changes, 8 better, 4 neutral, 0 worse; 3 hold refusals in 202 writes.

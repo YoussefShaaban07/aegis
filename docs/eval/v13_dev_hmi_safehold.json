@@ -1,0 +1,5932 @@
+{
+ "summary": {
+  "weather_alone_unsafe": 22,
+  "episodes": 40,
+  "static": {
+   "attack_episodes": 40,
+   "attack_harmful": 21,
+   "by_goal": {
+    "caustic": {
+     "episodes": 6,
+     "harmful": 6,
+     "median_warning_min": 0,
+     "median_forewarn_min": 90
+    },
+    "no_disinfection": {
+     "episodes": 11,
+     "harmful": 8,
+     "median_warning_min": 0,
+     "median_forewarn_min": 79
+    },
+    "chlorine_overdose": {
+     "episodes": 5,
+     "harmful": 0,
+     "median_warning_min": null,
+     "median_forewarn_min": null
+    },
+    "drain_clearwell": {
+     "episodes": 8,
+     "harmful": 7,
+     "median_warning_min": 0,
+     "median_forewarn_min": 107
+    },
+    "cycle_equipment": {
+     "episodes": 10,
+     "harmful": 0,
+     "median_warning_min": null,
+     "median_forewarn_min": null
+    }
+   },
+   "by_strategy": {
+    "stepper": {
+     "episodes": 14,
+     "harmful": 5
+    },
+    "prober": {
+     "episodes": 16,
+     "harmful": 8
+    },
+    "timed": {
+     "episodes": 10,
+     "harmful": 8
+    }
+   },
+   "operator_writes": 202,
+   "operator_blocked_any_rule": 0,
+   "operator_blocked_by_twin": 0,
+   "twin_blocks_justified": 0,
+   "twin_false_blocks": 0,
+   "operator_mistakes_let_through": 8,
+   "attack_reverts": 0,
+   "operator_reverts": 0,
+   "operator_reverts_helpful": 0,
+   "operator_reverts_harmful": 0
+  },
+  "twin": {
+   "attack_episodes": 40,
+   "attack_harmful": 1,
+   "by_goal": {
+    "caustic": {
+     "episodes": 6,
+     "harmful": 0,
+     "median_warning_min": null,
+     "median_forewarn_min": null
+    },
+    "no_disinfection": {
+     "episodes": 11,
+     "harmful": 0,
+     "median_warning_min": null,
+     "median_forewarn_min": null
+    },
+    "chlorine_overdose": {
+     "episodes": 5,
+     "harmful": 0,
+     "median_warning_min": null,
+     "median_forewarn_min": null
+    },
+    "drain_clearwell": {
+     "episodes": 8,
+     "harmful": 1,
+     "median_warning_min": 0,
+     "median_forewarn_min": 423
+    },
+    "cycle_equipment": {
+     "episodes": 10,
+     "harmful": 0,
+     "median_warning_min": null,
+     "median_forewarn_min": null
+    }
+   },
+   "by_strategy": {
+    "stepper": {
+     "episodes": 14,
+     "harmful": 0
+    },
+    "prober": {
+     "episodes": 16,
+     "harmful": 1
+    },
+    "timed": {
+     "episodes": 10,
+     "harmful": 0
+    }
+   },
+   "operator_writes": 202,
+   "operator_blocked_any_rule": 4,
+   "operator_blocked_by_twin": 1,
+   "twin_blocks_justified": 0,
+   "twin_false_blocks": 1,
+   "operator_mistakes_let_through": 5,
+   "attack_reverts": 45,
+   "operator_reverts": 12,
+   "operator_reverts_helpful": 8,
+   "operator_reverts_harmful": 0
+  }
+ },
+ "attacks": [
+  {
+   "seed": 0,
+   "goal": "drain_clearwell",
+   "strategy": "prober",
+   "weather": "storm",
+   "twin": null,
+   "tries": 0,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0372,
+   "harm": "chlorine",
+   "harm_at_min": 203,
+   "alarm_at_min": 203,
+   "forewarn_at_min": 140,
+   "warning_min": 0,
+   "forewarn_min": 63
+  },
+  {
+   "seed": 0,
+   "goal": "drain_clearwell",
+   "strategy": "prober",
+   "weather": "storm",
+   "twin": false,
+   "tries": 3,
+   "blocked": 1,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0524,
+   "harm": "chlorine",
+   "harm_at_min": 162,
+   "alarm_at_min": 162,
+   "forewarn_at_min": 70,
+   "warning_min": 0,
+   "forewarn_min": 92,
+   "caused": true
+  },
+  {
+   "seed": 0,
+   "goal": "drain_clearwell",
+   "strategy": "prober",
+   "weather": "storm",
+   "twin": true,
+   "tries": 308,
+   "blocked": 305,
+   "cycles": 0,
+   "reverts": 6,
+   "peak_severity": 0.0282,
+   "harm": "chlorine",
+   "harm_at_min": 204,
+   "alarm_at_min": 204,
+   "forewarn_at_min": 70,
+   "warning_min": 0,
+   "forewarn_min": 134,
+   "caused": false
+  },
+  {
+   "seed": 1,
+   "goal": "no_disinfection",
+   "strategy": "timed",
+   "weather": "normal",
+   "twin": null,
+   "tries": 0,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0,
+   "harm": null,
+   "harm_at_min": null,
+   "alarm_at_min": null,
+   "forewarn_at_min": null,
+   "warning_min": null,
+   "forewarn_min": null
+  },
+  {
+   "seed": 1,
+   "goal": "no_disinfection",
+   "strategy": "timed",
+   "weather": "normal",
+   "twin": false,
+   "tries": 5,
+   "blocked": 1,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0513,
+   "harm": "chlorine",
+   "harm_at_min": 179,
+   "alarm_at_min": 179,
+   "forewarn_at_min": 100,
+   "warning_min": 0,
+   "forewarn_min": 79,
+   "caused": true
+  },
+  {
+   "seed": 1,
+   "goal": "no_disinfection",
+   "strategy": "timed",
+   "weather": "normal",
+   "twin": true,
+   "tries": 440,
+   "blocked": 438,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0,
+   "harm": null,
+   "harm_at_min": null,
+   "alarm_at_min": null,
+   "forewarn_at_min": null,
+   "warning_min": null,
+   "forewarn_min": null,
+   "caused": false
+  },
+  {
+   "seed": 2,
+   "goal": "caustic",
+   "strategy": "stepper",
+   "weather": "storm",
+   "twin": null,
+   "tries": 0,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0346,
+   "harm": "chlorine",
+   "harm_at_min": 236,
+   "alarm_at_min": 236,
+   "forewarn_at_min": 170,
+   "warning_min": 0,
+   "forewarn_min": 66
+  },
+  {
+   "seed": 2,
+   "goal": "caustic",
+   "strategy": "stepper",
+   "weather": "storm",
+   "twin": false,
+   "tries": 5,
+   "blocked": 1,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.5288,
+   "harm": "pH",
+   "harm_at_min": 198,
+   "alarm_at_min": 198,
+   "forewarn_at_min": 110,
+   "warning_min": 0,
+   "forewarn_min": 88,
+   "caused": true
+  },
+  {
+   "seed": 2,
+   "goal": "caustic",
+   "strategy": "stepper",
+   "weather": "storm",
+   "twin": true,
+   "tries": 299,
+   "blocked": 298,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0408,
+   "harm": "chlorine",
+   "harm_at_min": 241,
+   "alarm_at_min": 241,
+   "forewarn_at_min": 160,
+   "warning_min": 0,
+   "forewarn_min": 81,
+   "caused": false
+  },
+  {
+   "seed": 3,
+   "goal": "no_disinfection",
+   "strategy": "timed",
+   "weather": "normal",
+   "twin": null,
+   "tries": 0,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0,
+   "harm": null,
+   "harm_at_min": null,
+   "alarm_at_min": null,
+   "forewarn_at_min": null,
+   "warning_min": null,
+   "forewarn_min": null
+  },
+  {
+   "seed": 3,
+   "goal": "no_disinfection",
+   "strategy": "timed",
+   "weather": "normal",
+   "twin": false,
+   "tries": 4,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0526,
+   "harm": "chlorine",
+   "harm_at_min": 212,
+   "alarm_at_min": 212,
+   "forewarn_at_min": 130,
+   "warning_min": 0,
+   "forewarn_min": 82,
+   "caused": true
+  },
+  {
+   "seed": 3,
+   "goal": "no_disinfection",
+   "strategy": "timed",
+   "weather": "normal",
+   "twin": true,
+   "tries": 29,
+   "blocked": 27,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0,
+   "harm": null,
+   "harm_at_min": null,
+   "alarm_at_min": null,
+   "forewarn_at_min": null,
+   "warning_min": null,
+   "forewarn_min": null,
+   "caused": false
+  },
+  {
+   "seed": 4,
+   "goal": "no_disinfection",
+   "strategy": "prober",
+   "weather": "bloom",
+   "twin": null,
+   "tries": 0,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.5245,
+   "harm": "pH",
+   "harm_at_min": 152,
+   "alarm_at_min": 152,
+   "forewarn_at_min": 60,
+   "warning_min": 0,
+   "forewarn_min": 92
+  },
+  {
+   "seed": 4,
+   "goal": "no_disinfection",
+   "strategy": "prober",
+   "weather": "bloom",
+   "twin": false,
+   "tries": 10,
+   "blocked": 6,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.5245,
+   "harm": "pH",
+   "harm_at_min": 152,
+   "alarm_at_min": 152,
+   "forewarn_at_min": 60,
+   "warning_min": 0,
+   "forewarn_min": 92,
+   "caused": false
+  },
+  {
+   "seed": 4,
+   "goal": "no_disinfection",
+   "strategy": "prober",
+   "weather": "bloom",
+   "twin": true,
+   "tries": 1337,
+   "blocked": 1334,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.5245,
+   "harm": "pH",
+   "harm_at_min": 152,
+   "alarm_at_min": 152,
+   "forewarn_at_min": 60,
+   "warning_min": 0,
+   "forewarn_min": 92,
+   "caused": false
+  },
+  {
+   "seed": 5,
+   "goal": "cycle_equipment",
+   "strategy": "prober",
+   "weather": "storm",
+   "twin": null,
+   "tries": 0,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.026,
+   "harm": "chlorine",
+   "harm_at_min": 582,
+   "alarm_at_min": 582,
+   "forewarn_at_min": 510,
+   "warning_min": 0,
+   "forewarn_min": 72
+  },
+  {
+   "seed": 5,
+   "goal": "cycle_equipment",
+   "strategy": "prober",
+   "weather": "storm",
+   "twin": false,
+   "tries": 190,
+   "blocked": 189,
+   "cycles": 1,
+   "reverts": 0,
+   "peak_severity": 0.026,
+   "harm": "chlorine",
+   "harm_at_min": 645,
+   "alarm_at_min": 250,
+   "forewarn_at_min": 110,
+   "warning_min": 395,
+   "forewarn_min": 535,
+   "caused": false
+  },
+  {
+   "seed": 5,
+   "goal": "cycle_equipment",
+   "strategy": "prober",
+   "weather": "storm",
+   "twin": true,
+   "tries": 190,
+   "blocked": 187,
+   "cycles": 3,
+   "reverts": 1,
+   "peak_severity": 0.0319,
+   "harm": "chlorine",
+   "harm_at_min": 641,
+   "alarm_at_min": 250,
+   "forewarn_at_min": 110,
+   "warning_min": 391,
+   "forewarn_min": 531,
+   "caused": false
+  },
+  {
+   "seed": 6,
+   "goal": "cycle_equipment",
+   "strategy": "stepper",
+   "weather": "storm",
+   "twin": null,
+   "tries": 0,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0525,
+   "harm": "chlorine",
+   "harm_at_min": 431,
+   "alarm_at_min": 431,
+   "forewarn_at_min": 370,
+   "warning_min": 0,
+   "forewarn_min": 61
+  },
+  {
+   "seed": 6,
+   "goal": "cycle_equipment",
+   "strategy": "stepper",
+   "weather": "storm",
+   "twin": false,
+   "tries": 468,
+   "blocked": 467,
+   "cycles": 1,
+   "reverts": 0,
+   "peak_severity": 0.0328,
+   "harm": "chlorine",
+   "harm_at_min": 490,
+   "alarm_at_min": 162,
+   "forewarn_at_min": 10,
+   "warning_min": 328,
+   "forewarn_min": 480,
+   "caused": false
+  },
+  {
+   "seed": 6,
+   "goal": "cycle_equipment",
+   "strategy": "stepper",
+   "weather": "storm",
+   "twin": true,
+   "tries": 468,
+   "blocked": 465,
+   "cycles": 3,
+   "reverts": 1,
+   "peak_severity": 0.0247,
+   "harm": "chlorine",
+   "harm_at_min": 505,
+   "alarm_at_min": 162,
+   "forewarn_at_min": 10,
+   "warning_min": 343,
+   "forewarn_min": 495,
+   "caused": false
+  },
+  {
+   "seed": 7,
+   "goal": "chlorine_overdose",
+   "strategy": "stepper",
+   "weather": "normal",
+   "twin": null,
+   "tries": 0,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0,
+   "harm": null,
+   "harm_at_min": null,
+   "alarm_at_min": null,
+   "forewarn_at_min": null,
+   "warning_min": null,
+   "forewarn_min": null
+  },
+  {
+   "seed": 7,
+   "goal": "chlorine_overdose",
+   "strategy": "stepper",
+   "weather": "normal",
+   "twin": false,
+   "tries": 10,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0,
+   "harm": null,
+   "harm_at_min": null,
+   "alarm_at_min": null,
+   "forewarn_at_min": null,
+   "warning_min": null,
+   "forewarn_min": null,
+   "caused": false
+  },
+  {
+   "seed": 7,
+   "goal": "chlorine_overdose",
+   "strategy": "stepper",
+   "weather": "normal",
+   "twin": true,
+   "tries": 10,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0,
+   "harm": null,
+   "harm_at_min": null,
+   "alarm_at_min": null,
+   "forewarn_at_min": null,
+   "warning_min": null,
+   "forewarn_min": null,
+   "caused": false
+  },
+  {
+   "seed": 8,
+   "goal": "no_disinfection",
+   "strategy": "prober",
+   "weather": "normal",
+   "twin": null,
+   "tries": 0,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0,
+   "harm": null,
+   "harm_at_min": null,
+   "alarm_at_min": null,
+   "forewarn_at_min": null,
+   "warning_min": null,
+   "forewarn_min": null
+  },
+  {
+   "seed": 8,
+   "goal": "no_disinfection",
+   "strategy": "prober",
+   "weather": "normal",
+   "twin": false,
+   "tries": 10,
+   "blocked": 6,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0526,
+   "harm": "chlorine",
+   "harm_at_min": 169,
+   "alarm_at_min": 169,
+   "forewarn_at_min": 90,
+   "warning_min": 0,
+   "forewarn_min": 79,
+   "caused": true
+  },
+  {
+   "seed": 8,
+   "goal": "no_disinfection",
+   "strategy": "prober",
+   "weather": "normal",
+   "twin": true,
+   "tries": 1789,
+   "blocked": 1787,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0,
+   "harm": null,
+   "harm_at_min": null,
+   "alarm_at_min": null,
+   "forewarn_at_min": null,
+   "warning_min": null,
+   "forewarn_min": null,
+   "caused": false
+  },
+  {
+   "seed": 9,
+   "goal": "drain_clearwell",
+   "strategy": "timed",
+   "weather": "storm",
+   "twin": null,
+   "tries": 0,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0361,
+   "harm": "chlorine",
+   "harm_at_min": 383,
+   "alarm_at_min": 383,
+   "forewarn_at_min": 310,
+   "warning_min": 0,
+   "forewarn_min": 73
+  },
+  {
+   "seed": 9,
+   "goal": "drain_clearwell",
+   "strategy": "timed",
+   "weather": "storm",
+   "twin": false,
+   "tries": 4,
+   "blocked": 1,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0335,
+   "harm": "chlorine",
+   "harm_at_min": 327,
+   "alarm_at_min": 327,
+   "forewarn_at_min": 220,
+   "warning_min": 0,
+   "forewarn_min": 107,
+   "caused": true
+  },
+  {
+   "seed": 9,
+   "goal": "drain_clearwell",
+   "strategy": "timed",
+   "weather": "storm",
+   "twin": true,
+   "tries": 236,
+   "blocked": 232,
+   "cycles": 0,
+   "reverts": 5,
+   "peak_severity": 0.0243,
+   "harm": "chlorine",
+   "harm_at_min": 378,
+   "alarm_at_min": 378,
+   "forewarn_at_min": 220,
+   "warning_min": 0,
+   "forewarn_min": 158,
+   "caused": false
+  },
+  {
+   "seed": 10,
+   "goal": "cycle_equipment",
+   "strategy": "stepper",
+   "weather": "bloom",
+   "twin": null,
+   "tries": 0,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.5243,
+   "harm": "pH",
+   "harm_at_min": 324,
+   "alarm_at_min": 324,
+   "forewarn_at_min": 230,
+   "warning_min": 0,
+   "forewarn_min": 94
+  },
+  {
+   "seed": 10,
+   "goal": "cycle_equipment",
+   "strategy": "stepper",
+   "weather": "bloom",
+   "twin": false,
+   "tries": 400,
+   "blocked": 399,
+   "cycles": 1,
+   "reverts": 0,
+   "peak_severity": 0.5214,
+   "harm": "pH",
+   "harm_at_min": 372,
+   "alarm_at_min": 225,
+   "forewarn_at_min": 80,
+   "warning_min": 147,
+   "forewarn_min": 292,
+   "caused": false
+  },
+  {
+   "seed": 10,
+   "goal": "cycle_equipment",
+   "strategy": "stepper",
+   "weather": "bloom",
+   "twin": true,
+   "tries": 400,
+   "blocked": 399,
+   "cycles": 1,
+   "reverts": 0,
+   "peak_severity": 0.5214,
+   "harm": "pH",
+   "harm_at_min": 372,
+   "alarm_at_min": 225,
+   "forewarn_at_min": 80,
+   "warning_min": 147,
+   "forewarn_min": 292,
+   "caused": false
+  },
+  {
+   "seed": 11,
+   "goal": "drain_clearwell",
+   "strategy": "timed",
+   "weather": "bloom",
+   "twin": null,
+   "tries": 0,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.5197,
+   "harm": "pH",
+   "harm_at_min": 549,
+   "alarm_at_min": 549,
+   "forewarn_at_min": 450,
+   "warning_min": 0,
+   "forewarn_min": 99
+  },
+  {
+   "seed": 11,
+   "goal": "drain_clearwell",
+   "strategy": "timed",
+   "weather": "bloom",
+   "twin": false,
+   "tries": 4,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.5277,
+   "harm": "pH",
+   "harm_at_min": 520,
+   "alarm_at_min": 520,
+   "forewarn_at_min": 450,
+   "warning_min": 0,
+   "forewarn_min": 70,
+   "caused": false
+  },
+  {
+   "seed": 11,
+   "goal": "drain_clearwell",
+   "strategy": "timed",
+   "weather": "bloom",
+   "twin": true,
+   "tries": 4,
+   "blocked": 1,
+   "cycles": 0,
+   "reverts": 1,
+   "peak_severity": 0.5229,
+   "harm": "pH",
+   "harm_at_min": 537,
+   "alarm_at_min": 537,
+   "forewarn_at_min": 450,
+   "warning_min": 0,
+   "forewarn_min": 87,
+   "caused": false
+  },
+  {
+   "seed": 12,
+   "goal": "drain_clearwell",
+   "strategy": "prober",
+   "weather": "storm",
+   "twin": null,
+   "tries": 0,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0496,
+   "harm": "chlorine",
+   "harm_at_min": 507,
+   "alarm_at_min": 507,
+   "forewarn_at_min": 460,
+   "warning_min": 0,
+   "forewarn_min": 47
+  },
+  {
+   "seed": 12,
+   "goal": "drain_clearwell",
+   "strategy": "prober",
+   "weather": "storm",
+   "twin": false,
+   "tries": 3,
+   "blocked": 1,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0351,
+   "harm": "clearwell empty",
+   "harm_at_min": 166,
+   "alarm_at_min": 153,
+   "forewarn_at_min": 30,
+   "warning_min": 13,
+   "forewarn_min": 136,
+   "caused": true
+  },
+  {
+   "seed": 12,
+   "goal": "drain_clearwell",
+   "strategy": "prober",
+   "weather": "storm",
+   "twin": true,
+   "tries": 329,
+   "blocked": 325,
+   "cycles": 0,
+   "reverts": 6,
+   "peak_severity": 0.0526,
+   "harm": "chlorine",
+   "harm_at_min": 453,
+   "alarm_at_min": 453,
+   "forewarn_at_min": 30,
+   "warning_min": 0,
+   "forewarn_min": 423,
+   "caused": true
+  },
+  {
+   "seed": 13,
+   "goal": "chlorine_overdose",
+   "strategy": "prober",
+   "weather": "normal",
+   "twin": null,
+   "tries": 0,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0,
+   "harm": null,
+   "harm_at_min": null,
+   "alarm_at_min": null,
+   "forewarn_at_min": null,
+   "warning_min": null,
+   "forewarn_min": null
+  },
+  {
+   "seed": 13,
+   "goal": "chlorine_overdose",
+   "strategy": "prober",
+   "weather": "normal",
+   "twin": false,
+   "tries": 30,
+   "blocked": 20,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0,
+   "harm": null,
+   "harm_at_min": null,
+   "alarm_at_min": null,
+   "forewarn_at_min": null,
+   "warning_min": null,
+   "forewarn_min": null,
+   "caused": false
+  },
+  {
+   "seed": 13,
+   "goal": "chlorine_overdose",
+   "strategy": "prober",
+   "weather": "normal",
+   "twin": true,
+   "tries": 30,
+   "blocked": 20,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0,
+   "harm": null,
+   "harm_at_min": null,
+   "alarm_at_min": null,
+   "forewarn_at_min": null,
+   "warning_min": null,
+   "forewarn_min": null,
+   "caused": false
+  },
+  {
+   "seed": 14,
+   "goal": "caustic",
+   "strategy": "timed",
+   "weather": "normal",
+   "twin": null,
+   "tries": 0,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0,
+   "harm": null,
+   "harm_at_min": null,
+   "alarm_at_min": null,
+   "forewarn_at_min": null,
+   "warning_min": null,
+   "forewarn_min": null
+  },
+  {
+   "seed": 14,
+   "goal": "caustic",
+   "strategy": "timed",
+   "weather": "normal",
+   "twin": false,
+   "tries": 5,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.4252,
+   "harm": "pH",
+   "harm_at_min": 137,
+   "alarm_at_min": 137,
+   "forewarn_at_min": 40,
+   "warning_min": 0,
+   "forewarn_min": 97,
+   "caused": true
+  },
+  {
+   "seed": 14,
+   "goal": "caustic",
+   "strategy": "timed",
+   "weather": "normal",
+   "twin": true,
+   "tries": 223,
+   "blocked": 221,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0,
+   "harm": null,
+   "harm_at_min": null,
+   "alarm_at_min": null,
+   "forewarn_at_min": null,
+   "warning_min": null,
+   "forewarn_min": null,
+   "caused": false
+  },
+  {
+   "seed": 15,
+   "goal": "no_disinfection",
+   "strategy": "stepper",
+   "weather": "normal",
+   "twin": null,
+   "tries": 0,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0,
+   "harm": null,
+   "harm_at_min": null,
+   "alarm_at_min": null,
+   "forewarn_at_min": null,
+   "warning_min": null,
+   "forewarn_min": null
+  },
+  {
+   "seed": 15,
+   "goal": "no_disinfection",
+   "strategy": "stepper",
+   "weather": "normal",
+   "twin": false,
+   "tries": 6,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0526,
+   "harm": "chlorine",
+   "harm_at_min": 167,
+   "alarm_at_min": 167,
+   "forewarn_at_min": 90,
+   "warning_min": 0,
+   "forewarn_min": 77,
+   "caused": true
+  },
+  {
+   "seed": 15,
+   "goal": "no_disinfection",
+   "strategy": "stepper",
+   "weather": "normal",
+   "twin": true,
+   "tries": 368,
+   "blocked": 365,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0,
+   "harm": null,
+   "harm_at_min": null,
+   "alarm_at_min": null,
+   "forewarn_at_min": null,
+   "warning_min": null,
+   "forewarn_min": null,
+   "caused": false
+  },
+  {
+   "seed": 16,
+   "goal": "chlorine_overdose",
+   "strategy": "prober",
+   "weather": "storm",
+   "twin": null,
+   "tries": 0,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.046,
+   "harm": "chlorine",
+   "harm_at_min": 424,
+   "alarm_at_min": 424,
+   "forewarn_at_min": 370,
+   "warning_min": 0,
+   "forewarn_min": 54
+  },
+  {
+   "seed": 16,
+   "goal": "chlorine_overdose",
+   "strategy": "prober",
+   "weather": "storm",
+   "twin": false,
+   "tries": 30,
+   "blocked": 20,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0,
+   "harm": null,
+   "harm_at_min": null,
+   "alarm_at_min": null,
+   "forewarn_at_min": null,
+   "warning_min": null,
+   "forewarn_min": null,
+   "caused": false
+  },
+  {
+   "seed": 16,
+   "goal": "chlorine_overdose",
+   "strategy": "prober",
+   "weather": "storm",
+   "twin": true,
+   "tries": 30,
+   "blocked": 20,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0,
+   "harm": null,
+   "harm_at_min": null,
+   "alarm_at_min": null,
+   "forewarn_at_min": null,
+   "warning_min": null,
+   "forewarn_min": null,
+   "caused": false
+  },
+  {
+   "seed": 17,
+   "goal": "cycle_equipment",
+   "strategy": "prober",
+   "weather": "storm",
+   "twin": null,
+   "tries": 0,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0235,
+   "harm": "chlorine",
+   "harm_at_min": 629,
+   "alarm_at_min": 629,
+   "forewarn_at_min": 550,
+   "warning_min": 0,
+   "forewarn_min": 79
+  },
+  {
+   "seed": 17,
+   "goal": "cycle_equipment",
+   "strategy": "prober",
+   "weather": "storm",
+   "twin": false,
+   "tries": 289,
+   "blocked": 288,
+   "cycles": 1,
+   "reverts": 0,
+   "peak_severity": 0.0263,
+   "harm": "chlorine",
+   "harm_at_min": 656,
+   "alarm_at_min": 200,
+   "forewarn_at_min": 50,
+   "warning_min": 456,
+   "forewarn_min": 606,
+   "caused": false
+  },
+  {
+   "seed": 17,
+   "goal": "cycle_equipment",
+   "strategy": "prober",
+   "weather": "storm",
+   "twin": true,
+   "tries": 289,
+   "blocked": 286,
+   "cycles": 3,
+   "reverts": 1,
+   "peak_severity": 0.0191,
+   "harm": "chlorine",
+   "harm_at_min": 712,
+   "alarm_at_min": 200,
+   "forewarn_at_min": 50,
+   "warning_min": 512,
+   "forewarn_min": 662,
+   "caused": false
+  },
+  {
+   "seed": 18,
+   "goal": "no_disinfection",
+   "strategy": "stepper",
+   "weather": "bloom",
+   "twin": null,
+   "tries": 0,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.5236,
+   "harm": "pH",
+   "harm_at_min": 446,
+   "alarm_at_min": 446,
+   "forewarn_at_min": 350,
+   "warning_min": 0,
+   "forewarn_min": 96
+  },
+  {
+   "seed": 18,
+   "goal": "no_disinfection",
+   "strategy": "stepper",
+   "weather": "bloom",
+   "twin": false,
+   "tries": 5,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.5236,
+   "harm": "chlorine",
+   "harm_at_min": 188,
+   "alarm_at_min": 188,
+   "forewarn_at_min": 110,
+   "warning_min": 0,
+   "forewarn_min": 78,
+   "caused": true
+  },
+  {
+   "seed": 18,
+   "goal": "no_disinfection",
+   "strategy": "stepper",
+   "weather": "bloom",
+   "twin": true,
+   "tries": 350,
+   "blocked": 348,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.5236,
+   "harm": "pH",
+   "harm_at_min": 446,
+   "alarm_at_min": 446,
+   "forewarn_at_min": 350,
+   "warning_min": 0,
+   "forewarn_min": 96,
+   "caused": false
+  },
+  {
+   "seed": 19,
+   "goal": "caustic",
+   "strategy": "timed",
+   "weather": "normal",
+   "twin": null,
+   "tries": 0,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0,
+   "harm": null,
+   "harm_at_min": null,
+   "alarm_at_min": null,
+   "forewarn_at_min": null,
+   "warning_min": null,
+   "forewarn_min": null
+  },
+  {
+   "seed": 19,
+   "goal": "caustic",
+   "strategy": "timed",
+   "weather": "normal",
+   "twin": false,
+   "tries": 3,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.4251,
+   "harm": "pH",
+   "harm_at_min": 152,
+   "alarm_at_min": 152,
+   "forewarn_at_min": 60,
+   "warning_min": 0,
+   "forewarn_min": 92,
+   "caused": true
+  },
+  {
+   "seed": 19,
+   "goal": "caustic",
+   "strategy": "timed",
+   "weather": "normal",
+   "twin": true,
+   "tries": 215,
+   "blocked": 214,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0,
+   "harm": null,
+   "harm_at_min": null,
+   "alarm_at_min": null,
+   "forewarn_at_min": null,
+   "warning_min": null,
+   "forewarn_min": null,
+   "caused": false
+  },
+  {
+   "seed": 20,
+   "goal": "no_disinfection",
+   "strategy": "prober",
+   "weather": "normal",
+   "twin": null,
+   "tries": 0,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0,
+   "harm": null,
+   "harm_at_min": null,
+   "alarm_at_min": null,
+   "forewarn_at_min": null,
+   "warning_min": null,
+   "forewarn_min": null
+  },
+  {
+   "seed": 20,
+   "goal": "no_disinfection",
+   "strategy": "prober",
+   "weather": "normal",
+   "twin": false,
+   "tries": 6,
+   "blocked": 3,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0526,
+   "harm": "chlorine",
+   "harm_at_min": 257,
+   "alarm_at_min": 257,
+   "forewarn_at_min": 180,
+   "warning_min": 0,
+   "forewarn_min": 77,
+   "caused": true
+  },
+  {
+   "seed": 20,
+   "goal": "no_disinfection",
+   "strategy": "prober",
+   "weather": "normal",
+   "twin": true,
+   "tries": 737,
+   "blocked": 735,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0,
+   "harm": null,
+   "harm_at_min": null,
+   "alarm_at_min": null,
+   "forewarn_at_min": null,
+   "warning_min": null,
+   "forewarn_min": null,
+   "caused": false
+  },
+  {
+   "seed": 21,
+   "goal": "no_disinfection",
+   "strategy": "prober",
+   "weather": "bloom",
+   "twin": null,
+   "tries": 0,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.5234,
+   "harm": "pH",
+   "harm_at_min": 462,
+   "alarm_at_min": 462,
+   "forewarn_at_min": 370,
+   "warning_min": 0,
+   "forewarn_min": 92
+  },
+  {
+   "seed": 21,
+   "goal": "no_disinfection",
+   "strategy": "prober",
+   "weather": "bloom",
+   "twin": false,
+   "tries": 6,
+   "blocked": 3,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.5234,
+   "harm": "chlorine",
+   "harm_at_min": 230,
+   "alarm_at_min": 230,
+   "forewarn_at_min": 160,
+   "warning_min": 0,
+   "forewarn_min": 70,
+   "caused": true
+  },
+  {
+   "seed": 21,
+   "goal": "no_disinfection",
+   "strategy": "prober",
+   "weather": "bloom",
+   "twin": true,
+   "tries": 797,
+   "blocked": 795,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.5234,
+   "harm": "pH",
+   "harm_at_min": 462,
+   "alarm_at_min": 462,
+   "forewarn_at_min": 370,
+   "warning_min": 0,
+   "forewarn_min": 92,
+   "caused": false
+  },
+  {
+   "seed": 22,
+   "goal": "no_disinfection",
+   "strategy": "stepper",
+   "weather": "bloom",
+   "twin": null,
+   "tries": 0,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.5245,
+   "harm": "pH",
+   "harm_at_min": 111,
+   "alarm_at_min": 111,
+   "forewarn_at_min": 20,
+   "warning_min": 0,
+   "forewarn_min": 91
+  },
+  {
+   "seed": 22,
+   "goal": "no_disinfection",
+   "strategy": "stepper",
+   "weather": "bloom",
+   "twin": false,
+   "tries": 5,
+   "blocked": 1,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.5245,
+   "harm": "pH",
+   "harm_at_min": 111,
+   "alarm_at_min": 111,
+   "forewarn_at_min": 20,
+   "warning_min": 0,
+   "forewarn_min": 91,
+   "caused": false
+  },
+  {
+   "seed": 22,
+   "goal": "no_disinfection",
+   "strategy": "stepper",
+   "weather": "bloom",
+   "twin": true,
+   "tries": 449,
+   "blocked": 448,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.5245,
+   "harm": "pH",
+   "harm_at_min": 111,
+   "alarm_at_min": 111,
+   "forewarn_at_min": 20,
+   "warning_min": 0,
+   "forewarn_min": 91,
+   "caused": false
+  },
+  {
+   "seed": 23,
+   "goal": "chlorine_overdose",
+   "strategy": "stepper",
+   "weather": "storm",
+   "twin": null,
+   "tries": 0,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0345,
+   "harm": "chlorine",
+   "harm_at_min": 198,
+   "alarm_at_min": 198,
+   "forewarn_at_min": 130,
+   "warning_min": 0,
+   "forewarn_min": 68
+  },
+  {
+   "seed": 23,
+   "goal": "chlorine_overdose",
+   "strategy": "stepper",
+   "weather": "storm",
+   "twin": false,
+   "tries": 7,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0,
+   "harm": null,
+   "harm_at_min": null,
+   "alarm_at_min": null,
+   "forewarn_at_min": null,
+   "warning_min": null,
+   "forewarn_min": null,
+   "caused": false
+  },
+  {
+   "seed": 23,
+   "goal": "chlorine_overdose",
+   "strategy": "stepper",
+   "weather": "storm",
+   "twin": true,
+   "tries": 7,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0,
+   "harm": null,
+   "harm_at_min": null,
+   "alarm_at_min": null,
+   "forewarn_at_min": null,
+   "warning_min": null,
+   "forewarn_min": null,
+   "caused": false
+  },
+  {
+   "seed": 24,
+   "goal": "drain_clearwell",
+   "strategy": "timed",
+   "weather": "normal",
+   "twin": null,
+   "tries": 0,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0,
+   "harm": null,
+   "harm_at_min": null,
+   "alarm_at_min": null,
+   "forewarn_at_min": null,
+   "warning_min": null,
+   "forewarn_min": null
+  },
+  {
+   "seed": 24,
+   "goal": "drain_clearwell",
+   "strategy": "timed",
+   "weather": "normal",
+   "twin": false,
+   "tries": 4,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0336,
+   "harm": "clearwell empty",
+   "harm_at_min": 168,
+   "alarm_at_min": 155,
+   "forewarn_at_min": 30,
+   "warning_min": 13,
+   "forewarn_min": 138,
+   "caused": true
+  },
+  {
+   "seed": 24,
+   "goal": "drain_clearwell",
+   "strategy": "timed",
+   "weather": "normal",
+   "twin": true,
+   "tries": 355,
+   "blocked": 351,
+   "cycles": 0,
+   "reverts": 3,
+   "peak_severity": 0.0,
+   "harm": null,
+   "harm_at_min": null,
+   "alarm_at_min": null,
+   "forewarn_at_min": 30,
+   "warning_min": null,
+   "forewarn_min": null,
+   "caused": false
+  },
+  {
+   "seed": 25,
+   "goal": "drain_clearwell",
+   "strategy": "stepper",
+   "weather": "storm",
+   "twin": null,
+   "tries": 0,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0452,
+   "harm": "chlorine",
+   "harm_at_min": 287,
+   "alarm_at_min": 287,
+   "forewarn_at_min": 220,
+   "warning_min": 0,
+   "forewarn_min": 67
+  },
+  {
+   "seed": 25,
+   "goal": "drain_clearwell",
+   "strategy": "stepper",
+   "weather": "storm",
+   "twin": false,
+   "tries": 4,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0514,
+   "harm": "chlorine",
+   "harm_at_min": 206,
+   "alarm_at_min": 206,
+   "forewarn_at_min": 100,
+   "warning_min": 0,
+   "forewarn_min": 106,
+   "caused": true
+  },
+  {
+   "seed": 25,
+   "goal": "drain_clearwell",
+   "strategy": "stepper",
+   "weather": "storm",
+   "twin": true,
+   "tries": 78,
+   "blocked": 72,
+   "cycles": 0,
+   "reverts": 7,
+   "peak_severity": 0.0405,
+   "harm": "chlorine",
+   "harm_at_min": 257,
+   "alarm_at_min": 257,
+   "forewarn_at_min": 100,
+   "warning_min": 0,
+   "forewarn_min": 157,
+   "caused": false
+  },
+  {
+   "seed": 26,
+   "goal": "no_disinfection",
+   "strategy": "timed",
+   "weather": "bloom",
+   "twin": null,
+   "tries": 0,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.5244,
+   "harm": "pH",
+   "harm_at_min": 207,
+   "alarm_at_min": 207,
+   "forewarn_at_min": 120,
+   "warning_min": 0,
+   "forewarn_min": 87
+  },
+  {
+   "seed": 26,
+   "goal": "no_disinfection",
+   "strategy": "timed",
+   "weather": "bloom",
+   "twin": false,
+   "tries": 5,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.5244,
+   "harm": "pH",
+   "harm_at_min": 207,
+   "alarm_at_min": 207,
+   "forewarn_at_min": 120,
+   "warning_min": 0,
+   "forewarn_min": 87,
+   "caused": false
+  },
+  {
+   "seed": 26,
+   "goal": "no_disinfection",
+   "strategy": "timed",
+   "weather": "bloom",
+   "twin": true,
+   "tries": 325,
+   "blocked": 323,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.5244,
+   "harm": "pH",
+   "harm_at_min": 207,
+   "alarm_at_min": 207,
+   "forewarn_at_min": 120,
+   "warning_min": 0,
+   "forewarn_min": 87,
+   "caused": false
+  },
+  {
+   "seed": 27,
+   "goal": "drain_clearwell",
+   "strategy": "timed",
+   "weather": "storm",
+   "twin": null,
+   "tries": 0,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0444,
+   "harm": "chlorine",
+   "harm_at_min": 322,
+   "alarm_at_min": 322,
+   "forewarn_at_min": 260,
+   "warning_min": 0,
+   "forewarn_min": 62
+  },
+  {
+   "seed": 27,
+   "goal": "drain_clearwell",
+   "strategy": "timed",
+   "weather": "storm",
+   "twin": false,
+   "tries": 5,
+   "blocked": 1,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0526,
+   "harm": "chlorine",
+   "harm_at_min": 263,
+   "alarm_at_min": 263,
+   "forewarn_at_min": 160,
+   "warning_min": 0,
+   "forewarn_min": 103,
+   "caused": true
+  },
+  {
+   "seed": 27,
+   "goal": "drain_clearwell",
+   "strategy": "timed",
+   "weather": "storm",
+   "twin": true,
+   "tries": 292,
+   "blocked": 286,
+   "cycles": 0,
+   "reverts": 6,
+   "peak_severity": 0.0309,
+   "harm": "chlorine",
+   "harm_at_min": 303,
+   "alarm_at_min": 303,
+   "forewarn_at_min": 160,
+   "warning_min": 0,
+   "forewarn_min": 143,
+   "caused": false
+  },
+  {
+   "seed": 28,
+   "goal": "caustic",
+   "strategy": "timed",
+   "weather": "normal",
+   "twin": null,
+   "tries": 0,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0,
+   "harm": null,
+   "harm_at_min": null,
+   "alarm_at_min": null,
+   "forewarn_at_min": null,
+   "warning_min": null,
+   "forewarn_min": null
+  },
+  {
+   "seed": 28,
+   "goal": "caustic",
+   "strategy": "timed",
+   "weather": "normal",
+   "twin": false,
+   "tries": 5,
+   "blocked": 1,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.4252,
+   "harm": "pH",
+   "harm_at_min": 130,
+   "alarm_at_min": 130,
+   "forewarn_at_min": 40,
+   "warning_min": 0,
+   "forewarn_min": 90,
+   "caused": true
+  },
+  {
+   "seed": 28,
+   "goal": "caustic",
+   "strategy": "timed",
+   "weather": "normal",
+   "twin": true,
+   "tries": 361,
+   "blocked": 360,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0,
+   "harm": null,
+   "harm_at_min": null,
+   "alarm_at_min": null,
+   "forewarn_at_min": null,
+   "warning_min": null,
+   "forewarn_min": null,
+   "caused": false
+  },
+  {
+   "seed": 29,
+   "goal": "cycle_equipment",
+   "strategy": "stepper",
+   "weather": "storm",
+   "twin": null,
+   "tries": 0,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0476,
+   "harm": "chlorine",
+   "harm_at_min": 366,
+   "alarm_at_min": 366,
+   "forewarn_at_min": 300,
+   "warning_min": 0,
+   "forewarn_min": 66
+  },
+  {
+   "seed": 29,
+   "goal": "cycle_equipment",
+   "strategy": "stepper",
+   "weather": "storm",
+   "twin": false,
+   "tries": 235,
+   "blocked": 234,
+   "cycles": 1,
+   "reverts": 0,
+   "peak_severity": 0.0357,
+   "harm": "chlorine",
+   "harm_at_min": 403,
+   "alarm_at_min": 169,
+   "forewarn_at_min": 20,
+   "warning_min": 234,
+   "forewarn_min": 383,
+   "caused": false
+  },
+  {
+   "seed": 29,
+   "goal": "cycle_equipment",
+   "strategy": "stepper",
+   "weather": "storm",
+   "twin": true,
+   "tries": 235,
+   "blocked": 229,
+   "cycles": 6,
+   "reverts": 4,
+   "peak_severity": 0.0398,
+   "harm": "chlorine",
+   "harm_at_min": 406,
+   "alarm_at_min": 169,
+   "forewarn_at_min": 20,
+   "warning_min": 237,
+   "forewarn_min": 386,
+   "caused": false
+  },
+  {
+   "seed": 30,
+   "goal": "cycle_equipment",
+   "strategy": "prober",
+   "weather": "normal",
+   "twin": null,
+   "tries": 0,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0,
+   "harm": null,
+   "harm_at_min": null,
+   "alarm_at_min": null,
+   "forewarn_at_min": null,
+   "warning_min": null,
+   "forewarn_min": null
+  },
+  {
+   "seed": 30,
+   "goal": "cycle_equipment",
+   "strategy": "prober",
+   "weather": "normal",
+   "twin": false,
+   "tries": 201,
+   "blocked": 200,
+   "cycles": 1,
+   "reverts": 0,
+   "peak_severity": 0.0,
+   "harm": null,
+   "harm_at_min": null,
+   "alarm_at_min": 230,
+   "forewarn_at_min": 80,
+   "warning_min": null,
+   "forewarn_min": null,
+   "caused": false
+  },
+  {
+   "seed": 30,
+   "goal": "cycle_equipment",
+   "strategy": "prober",
+   "weather": "normal",
+   "twin": true,
+   "tries": 201,
+   "blocked": 200,
+   "cycles": 1,
+   "reverts": 0,
+   "peak_severity": 0.0,
+   "harm": null,
+   "harm_at_min": null,
+   "alarm_at_min": 230,
+   "forewarn_at_min": 80,
+   "warning_min": null,
+   "forewarn_min": null,
+   "caused": false
+  },
+  {
+   "seed": 31,
+   "goal": "caustic",
+   "strategy": "prober",
+   "weather": "bloom",
+   "twin": null,
+   "tries": 0,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.5245,
+   "harm": "pH",
+   "harm_at_min": 157,
+   "alarm_at_min": 157,
+   "forewarn_at_min": 70,
+   "warning_min": 0,
+   "forewarn_min": 87
+  },
+  {
+   "seed": 31,
+   "goal": "caustic",
+   "strategy": "prober",
+   "weather": "bloom",
+   "twin": false,
+   "tries": 11,
+   "blocked": 6,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.7733,
+   "harm": "pH",
+   "harm_at_min": 103,
+   "alarm_at_min": 103,
+   "forewarn_at_min": 30,
+   "warning_min": 0,
+   "forewarn_min": 73,
+   "caused": true
+  },
+  {
+   "seed": 31,
+   "goal": "caustic",
+   "strategy": "prober",
+   "weather": "bloom",
+   "twin": true,
+   "tries": 1814,
+   "blocked": 1812,
+   "cycles": 0,
+   "reverts": 1,
+   "peak_severity": 0.5245,
+   "harm": "pH",
+   "harm_at_min": 135,
+   "alarm_at_min": 135,
+   "forewarn_at_min": 60,
+   "warning_min": 0,
+   "forewarn_min": 75,
+   "caused": false
+  },
+  {
+   "seed": 32,
+   "goal": "caustic",
+   "strategy": "stepper",
+   "weather": "storm",
+   "twin": null,
+   "tries": 0,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0412,
+   "harm": "chlorine",
+   "harm_at_min": 243,
+   "alarm_at_min": 243,
+   "forewarn_at_min": 190,
+   "warning_min": 0,
+   "forewarn_min": 53
+  },
+  {
+   "seed": 32,
+   "goal": "caustic",
+   "strategy": "stepper",
+   "weather": "storm",
+   "twin": false,
+   "tries": 5,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.5288,
+   "harm": "pH",
+   "harm_at_min": 185,
+   "alarm_at_min": 185,
+   "forewarn_at_min": 100,
+   "warning_min": 0,
+   "forewarn_min": 85,
+   "caused": true
+  },
+  {
+   "seed": 32,
+   "goal": "caustic",
+   "strategy": "stepper",
+   "weather": "storm",
+   "twin": true,
+   "tries": 313,
+   "blocked": 312,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0414,
+   "harm": "chlorine",
+   "harm_at_min": 287,
+   "alarm_at_min": 287,
+   "forewarn_at_min": 200,
+   "warning_min": 0,
+   "forewarn_min": 87,
+   "caused": false
+  },
+  {
+   "seed": 33,
+   "goal": "cycle_equipment",
+   "strategy": "stepper",
+   "weather": "normal",
+   "twin": null,
+   "tries": 0,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0,
+   "harm": null,
+   "harm_at_min": null,
+   "alarm_at_min": null,
+   "forewarn_at_min": null,
+   "warning_min": null,
+   "forewarn_min": null
+  },
+  {
+   "seed": 33,
+   "goal": "cycle_equipment",
+   "strategy": "stepper",
+   "weather": "normal",
+   "twin": false,
+   "tries": 251,
+   "blocked": 250,
+   "cycles": 1,
+   "reverts": 0,
+   "peak_severity": 0.0,
+   "harm": null,
+   "harm_at_min": null,
+   "alarm_at_min": 253,
+   "forewarn_at_min": 110,
+   "warning_min": null,
+   "forewarn_min": null,
+   "caused": false
+  },
+  {
+   "seed": 33,
+   "goal": "cycle_equipment",
+   "strategy": "stepper",
+   "weather": "normal",
+   "twin": true,
+   "tries": 251,
+   "blocked": 250,
+   "cycles": 1,
+   "reverts": 0,
+   "peak_severity": 0.0,
+   "harm": null,
+   "harm_at_min": null,
+   "alarm_at_min": 253,
+   "forewarn_at_min": 110,
+   "warning_min": null,
+   "forewarn_min": null,
+   "caused": false
+  },
+  {
+   "seed": 34,
+   "goal": "cycle_equipment",
+   "strategy": "prober",
+   "weather": "normal",
+   "twin": null,
+   "tries": 0,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0,
+   "harm": null,
+   "harm_at_min": null,
+   "alarm_at_min": null,
+   "forewarn_at_min": null,
+   "warning_min": null,
+   "forewarn_min": null
+  },
+  {
+   "seed": 34,
+   "goal": "cycle_equipment",
+   "strategy": "prober",
+   "weather": "normal",
+   "twin": false,
+   "tries": 366,
+   "blocked": 365,
+   "cycles": 1,
+   "reverts": 0,
+   "peak_severity": 0.0,
+   "harm": null,
+   "harm_at_min": null,
+   "alarm_at_min": 256,
+   "forewarn_at_min": 110,
+   "warning_min": null,
+   "forewarn_min": null,
+   "caused": false
+  },
+  {
+   "seed": 34,
+   "goal": "cycle_equipment",
+   "strategy": "prober",
+   "weather": "normal",
+   "twin": true,
+   "tries": 366,
+   "blocked": 365,
+   "cycles": 1,
+   "reverts": 0,
+   "peak_severity": 0.0,
+   "harm": null,
+   "harm_at_min": null,
+   "alarm_at_min": 256,
+   "forewarn_at_min": 110,
+   "warning_min": null,
+   "forewarn_min": null,
+   "caused": false
+  },
+  {
+   "seed": 35,
+   "goal": "cycle_equipment",
+   "strategy": "prober",
+   "weather": "normal",
+   "twin": null,
+   "tries": 0,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0,
+   "harm": null,
+   "harm_at_min": null,
+   "alarm_at_min": null,
+   "forewarn_at_min": null,
+   "warning_min": null,
+   "forewarn_min": null
+  },
+  {
+   "seed": 35,
+   "goal": "cycle_equipment",
+   "strategy": "prober",
+   "weather": "normal",
+   "twin": false,
+   "tries": 257,
+   "blocked": 256,
+   "cycles": 1,
+   "reverts": 0,
+   "peak_severity": 0.0,
+   "harm": null,
+   "harm_at_min": null,
+   "alarm_at_min": 245,
+   "forewarn_at_min": 100,
+   "warning_min": null,
+   "forewarn_min": null,
+   "caused": false
+  },
+  {
+   "seed": 35,
+   "goal": "cycle_equipment",
+   "strategy": "prober",
+   "weather": "normal",
+   "twin": true,
+   "tries": 257,
+   "blocked": 256,
+   "cycles": 1,
+   "reverts": 0,
+   "peak_severity": 0.0,
+   "harm": null,
+   "harm_at_min": null,
+   "alarm_at_min": 245,
+   "forewarn_at_min": 100,
+   "warning_min": null,
+   "forewarn_min": null,
+   "caused": false
+  },
+  {
+   "seed": 36,
+   "goal": "chlorine_overdose",
+   "strategy": "stepper",
+   "weather": "storm",
+   "twin": null,
+   "tries": 0,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.025,
+   "harm": "chlorine",
+   "harm_at_min": 209,
+   "alarm_at_min": 209,
+   "forewarn_at_min": 130,
+   "warning_min": 0,
+   "forewarn_min": 79
+  },
+  {
+   "seed": 36,
+   "goal": "chlorine_overdose",
+   "strategy": "stepper",
+   "weather": "storm",
+   "twin": false,
+   "tries": 10,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0,
+   "harm": null,
+   "harm_at_min": null,
+   "alarm_at_min": null,
+   "forewarn_at_min": null,
+   "warning_min": null,
+   "forewarn_min": null,
+   "caused": false
+  },
+  {
+   "seed": 36,
+   "goal": "chlorine_overdose",
+   "strategy": "stepper",
+   "weather": "storm",
+   "twin": true,
+   "tries": 10,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0,
+   "harm": null,
+   "harm_at_min": null,
+   "alarm_at_min": null,
+   "forewarn_at_min": null,
+   "warning_min": null,
+   "forewarn_min": null,
+   "caused": false
+  },
+  {
+   "seed": 37,
+   "goal": "cycle_equipment",
+   "strategy": "stepper",
+   "weather": "normal",
+   "twin": null,
+   "tries": 0,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0,
+   "harm": null,
+   "harm_at_min": null,
+   "alarm_at_min": null,
+   "forewarn_at_min": null,
+   "warning_min": null,
+   "forewarn_min": null
+  },
+  {
+   "seed": 37,
+   "goal": "cycle_equipment",
+   "strategy": "stepper",
+   "weather": "normal",
+   "twin": false,
+   "tries": 267,
+   "blocked": 266,
+   "cycles": 1,
+   "reverts": 0,
+   "peak_severity": 0.0,
+   "harm": null,
+   "harm_at_min": null,
+   "alarm_at_min": 231,
+   "forewarn_at_min": 80,
+   "warning_min": null,
+   "forewarn_min": null,
+   "caused": false
+  },
+  {
+   "seed": 37,
+   "goal": "cycle_equipment",
+   "strategy": "stepper",
+   "weather": "normal",
+   "twin": true,
+   "tries": 267,
+   "blocked": 266,
+   "cycles": 1,
+   "reverts": 0,
+   "peak_severity": 0.0,
+   "harm": null,
+   "harm_at_min": null,
+   "alarm_at_min": 231,
+   "forewarn_at_min": 80,
+   "warning_min": null,
+   "forewarn_min": null,
+   "caused": false
+  },
+  {
+   "seed": 38,
+   "goal": "drain_clearwell",
+   "strategy": "prober",
+   "weather": "normal",
+   "twin": null,
+   "tries": 0,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0,
+   "harm": null,
+   "harm_at_min": null,
+   "alarm_at_min": null,
+   "forewarn_at_min": null,
+   "warning_min": null,
+   "forewarn_min": null
+  },
+  {
+   "seed": 38,
+   "goal": "drain_clearwell",
+   "strategy": "prober",
+   "weather": "normal",
+   "twin": false,
+   "tries": 3,
+   "blocked": 1,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0336,
+   "harm": "clearwell empty",
+   "harm_at_min": 154,
+   "alarm_at_min": 141,
+   "forewarn_at_min": 10,
+   "warning_min": 13,
+   "forewarn_min": 144,
+   "caused": true
+  },
+  {
+   "seed": 38,
+   "goal": "drain_clearwell",
+   "strategy": "prober",
+   "weather": "normal",
+   "twin": true,
+   "tries": 874,
+   "blocked": 870,
+   "cycles": 0,
+   "reverts": 3,
+   "peak_severity": 0.0,
+   "harm": null,
+   "harm_at_min": null,
+   "alarm_at_min": null,
+   "forewarn_at_min": 10,
+   "warning_min": null,
+   "forewarn_min": null,
+   "caused": false
+  },
+  {
+   "seed": 39,
+   "goal": "no_disinfection",
+   "strategy": "prober",
+   "weather": "normal",
+   "twin": null,
+   "tries": 0,
+   "blocked": 0,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0,
+   "harm": null,
+   "harm_at_min": null,
+   "alarm_at_min": null,
+   "forewarn_at_min": null,
+   "warning_min": null,
+   "forewarn_min": null
+  },
+  {
+   "seed": 39,
+   "goal": "no_disinfection",
+   "strategy": "prober",
+   "weather": "normal",
+   "twin": false,
+   "tries": 10,
+   "blocked": 6,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0526,
+   "harm": "chlorine",
+   "harm_at_min": 169,
+   "alarm_at_min": 169,
+   "forewarn_at_min": 90,
+   "warning_min": 0,
+   "forewarn_min": 79,
+   "caused": true
+  },
+  {
+   "seed": 39,
+   "goal": "no_disinfection",
+   "strategy": "prober",
+   "weather": "normal",
+   "twin": true,
+   "tries": 1457,
+   "blocked": 1455,
+   "cycles": 0,
+   "reverts": 0,
+   "peak_severity": 0.0,
+   "harm": null,
+   "harm_at_min": null,
+   "alarm_at_min": null,
+   "forewarn_at_min": null,
+   "warning_min": null,
+   "forewarn_min": null,
+   "caused": false
+  }
+ ],
+ "operators": [
+  {
+   "seed": 0,
+   "twin": false,
+   "weather": "storm",
+   "writes": [
+    {
+     "reg": "naoh_dose",
+     "new": 90,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 450,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 80,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.6,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 500,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 75,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.009764663469679117,
+     "truth_without": 0.009764663469679117
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.7,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.013939029442429729
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 2.2,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 2.7,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 3.2,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 85,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 3.0,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    }
+   ],
+   "reverts": []
+  },
+  {
+   "seed": 0,
+   "twin": true,
+   "weather": "storm",
+   "writes": [
+    {
+     "reg": "naoh_dose",
+     "new": 90,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 450,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 80,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.6,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 500,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 75,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.7,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 2.2,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 2.7,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 3.2,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 85,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 3.0,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    }
+   ],
+   "reverts": []
+  },
+  {
+   "seed": 1,
+   "twin": false,
+   "weather": "storm",
+   "writes": [
+    {
+     "reg": "chlorine_dose",
+     "new": 1.3,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 105,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.4,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.6,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.4,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.5,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 100,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 105,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.04036705186898,
+     "truth_without": 0.04036705186898
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 550,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.03716166055389232,
+     "truth_without": 0.03879886458334067
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.7,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.03370025188897907
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.9,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 2.2,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 2.5,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 2.8,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    }
+   ],
+   "reverts": []
+  },
+  {
+   "seed": 1,
+   "twin": true,
+   "weather": "storm",
+   "writes": [
+    {
+     "reg": "chlorine_dose",
+     "new": 1.3,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 105,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.4,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.6,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.4,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.5,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 100,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 105,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.031766000371661635,
+     "truth_without": 0.031766000371661635
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 550,
+     "allowed": true,
+     "check": "advice",
+     "truth_with": 0.030709816894264563,
+     "truth_without": 0.032993957062506844
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.7,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.026954727205914377
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.9,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 2.2,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 2.5,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 2.8,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    }
+   ],
+   "reverts": []
+  },
+  {
+   "seed": 2,
+   "twin": false,
+   "weather": "storm",
+   "writes": [
+    {
+     "reg": "distribution_rate",
+     "new": 400,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.4,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 500,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 550,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 650,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.031052631578919004,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.2,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.03173684210523479,
+     "truth_without": 0.03173684210523479
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.3,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.028999999999971632,
+     "truth_without": 0.028999999999971632
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 110,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.028999999999971632,
+     "truth_without": 0.028999999999971632
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 105,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.052631578947368425,
+     "truth_without": 0.052631578947368425
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 115,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.052631578947368425,
+     "truth_without": 0.052631578947368425
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.6,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.031052631578919004,
+     "truth_without": 0.052631578947368425
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.9,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.029684210526287426,
+     "truth_without": 0.029876637843437075
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 2.2,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.03036842105260321,
+     "truth_without": 0.03036842105260321
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 2.7,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.03036842105260321,
+     "truth_without": 0.03036842105260321
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 600,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.03136842105259941,
+     "truth_without": 0.028999999999971632
+    }
+   ],
+   "reverts": []
+  },
+  {
+   "seed": 2,
+   "twin": true,
+   "weather": "storm",
+   "writes": [
+    {
+     "reg": "distribution_rate",
+     "new": 400,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.4,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 500,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 550,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 650,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.031052631578919004,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.2,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.03173684210523479,
+     "truth_without": 0.03173684210523479
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.3,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.028999999999971632,
+     "truth_without": 0.028999999999971632
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 110,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.028999999999971632,
+     "truth_without": 0.028999999999971632
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 105,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.052631578947368425,
+     "truth_without": 0.052631578947368425
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 115,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.05261193855770833,
+     "truth_without": 0.05261193855770833
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.8,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.04643440206044269
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 2.1,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 2.4,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 2.9,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 3.1,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    }
+   ],
+   "reverts": [
+    {
+     "register": "distribution_rate",
+     "value": 400,
+     "from": 650,
+     "truth_with": 0.0526113129862144,
+     "truth_without": 0.052631578947368425
+    },
+    {
+     "register": "chlorine_dose",
+     "value": 1.5,
+     "from": 1.3,
+     "truth_with": 0.04532778431735863,
+     "truth_without": 0.05261902258334066
+    }
+   ]
+  },
+  {
+   "seed": 3,
+   "twin": false,
+   "weather": "storm",
+   "writes": [
+    {
+     "reg": "naoh_dose",
+     "new": 110,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.7,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 100,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 125,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 450,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.009114702029005653,
+     "truth_without": 0.00415257959390017
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 115,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.010007194604129344,
+     "truth_without": 0.010007194604129344
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.9,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.00874932623715672
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 2.2,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 2.7,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 3.0,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 3.2,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 3.4,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 500,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    }
+   ],
+   "reverts": []
+  },
+  {
+   "seed": 3,
+   "twin": true,
+   "weather": "storm",
+   "writes": [
+    {
+     "reg": "naoh_dose",
+     "new": 110,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.7,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 100,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 125,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 450,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0052656094778557715,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 115,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0033289628783376188,
+     "truth_without": 0.0033289628783376188
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.9,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.010870336937027514
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 2.2,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 2.7,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 3.0,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 3.2,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 3.4,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 500,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    }
+   ],
+   "reverts": []
+  },
+  {
+   "seed": 4,
+   "twin": false,
+   "weather": "normal",
+   "writes": [
+    {
+     "reg": "distribution_rate",
+     "new": 550,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 450,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.4,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 110,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 500,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.5,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 120,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 600,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.3,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 500,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 145,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.1,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 140,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 150,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    }
+   ],
+   "reverts": []
+  },
+  {
+   "seed": 4,
+   "twin": true,
+   "weather": "normal",
+   "writes": [
+    {
+     "reg": "distribution_rate",
+     "new": 550,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 450,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.4,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 110,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 500,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.5,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 120,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 600,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.3,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 500,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 145,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.1,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 140,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 150,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    }
+   ],
+   "reverts": []
+  },
+  {
+   "seed": 5,
+   "twin": false,
+   "weather": "normal",
+   "writes": [
+    {
+     "reg": "naoh_dose",
+     "new": 110,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.6,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 105,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 450,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 115,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 500,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 550,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.8,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.7,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.8,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 125,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 600,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 650,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.031210526315795253,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 130,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.030526315789479466,
+     "truth_without": 0.030526315789479466
+    }
+   ],
+   "reverts": []
+  },
+  {
+   "seed": 5,
+   "twin": true,
+   "weather": "normal",
+   "writes": [
+    {
+     "reg": "naoh_dose",
+     "new": 110,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.6,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 105,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 450,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 115,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 500,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 550,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.8,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.7,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.8,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 125,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 600,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 650,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.031210526315795253,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 130,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.030526315789479466,
+     "truth_without": 0.030526315789479466
+    }
+   ],
+   "reverts": []
+  },
+  {
+   "seed": 6,
+   "twin": false,
+   "weather": "storm",
+   "writes": [
+    {
+     "reg": "distribution_rate",
+     "new": 550,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 90,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 85,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.3,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.1,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.0,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.05263157618997217,
+     "truth_without": 0.05263157605106013
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.5,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0450688965424316,
+     "truth_without": 0.052631578870443986
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.7,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.027850766289240304,
+     "truth_without": 0.04440035741457013
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 2.0,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.023665807395475077,
+     "truth_without": 0.023733862961112923
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 2.5,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 95,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 600,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.030947368421054215,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 500,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.030947368421054253
+    }
+   ],
+   "reverts": []
+  },
+  {
+   "seed": 6,
+   "twin": true,
+   "weather": "storm",
+   "writes": [
+    {
+     "reg": "distribution_rate",
+     "new": 550,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 90,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 85,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.3,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.1,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.0,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.05263157549554788,
+     "truth_without": 0.05263157526105553
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 2.0,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.04266205053435653
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 2.2,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 2.5,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 450,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 2.4,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 95,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    }
+   ],
+   "reverts": [
+    {
+     "register": "distribution_rate",
+     "value": 500,
+     "from": 550,
+     "truth_with": 0.052631313699557196,
+     "truth_without": 0.05263157765683882
+    },
+    {
+     "register": "chlorine_dose",
+     "value": 1.5,
+     "from": 1.0,
+     "truth_with": 0.031208041962174724,
+     "truth_without": 0.05263139559175286
+    }
+   ]
+  },
+  {
+   "seed": 7,
+   "twin": false,
+   "weather": "bloom",
+   "writes": [
+    {
+     "reg": "distribution_rate",
+     "new": 400,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.4,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 450,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.5,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 550,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 125,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.4,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 150,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.6292259208269462,
+     "truth_without": 0.5815830730840776
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 110,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.5491846059271879,
+     "truth_without": 0.6293204035975721
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 100,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.5254086630559884,
+     "truth_without": 0.5492254489362765
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 90,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.5135683968379778,
+     "truth_without": 0.5255124220321452
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 70,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.5134466894689771,
+     "truth_without": 0.5135683683881194
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 50,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.4969609593737969,
+     "truth_without": 0.4969830089196048
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 30,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.47459216790224357,
+     "truth_without": 0.47461734970754765
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 20,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.44466724114712264,
+     "truth_without": 0.44468193875423534
+    }
+   ],
+   "reverts": []
+  },
+  {
+   "seed": 7,
+   "twin": true,
+   "weather": "bloom",
+   "writes": [
+    {
+     "reg": "distribution_rate",
+     "new": 400,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.4,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 450,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.5,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 550,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 125,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.4,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 125,
+     "allowed": false,
+     "check": "hold",
+     "truth_with": 0.5815828320826695,
+     "truth_without": 0.5252448028519217
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 60,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.3995679201500959,
+     "truth_without": 0.5228651374700002
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 50,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.363781773133228,
+     "truth_without": 0.39956744509499575
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 40,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.35644914614776724,
+     "truth_without": 0.3637445161412396
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 20,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.3563874051531686,
+     "truth_without": 0.35644912316157296
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 0,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.3414515231648476,
+     "truth_without": 0.34146102809304324
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.2,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.3183207260202918,
+     "truth_without": 0.3183207260202918
+    }
+   ],
+   "reverts": [
+    {
+     "register": "naoh_dose",
+     "value": 100,
+     "from": 125,
+     "truth_with": 0.5251678320335822,
+     "truth_without": 0.5815162093433406
+    },
+    {
+     "register": "distribution_rate",
+     "value": 400,
+     "from": 550,
+     "truth_with": 0.5224431786477002,
+     "truth_without": 0.5251843851934765
+    }
+   ]
+  },
+  {
+   "seed": 8,
+   "twin": false,
+   "weather": "bloom",
+   "writes": [
+    {
+     "reg": "chlorine_dose",
+     "new": 1.3,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.1,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.2,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 550,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 105,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.5378228187750036,
+     "truth_without": 0.525680805606525
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 85,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.4859107265092213,
+     "truth_without": 0.5379003760929466
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 45,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.44359913910874305,
+     "truth_without": 0.4861235259389476
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 35,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.44340012936983264,
+     "truth_without": 0.4434180488316102
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 15,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.39699897035624065,
+     "truth_without": 0.39704665099186354
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 0,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.33593734638640527,
+     "truth_without": 0.33598587512962297
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.7,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.1964050189704123,
+     "truth_without": 0.1964050189704123
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.6,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.4,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    }
+   ],
+   "reverts": []
+  },
+  {
+   "seed": 8,
+   "twin": true,
+   "weather": "bloom",
+   "writes": [
+    {
+     "reg": "chlorine_dose",
+     "new": 1.3,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.1,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.2,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 550,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 105,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.5378228187750036,
+     "truth_without": 0.525680805606525
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 80,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.46979446624988874,
+     "truth_without": 0.5244560885932774
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 40,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.4226148863623269,
+     "truth_without": 0.469878008713545
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.4,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.4224560578626164,
+     "truth_without": 0.4224560578626164
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 20,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.39890290791688177,
+     "truth_without": 0.3989295877437691
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 0,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.36146701302760853,
+     "truth_without": 0.36149920499319066
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 600,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.26477169867622674,
+     "truth_without": 0.2647917603867427
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 5,
+     "allowed": false,
+     "check": "predict",
+     "truth_with": 0.10018008652331645,
+     "truth_without": 0.10015060054907998
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 500,
+     "allowed": false,
+     "check": "hold",
+     "truth_with": 0.033869064881259625,
+     "truth_without": 0.033824815462657476
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.2,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.00694736842104822,
+     "truth_without": 0.00694736842104822
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 0,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.03199999999999562,
+     "truth_without": 0.03199999999999562
+    }
+   ],
+   "reverts": [
+    {
+     "register": "naoh_dose",
+     "value": 100,
+     "from": 105,
+     "truth_with": 0.5256340024892641,
+     "truth_without": 0.5377774790870227
+    },
+    {
+     "register": "distribution_rate",
+     "value": 500,
+     "from": 550,
+     "truth_with": 0.524432301745823,
+     "truth_without": 0.5256631963540537
+    },
+    {
+     "register": "distribution_rate",
+     "value": 550,
+     "from": 500,
+     "truth_with": 0.3920924746009051,
+     "truth_without": 0.3920991294381606
+    }
+   ]
+  },
+  {
+   "seed": 9,
+   "twin": false,
+   "weather": "storm",
+   "writes": [
+    {
+     "reg": "naoh_dose",
+     "new": 110,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.4,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 400,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 105,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 130,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 500,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.049125232285243764,
+     "truth_without": 0.04908899023481217
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.9,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.05259120257237869
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 2.4,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 2.6,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 2.8,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 3.0,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    }
+   ],
+   "reverts": []
+  },
+  {
+   "seed": 9,
+   "twin": true,
+   "weather": "storm",
+   "writes": [
+    {
+     "reg": "naoh_dose",
+     "new": 110,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.4,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 400,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 105,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 130,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 500,
+     "allowed": true,
+     "check": "advice",
+     "truth_with": 0.05155620624715019,
+     "truth_without": 0.051513683167187754
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.9,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0525950540406453
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 2.4,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 2.6,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 2.8,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 3.0,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    }
+   ],
+   "reverts": []
+  },
+  {
+   "seed": 10,
+   "twin": false,
+   "weather": "normal",
+   "writes": [
+    {
+     "reg": "naoh_dose",
+     "new": 105,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.3,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.5,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 400,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 500,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 110,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 550,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.4,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 500,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.6,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.5,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 600,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 105,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 130,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    }
+   ],
+   "reverts": []
+  },
+  {
+   "seed": 10,
+   "twin": true,
+   "weather": "normal",
+   "writes": [
+    {
+     "reg": "naoh_dose",
+     "new": 105,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.3,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.5,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 400,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 500,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 110,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 550,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.4,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 500,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.6,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.5,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 600,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 105,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 130,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    }
+   ],
+   "reverts": []
+  },
+  {
+   "seed": 11,
+   "twin": false,
+   "weather": "normal",
+   "writes": [
+    {
+     "reg": "chlorine_dose",
+     "new": 1.6,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 450,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.8,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 550,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 90,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 450,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 95,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 100,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.6,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.5,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 550,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 105,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.4,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 600,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 95,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    }
+   ],
+   "reverts": []
+  },
+  {
+   "seed": 11,
+   "twin": true,
+   "weather": "normal",
+   "writes": [
+    {
+     "reg": "chlorine_dose",
+     "new": 1.6,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 450,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.8,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 550,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 90,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 450,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 95,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 100,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.6,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.5,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 550,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 105,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.4,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 600,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 95,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    }
+   ],
+   "reverts": []
+  },
+  {
+   "seed": 12,
+   "twin": false,
+   "weather": "bloom",
+   "writes": [
+    {
+     "reg": "naoh_dose",
+     "new": 125,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.6,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.5,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 130,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.7,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.5,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 550,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 450,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 400,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.6,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.5889757071554858,
+     "truth_without": 0.5889757071554858
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 110,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.546891893243636,
+     "truth_without": 0.5895854678631505
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 70,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.48147393564397056,
+     "truth_without": 0.547070590009441
+    }
+   ],
+   "reverts": []
+  },
+  {
+   "seed": 12,
+   "twin": true,
+   "weather": "bloom",
+   "writes": [
+    {
+     "reg": "naoh_dose",
+     "new": 125,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.6,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.5,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 130,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.7,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.5,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 550,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 450,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 400,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.6,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.5889757071554858,
+     "truth_without": 0.5889757071554858
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 80,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.4680658898283694,
+     "truth_without": 0.5228179460243334
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 40,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.40123590001407994,
+     "truth_without": 0.4682269476342231
+    }
+   ],
+   "reverts": [
+    {
+     "register": "naoh_dose",
+     "value": 100,
+     "from": 130,
+     "truth_with": 0.5222490200426808,
+     "truth_without": 0.5889926116123974
+    }
+   ]
+  },
+  {
+   "seed": 13,
+   "twin": false,
+   "weather": "bloom",
+   "writes": [
+    {
+     "reg": "distribution_rate",
+     "new": 450,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 400,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 450,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 500,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 90,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 600,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 80,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 650,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.4734677969306178,
+     "truth_without": 0.4723616632507488
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 700,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.473468462872523,
+     "truth_without": 0.47346779693062313
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 70,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.4417980811380806,
+     "truth_without": 0.47348319346302326
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 60,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.4118664724303107,
+     "truth_without": 0.4417980811380806
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 40,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.4060377440584171,
+     "truth_without": 0.41177398786723085
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 0,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.3954748565690309,
+     "truth_without": 0.39588836128130733
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 650,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.03189473684212619,
+     "truth_without": 0.032421052631599535
+    }
+   ],
+   "reverts": []
+  },
+  {
+   "seed": 13,
+   "twin": true,
+   "weather": "bloom",
+   "writes": [
+    {
+     "reg": "distribution_rate",
+     "new": 450,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 400,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 450,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 500,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 90,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 600,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 80,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 650,
+     "allowed": true,
+     "check": "advice",
+     "truth_with": 0.4734677969306178,
+     "truth_without": 0.4723616632507488
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 450,
+     "allowed": false,
+     "check": "hold",
+     "truth_with": 0.4679431310973614,
+     "truth_without": 0.46766231344116793
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 70,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.43589407524254575,
+     "truth_without": 0.46799103903047534
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 60,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.4000196267264622,
+     "truth_without": 0.43600570969581653
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 40,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.362072749799637,
+     "truth_without": 0.3999858198020414
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 0,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.3527013240997645,
+     "truth_without": 0.3620518291905288
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 700,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.3233372697150019,
+     "truth_without": 0.323344976742562
+    }
+   ],
+   "reverts": [
+    {
+     "register": "distribution_rate",
+     "value": 400,
+     "from": 650,
+     "truth_with": 0.46732434321215344,
+     "truth_without": 0.4734294549408302
+    },
+    {
+     "register": "distribution_rate",
+     "value": 650,
+     "from": 400,
+     "truth_with": 0.35271793833045084,
+     "truth_without": 0.3527195892843267
+    }
+   ]
+  },
+  {
+   "seed": 14,
+   "twin": false,
+   "weather": "storm",
+   "writes": [
+    {
+     "reg": "distribution_rate",
+     "new": 450,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.4,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.5,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.3,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.1,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 500,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 110,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.6,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 135,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.027122201090654902,
+     "truth_without": 0.027122201090654902
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 600,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.01736203460625121,
+     "truth_without": 0.022952317852984648
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.9,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.017060578571557242
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 2.1,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 2.4,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    }
+   ],
+   "reverts": []
+  },
+  {
+   "seed": 14,
+   "twin": true,
+   "weather": "storm",
+   "writes": [
+    {
+     "reg": "distribution_rate",
+     "new": 450,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.4,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.5,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.3,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.1,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 500,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 110,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.6,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "naoh_dose",
+     "new": 135,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.022276259536694324,
+     "truth_without": 0.022276259536694324
+    },
+    {
+     "reg": "distribution_rate",
+     "new": 600,
+     "allowed": true,
+     "check": "advice",
+     "truth_with": 0.007724509455959465,
+     "truth_without": 0.01464513872874722
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 1.9,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.00518959777889565
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 2.1,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    },
+    {
+     "reg": "chlorine_dose",
+     "new": 2.4,
+     "allowed": true,
+     "check": "ok",
+     "truth_with": 0.0,
+     "truth_without": 0.0
+    }
+   ],
+   "reverts": []
+  }
+ ]
+}
