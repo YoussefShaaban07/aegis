@@ -43,6 +43,7 @@ a{color:#0b5cad}.muted{color:var(--muted);font-size:13px}
       <div class="tile" id="t-lv"><div class="l">Clearwell</div><div class="v" id="v-lv">–</div><div class="muted">%</div></div>
       <div class="tile"><div class="l">Guard</div><div class="v" id="v-g" style="font-size:20px">–</div><div class="muted" id="v-int"></div></div>
     </div>
+    <div class="card" id="hold-card" style="display:none"><h2>Safe-hold</h2><div id="holds"></div></div>
     <div class="card" id="inc-card"><h2>Open incidents</h2><div id="inc"></div></div>
     <div class="card"><h2>Coming up (twin forecast)</h2><div id="fw"></div></div>
     <div class="card"><h2>Recently blocked</h2><div id="blk"></div></div>
@@ -56,6 +57,9 @@ const H={'Content-Type':'application/json','X-Aegis':'1'};
 async function login(){const r=await fetch('/api/login',{method:'POST',headers:H,body:JSON.stringify({username:$('lu').value,password:$('lp').value})});
   const j=await r.json().catch(()=>({}));if(!r.ok){$('lerr').textContent=j.detail||'failed';return;}load();}
 async function ack(id){await fetch(`/api/incidents/${id}/ack`,{method:'POST',headers:H});load();}
+async function release(name){if(!confirm(`Release the safe-hold on ${name}? Writes to it will be judged normally again.`))return;
+  await fetch('/api/hold/release',{method:'POST',headers:H,body:JSON.stringify({name})});load();}
+const num=(v,d)=>v==null||isNaN(v)?'–':(+v).toFixed(d);
 function ago(t){const m=Math.round((Date.now()/1000-t)/60);return m<1?'just now':m+' min ago';}
 async function load(){
   const r=await fetch('/api/state');if(r.status===401){$('login').style.display='';$('main').style.display='none';return;}
@@ -67,7 +71,9 @@ async function load(){
   if(bad){st.className='status s-bad';st.innerHTML=`ACTION NEEDED<small>${esc(p.alarms.join(' · ')||'')}${!s.integrity.ok?(p.alarms.length?' · ':'')+'PLC readings don\'t match the chemistry, take a grab sample':''}</small>`;}
   else if(warn){st.className='status s-warn';st.innerHTML=`WATCH<small>${open.length?open.length+' open incident(s)':''}${(s.forewarn||[]).length?(open.length?' · ':'')+'a limit is forecast to be crossed':''}${s.guard_mode!=='enforce'?' · guard is '+s.guard_mode.toUpperCase():''}</small>`;}
   else{st.className='status s-ok';st.innerHTML='WATER IS SAFE<small>all readings in range · Aegis enforcing</small>';}
-  $('v-ph').textContent=p.ph.toFixed(2);$('v-cl').textContent=p.chlorine_residual.toFixed(2);$('v-lv').textContent=p.tank_level.toFixed(0);
+  $('v-ph').textContent=num(p.ph,2);$('v-cl').textContent=num(p.chlorine_residual,2);$('v-lv').textContent=num(p.tank_level,0);
+  const hl=s.holds||[];$('hold-card').style.display=hl.length?'':'none';
+  $('holds').innerHTML=hl.map(h=>`<div class="item"><b>${esc(h.register)}</b> held at ${esc(h.value)} · ${h.remaining_min} min left<div class="muted">${esc(h.reason).slice(0,160)}</div><button onclick="release('${esc(h.register)}')">Release hold</button></div>`).join('');
   $('t-ph').classList.toggle('bad',p.ph>8.5||p.ph<6.5);$('t-cl').classList.toggle('bad',p.chlorine_residual<.2||p.chlorine_residual>4);$('t-lv').classList.toggle('bad',p.tank_level<10||p.tank_level>95);
   $('v-g').textContent=s.guard_mode.toUpperCase();$('v-int').textContent=s.integrity.ok?'PLC readings consistent':'PLC readings suspect';
   $('inc').innerHTML=(s.incidents||[]).length?(s.incidents).map(i=>`<div class="item"><b>#${i.id} · ${esc(i.severity)}</b> · ${i.count} event(s) · ${ago(i.opened)}<br>${esc(i.title)}

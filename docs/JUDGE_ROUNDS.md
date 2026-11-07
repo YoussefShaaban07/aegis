@@ -256,3 +256,19 @@ Flow: *Aegis sits between the HMI and a MicroLogix (Modbus or EtherNet/IP) → r
 3. **Lab alkalinity is checked against the plant's own chemistry**: the finished pH and the lye dose imply a range of raw alkalinity; an unconfirmed entry outside it isn't used, the twin pauses, and the operator is told who entered it. The check needs 90 steady minutes (steady-state chemistry): the first version rejected 26/360 true values during storms and blooms; with the steadiness gate, **0/432 true values rejected**, and **573/864** fake values (×3 or ×0.4) caught at the hour they were checked (the rest are judged later, once steady). Until then, a big unverified jump keeps the previous value. Shown in the test: with a fake 300 mg/L the twin would allow lye 200; with the real 77 it blocks it.
 4. Measured (`scripts/bench_lowpower.py`, pinned to one core of the cloud VM): twin-checked write p50 12.7 / p99 20 ms idle; **p50 49 / p99 78 ms with three busy processes on the same core**. A Raspberry-Pi-class core is several times slower, which puts p99 under load in the low hundreds of ms, uncomfortably close to the 500 ms budget. Recommendation in the README: an x86 mini PC, not a Pi. Not measured on real low-power hardware.
 5. **`docs/RUNBOOK.md`**: one printable page for the shift: what each text means and what to do, the three modes, what to do if the box dies (break-glass cable), and what Aegis will never do on its own.
+
+## Round 13: the real install
+
+1. **"At a real plant there is no dashboard."** The full console drives the simulator; the gateway (what a utility actually runs) had no way to acknowledge a text. So safe-hold would act on *every* warning after 15 minutes even with an operator on it, and releasing a hold needed someone at the box.
+2. **"Stronger lye gets delivered, your twin's feed strength is now wrong by 60%, and it keeps approving doses from numbers that have just been proven wrong."**
+3. **"A small box has a small disk."** History is written every 10 seconds, forever.
+4. **"Operator passwords over plain HTTP on the plant LAN."**
+5. **"Your README is 250 lines. A judge reads one page."**
+
+### What we did about it (v16)
+
+1. **`aegis/console.py`**: `python -m aegis.gateway ... --console-port 8443` serves the phone-sized operator page from the gateway, against live PLC readings: named accounts only (no demo accounts), acknowledge incidents, release safe-holds, all audited with the person's name. No setpoint writes, modes or policy from there. Tested with a TestClient, plus an end-to-end smoke run: gateway in EtherNet/IP mode against the simulated MicroLogix, real login, live readings polled over PCCC. The phone page also gained a Safe-hold card with **Release hold**.
+2. **Distrust mode**: while the integrity monitor says the plant doesn't match the model, the twin evaluates with a wide ensemble (feed strength ±50%, chlorine decay ±60%, demand ±50%). Test: true feed ×1.6, integrity alarm at ~130 sim-min; the nominal twin allows lye 140 (true outcome pH 9.2), distrust mode blocks it, cutting lye is still allowed. Honest limit: lye 120 is also unsafe at ×1.6 (true pH 8.8) and distrust mode still allows it; it narrows the gap, it doesn't close it.
+3. `history.csv` rotates at 50 MB and keeps 30 files.
+4. `--console-cert/--console-key`: the console serves HTTPS itself and marks cookies Secure; a warning is printed if it's exposed beyond localhost over plain HTTP.
+5. **`docs/ONE_PAGER.md`**: problem, product, evidence, gaps, business, next step on one page.

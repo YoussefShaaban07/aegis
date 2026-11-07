@@ -6,7 +6,7 @@ One page for the people on shift. Print it and keep it by the HMI.
 
 | Text says | What it means | What to do |
 |---|---|---|
-| **Twin forecast: … will go above/below … in about N min** | At current settings the water leaves its safe range in N minutes. Nothing has gone wrong yet. | Open the dashboard (or `/operator` on your phone), **Acknowledge** so Aegis knows a person is on it, and correct the trend: the forecast line on the chart shows where it's heading. |
+| **Twin forecast: … will go above/below … in about N min** | At current settings the water leaves its safe range in N minutes. Nothing has gone wrong yet. | Open the Aegis console on your phone or PC (the address your engineer gave you), **Acknowledge** so Aegis knows a person is on it, and correct the trend: the forecast line on the chart shows where it's heading. |
 | **Acknowledge within 15 min if you're handling it; otherwise Aegis will restore the earlier setting** | Safe-hold is counting down. | If you're handling it, **Acknowledge**. If you can't get to it, let it act: it only restores a setting the plant ran at in the last 12 h. |
 | **Twin forecast still unsafe … 60 min after it was acknowledged** | Your acknowledgement ran out and the forecast is still bad. | Acknowledge again if you're still on it. |
 | **Blocked … from setting …** | Someone or something sent a command Aegis refused. The plant didn't change. | If it was you, read the reason on the dashboard: it says what *is* allowed. If it wasn't anyone on shift, call your supervisor: treat it as a possible intrusion. Do not switch Aegis off to "make it work". |

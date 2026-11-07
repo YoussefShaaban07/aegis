@@ -388,8 +388,17 @@ class Guard:
         val = (int(val / nice) * nice) if new > old else (-(-val // nice) * nice)
         return round(val, 2)
 
+    DISTRUST_UNCERTAINTY = {"naoh_feed_strength": 0.5, "chlorine_decay_per_hr": 0.6, "chlorine_demand": 0.5}
+
     def _twin_eval(self, state, override: dict, pred: dict, deadline: float | None = None):
         u = pred.get("uncertainty")
+        if getattr(self, "distrust", False):
+            # Judge round 13: when the plant stops matching the model (stronger lye delivered, a pump
+            # wearing, a compromised PLC dosing behind Aegis's back), the twin must get MORE careful,
+            # not keep trusting numbers that have just been shown wrong: widen the ensemble until resolved.
+            from .twin import DEFAULT_UNCERTAINTY
+            base = u or DEFAULT_UNCERTAINTY
+            u = {k: max(base.get(k, 0), v) for k, v in self.DISTRUST_UNCERTAINTY.items()}
         if u is not None and u != self.twin.uncertainty:
             self.twin.set_uncertainty(u)
         # evaluate the combined change: apply all but one as part of the "state"

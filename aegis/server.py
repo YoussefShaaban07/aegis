@@ -202,6 +202,7 @@ async def lifespan(app: FastAPI):
                 if n % 5 == 0:       # every simulated minute: is the process what the PLC claims?
                     snap = plant.snapshot()
                     S["integrity"].update(snap, plant.sim_time, guard.commanded)
+                    guard.distrust = not S["integrity"].status.get("ok", True)
                     twin.observe(snap, plant.sim_time)          # raw-water trend for forecasts
                     sh = S["safehold"]
                     sh.cfg.update({k: v for k, v in (guard.policy.get("safe_hold") or {}).items()})

@@ -99,6 +99,9 @@ Every write is checked in this order; the first failure blocks it:
 - **Bypass check** (`python -m aegis.exposure <plc-ip>`, run from any other machine): is the PLC reachable around Aegis? Probes Modbus, EtherNet/IP (44818, which MicroLogix runs alongside Modbus), S7, DNP3, OPC UA, web, telnet, FTP.
 - **Read-only unknown hosts**: in the gateway, `"unknown_writers": "block"` makes every host not named in `--sources` read-only.
 - **Guided demo**: one button walks through the whole story with what to say at each step; fast-forwards slow chemistry.
+- **Operator console for real installs** (`--console-port`, `aegis/console.py`): the gateway serves the phone page (acknowledge, release safe-holds) with named accounts and optional built-in HTTPS.
+- **More careful when the model is wrong**: while the integrity monitor says the plant doesn't match the chemistry (stronger lye delivered, failing pump, compromised PLC), the twin judges with a wide uncertainty band.
+- **One page for judges**: `docs/ONE_PAGER.md`.
 - **Operator runbook** (`docs/RUNBOOK.md`): one printable page: what each text means, what to do, what to do if the box fails.
 - **Defending its own judgement**: unnamed writers are refused if the twin runs out of time (slowing the box can't switch the twin off for an attacker); calibrations can't drift more than 40% from the commissioned values without an engineer on site; typed-in lab alkalinity is checked against what the plant's own pH implies.
 - **Resilience**: per-request errors fail closed without taking the server down; a supervisor restarts the gateway; `/health` endpoint; systemd unit with least privilege (`deploy/aegis.service`); soak-tested with 20 concurrent HMIs.
@@ -128,6 +131,7 @@ python -m aegis.attacks lye | mask | readwrite | coil | recon | flood
 
 ```bash
 python -m aegis.gateway --plc-host 192.168.1.50 --plc-port 502 --listen-port 5502 --mode monitor \
+    --console-port 8443 --console-host 0.0.0.0 --console-cert cert.pem --console-key key.pem \
     --sources "10.0.0.5=Operator HMI,10.0.0.9=AI copilot" --health-port 8081
 ```
 

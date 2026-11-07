@@ -1,0 +1,32 @@
+# Aegis: one page
+
+**Problem.** About 50,000 US community water systems run on controllers (PLCs) that accept any command from anyone on the network: no password, no check. In July 2026 attackers took over water-plant PLCs in at least seven states. Most utilities serve small towns with 2–5 staff and no security team. Enterprise industrial-security products are built for big utilities; the EPA's 2023 attempt at a cybersecurity requirement was withdrawn after a lawsuit over cost and expertise.
+
+**Product.** A small box between the operators' screens (HMI) and the PLC. Every command passes through it:
+1. **Rules**: range, step, ramp, interlocks, permits for critical commands. It refuses PLC mode changes and program downloads.
+2. **Digital twin**: a chemistry model of *this* plant forecasts where each command takes the water over the next 6 hours, and blocks commands that pass every rule but end in unsafe water (a legal-looking lye increase during an algae bloom).
+3. **Early warning + safe-hold**: operators are texted hours before a limit is crossed; if nobody answers, Aegis restores the last setting that keeps the water safe and holds it until someone logs in.
+4. **Is the PLC lying?** If the water stops matching the chemistry of what Aegis approved, it alarms (catches malware inside the PLC) and becomes more conservative.
+5. **AI-safe**: an AI copilot can only propose; Aegis checks its proposals like any other command.
+
+Speaks **Modbus TCP and EtherNet/IP (Allen-Bradley MicroLogix/SLC)**, the PLC family in this year's attacks. Starts in watch-only mode; no PLC reprogramming.
+
+**Evidence (simulated plant, measured, not assumed).**
+
+| | Attacks that made water unsafe (200 held-out episodes, nobody answering alarms) |
+|---|---|
+| Static rules only | 49% |
+| Aegis | **12%**, including attackers sitting on the operator's own HMI |
+
+- Operator cost: 2 false twin blocks in 380 simulated operator writes.
+- A simulated year: **9.6 texts a week**, 12 on calm days in the whole year.
+- Adds ~0.2 ms per command (static rules), ~13 ms with the twin.
+- 191 automated tests; tested against independent Modbus and EtherNet/IP clients (pymodbus, libmodbus, pycomm3).
+
+**Not yet done (said plainly).** Not tested on a real plant or real PLC hardware; the twin is validated against simulators, not real plant data; no utility has used it yet.
+
+**Business.** Hardware + yearly subscription, priced by town size: about **$1,500 setup and $100/month** for a small system. It runs for about $50/year in electricity and texts. Reached through the Rural Water Association and the integrators who already service plant PLCs; free 60–90-day watch-only pilots; grant- and insurer-ready reporting.
+
+**Next.** A bench test on a real MicroLogix; one pilot utility in Mississippi.
+
+*Youssef Shaaban · Computer Engineering, University of Southern Mississippi · github.com/YoussefShaaban07/aegis*
