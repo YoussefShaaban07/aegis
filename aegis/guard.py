@@ -46,12 +46,15 @@ WINDOW = 60.0
 LOG_BURST = 5
 BLOCK_REGISTERS = ("naoh_dose", "chlorine_dose")   # twin blocks these for everyone; others: advice for operators          # identical blocked decisions per sender/register/check per minute before summarising
 MODES = ("enforce", "monitor", "off")
+SAFE_HOLD = "Aegis safe-hold"
 
 # MITRE ATT&CK for ICS technique IDs, attached to each block so incident
 # reports speak the language security teams and CISA use.
 ATTACK = {
     "function": [("T0855", "Unauthorized Command Message")],
     "flood": [("T0806", "Brute Force I/O")],
+    "writer": [("T0855", "Unauthorized Command Message")],
+    "hold": [("T0836", "Modify Parameter")],
     "allowlist": [("T0855", "Unauthorized Command Message")],
     "range": [("T0836", "Modify Parameter")],
     "step": [("T0836", "Modify Parameter")],
@@ -138,6 +141,8 @@ class Guard:
         self.trusted_ips: set[str] = set()
         self.permits: dict[tuple, dict] = {}
         self.commanded: dict[str, float] = {}   # last value of each setpoint that Aegis let through
+        self.setpoint_log: deque = deque(maxlen=500)   # (t, register, old, new, source) of allowed changes
+        self.holds: dict[str, dict] = {}          # register -> safe-hold {value, until, by, reason}
 
     @property
     def enabled(self) -> bool:
@@ -193,6 +198,20 @@ class Guard:
         if lim is None:
             return deny("allowlist", "register not on the write allowlist")
         reason = lim.get("reason", "")
+        # 2b. writers: in route mode an engineer can make every host not named in --sources read-only
+        if (self.unit_mode == "route" and self.policy.get("unknown_writers") == "block"
+                and source not in self.ip_sources.values() and source != SAFE_HOLD):
+            return deny("writer", f"{source} is not a named writer (read-only); name it in --sources to allow writes")
+        # 2c. safe-hold: after Aegis undid a dangerous change nobody responded to, the register stays
+        #     there until someone releases it on the authenticated dashboard (a Modbus packet can't log in)
+        hold = self.holds.get(register)
+        if hold and hold["until"] < now:
+            self.holds.pop(register, None)
+            hold = None
+        held = bool(hold and source != SAFE_HOLD and abs(new - hold["value"]) > 1e-9)
+        hold_msg = (f"{register} is held at {hold['value']:g} {u} by Aegis safe-hold ({hold['reason']}); only changes "
+                    "the twin forecasts as corrective are accepted until someone releases it on the dashboard "
+                    "(operator login)") if held else ""
         # 3. range
         if not lim["min"] <= new <= lim["max"]:
             return deny("range", f"outside safe range {lim['min']:g}-{lim['max']:g} {u} ({reason})")
@@ -210,6 +229,8 @@ class Guard:
                             f"{per_min:g} {u}/min (slow-ramp protection; was {base:g} a minute ago)")
         pred = self.policy.get("prediction") or {}
         use_twin = self.twin is not None and pred and pred.get("enabled", True)
+        if held and not use_twin:
+            return deny("hold", hold_msg)
         if soft and not use_twin:
             return deny(*soft)
         # 5b. cycling: rapid back-and-forth changes wear out pumps and valves and cause pressure
@@ -256,6 +277,8 @@ class Guard:
                 if self.alerter:
                     self.alerter.raise_alert("twin_timeout", "warning", "Digital twin couldn't finish within its "
                                              "time budget on this hardware; static checks only for that command.")
+                if held:
+                    return deny("hold", hold_msg)
                 if pred.get("on_timeout", "static") == "block":
                     return deny("predict", "digital twin couldn't finish within its time budget; blocked "
                                            "(prediction.on_timeout = block)")
@@ -263,6 +286,10 @@ class Guard:
                     return deny(*soft)
                 return Decision(True, source, register, old, new, "within static envelope; twin skipped "
                                 "(time budget exceeded)" + permit_note, peer, "ok", wall, u, fc)
+            if held and not (v.allowed and v.reason.startswith("corrective")):
+                d = deny("hold", hold_msg)
+                d.forecast = forecast
+                return d
             trusted = source in SOURCES.values() or source in self.ip_sources.values()
             if not v.allowed and trusted and register not in pred.get("block_registers", BLOCK_REGISTERS):
                 # Hydraulic setpoints (rates, pumps): a known operator gets the forecast as advice and
@@ -343,6 +370,35 @@ class Guard:
             self.commanded[d.register] = d.new
         if d.allowed and d.old is not None and d.new != d.old:
             self._changes[d.register].append((now, d.old, d.new))
+            self.setpoint_log.append((now, d.register, d.old, d.new, d.source))
+
+    def apply_safe_hold(self, action: dict) -> "Decision":
+        """Record and commit a safe-hold revert (the caller writes the value to the PLC) and hold it."""
+        reg, val = action["register"], action["value"]
+        reason = (f"SAFE-HOLD: forecast {action['forecast']}, unacknowledged for {action['unacked_min']:g} min; "
+                  f"restored {reg} to its earlier value {val:g} (forecast score {action['score_before']:g} -> "
+                  f"{action['score_after']:g})")
+        d = Decision(True, SAFE_HOLD, reg, action.get("from"), val, reason, "aegis", "safehold", time.time(),
+                     self._unit(reg), 0, [], False, None)
+        self._record(d)
+        self._commit(d)
+        hold_min = (self.policy.get("safe_hold") or {}).get("hold_min", 240)
+        self.holds[reg] = {"value": val, "until": self.clock() + hold_min * 60, "by": SAFE_HOLD,
+                           "reason": f"forecast {action['forecast']}"}
+        if self.audit:
+            self.audit.append("safe_hold", {**action, "hold_min": hold_min})
+        if self.alerter:
+            self.alerter.raise_alert(f"safe_hold:{reg}", "critical",
+                                     f"Aegis SAFE-HOLD: nobody acknowledged the forecast ({action['forecast']}) "
+                                     f"for {action['unacked_min']:g} min, so Aegis restored {reg} from "
+                                     f"{action.get('from')} to {val:g} and holds it there. Release on the dashboard.")
+        return d
+
+    def release_hold(self, register: str, by: str) -> bool:
+        h = self.holds.pop(register, None)
+        if h and self.audit:
+            self.audit.append("hold_released", {"register": register, "by": by, "value": h["value"]})
+        return h is not None
 
     def save_state(self, path) -> None:
         """Persist rate/ramp/cycling windows so a restart (or a crash an attacker caused) doesn't reset them.
@@ -352,7 +408,9 @@ class Guard:
         data = {"wall": time.time(), "commanded": self.commanded,
                 "changes": {k: [(now - t, a, b) for t, a, b in dq] for k, dq in self._changes.items()},
                 "dirs": {k: [(now - t, d) for t, d in dq] for k, dq in self._dirs.items()},
-                "attempts": {k: [now - t for t in dq] for k, dq in self._attempts.items()}}
+                "attempts": {k: [now - t for t in dq] for k, dq in self._attempts.items()},
+                "holds": {k: {**h, "until": h["until"] - now} for k, h in self.holds.items()},
+                "setpoint_log": [(now - t, r, a, b, src) for t, r, a, b, src in self.setpoint_log]}
         tmp = str(path) + ".tmp"
         with open(tmp, "w") as f:
             json.dump(data, f)
@@ -366,9 +424,17 @@ class Guard:
         except (OSError, ValueError):
             return False
         down = time.time() - data.get("wall", 0)
-        if not 0 <= down < 600:                   # stale or clock nonsense: start fresh
-            return False
         now = self.clock()
+        # safe-holds survive any restart (crashing Aegis must not release them); they keep counting down
+        for k, h in data.get("holds", {}).items():
+            left = h["until"] - max(0.0, down)
+            if left > 0:
+                self.holds[k] = {**h, "until": now + left}
+        for age, r, a, b, src in data.get("setpoint_log", []):
+            self.setpoint_log.append((now - age - max(0.0, down), r, a, b, src))
+        if not 0 <= down < 600:                   # stale or clock nonsense: fresh rate windows
+            return bool(self.holds)
+
         for k, items in data.get("changes", {}).items():
             self._changes[k] = deque((now - age - down, a, b) for age, a, b in items if age + down < 600)
         for k, items in data.get("dirs", {}).items():

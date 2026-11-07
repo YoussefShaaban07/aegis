@@ -95,5 +95,20 @@
   },
   "max_reversals_per_10min": 4,
   "max_reads_per_sec_per_ip": 50,
-  "read_cache_ms": 100
+  "read_cache_ms": 100,
+  "unknown_writers": "allow",
+  "safe_hold": {
+    "enabled": true,
+    "after_min": 15,
+    "lookback_min": 720,
+    "hold_min": 240,
+    "registers": [
+      "naoh_dose",
+      "chlorine_dose",
+      "distribution_rate"
+    ],
+    "margin": 0.01,
+    "_doc": "If the twin forecasts unsafe water and nobody acknowledges for after_min, restore the earlier value (within lookback_min) that fixes the forecast most, and hold it for hold_min (only corrective changes until released on the dashboard). Never acts in monitor mode or while the integrity monitor distrusts the sensors."
+  },
+  "_doc_unknown_writers": "gateway (route mode): 'block' makes every host not named in --sources read-only. Recommended once the writers are known."
 }

@@ -55,6 +55,8 @@ STRATEGIES = ("stepper", "prober", "timed")
 CYCLE_HARM = 10          # >= 10 large reversals executed = equipment stress counted as harm
 LIMITS = {"ph": (6.5, 8.5), "chlorine": (0.2, 4.0), "tank": (5.0, 101.0)}
 FIDELITY = "standard"     # "high": the simulated plant has physics the twin doesn't model
+SAFE_HOLD = False         # twin guard also runs safe-hold (auto-revert when a warning goes unanswered)
+ATTACKER = "unknown"      # "hmi": the attacker owns the operator HMI (writes as a trusted source)
 
 
 def harmful(plant: Plant) -> str | None:
@@ -95,7 +97,22 @@ class Clock:
 
 def make_guard(plant: Plant, twin: bool, clock: Clock, policy: dict):
     g = Guard(None, plant.snapshot, policy=policy, clock=clock, twin=Twin() if twin else None)
+    g.safehold = None
+    if twin and SAFE_HOLD:
+        from .safehold import SafeHold
+        g.safehold = SafeHold(g, {**(policy.get("safe_hold") or {}), "enabled": True})
     return g
+
+
+def run_safe_hold(g: Guard, plant: Plant, minute: int, every: int = 5):
+    """The deployed gateway polls every 10 s; every 5 simulated minutes is enough here. Nobody acks."""
+    if g.safehold is None or minute % every:
+        return None
+    act = g.safehold.update(plant.snapshot(), g.clock())
+    if act:
+        g.apply_safe_hold(act)
+        plant.set(act["register"], act["value"])
+    return act
 
 
 def attack_episode(seed: int, use_twin: bool | None, policy: dict, hours: int = 8) -> dict:
@@ -122,7 +139,8 @@ def attack_episode(seed: int, use_twin: bool | None, policy: dict, hours: int = 
     peak = 0.0
     watch_twin = Twin()
     next_write = start * 60
-    src, peer = "Unknown device (unit 66)", "10.9.9.9:4444"
+    src, peer = ("Operator HMI", "10.0.0.5:5000") if ATTACKER == "hmi" else ("Unknown device (unit 66)", "10.9.9.9:4444")
+    reverts = 0
 
     def attempt(new):
         nonlocal tries, blocked
@@ -160,6 +178,8 @@ def attack_episode(seed: int, use_twin: bool | None, policy: dict, hours: int = 
                 else:
                     attempt(want)
             next_write += gap
+        if use_twin and run_safe_hold(g, plant, minute):
+            reverts += 1
         plant.step(1.0)
         if fore_at is None and minute % 10 == 0 and first_crossings(
                 watch_twin.forecast(plant.snapshot(), None, 180, every_min=10)):
@@ -174,7 +194,7 @@ def attack_episode(seed: int, use_twin: bool | None, policy: dict, hours: int = 
         if harm is None and goal == "cycle_equipment" and cycles >= CYCLE_HARM:
             harm, harm_at = "equipment cycling", minute
     return {"seed": seed, "goal": goal, "strategy": strategy, "weather": weather, "twin": use_twin,
-            "tries": tries, "blocked": blocked, "cycles": cycles, "peak_severity": round(peak, 4),
+            "tries": tries, "blocked": blocked, "cycles": cycles, "reverts": reverts, "peak_severity": round(peak, 4),
             "harm": harm, "harm_at_min": harm_at, "alarm_at_min": alarm_at, "forewarn_at_min": fore_at,
             "warning_min": (harm_at - alarm_at) if (harm_at is not None and alarm_at is not None) else None,
             "forewarn_min": (harm_at - fore_at) if (harm_at is not None and fore_at is not None) else None}
@@ -188,7 +208,7 @@ def operator_episode(seed: int, use_twin: bool, policy: dict, hours: int = 12) -
     g = make_guard(plant, use_twin, clock, policy)
     weather_at = rng.randint(30, hours * 60 - 120)
     weather = rng.choice(["storm", "bloom", "normal"])
-    writes = []
+    writes, reverts = [], []
     next_action = rng.randint(10, 60)
     for minute in range(hours * 60):
         clock.t = minute * 60.0
@@ -225,8 +245,14 @@ def operator_episode(seed: int, use_twin: bool, policy: dict, hours: int = 12) -
                 g._commit(d)
                 plant.set(reg, new)
             next_action = minute + rng.randint(20, 90)
+        if use_twin and g.safehold is not None and minute % 5 == 0:
+            before = copy.deepcopy(plant)
+            act = run_safe_hold(g, plant, minute)
+            if act:      # ground truth: did undoing the operator's change make the true outcome better?
+                reverts.append({"register": act["register"], "value": act["value"], "from": act["from"],
+                                "truth_with": forward_harm(copy.deepcopy(plant)), "truth_without": forward_harm(before)})
         plant.step(1.0)
-    return {"seed": seed, "twin": use_twin, "weather": weather, "writes": writes}
+    return {"seed": seed, "twin": use_twin, "weather": weather, "writes": writes, "reverts": reverts}
 
 
 def attacker_caused(e: dict, b: dict) -> bool:
@@ -275,6 +301,12 @@ def summarize(attacks: list[dict], operators: list[dict]) -> dict:
             "operator_writes": len(o), "operator_blocked_any_rule": sum(not w["allowed"] for w in o),
             "operator_blocked_by_twin": len(pred_blocks), "twin_blocks_justified": len(justified),
             "twin_false_blocks": len(unjust), "operator_mistakes_let_through": len(missed),
+            "attack_reverts": sum(e.get("reverts", 0) for e in a),
+            "operator_reverts": sum(len(e.get("reverts", [])) for e in operators if e["twin"] == mode),
+            "operator_reverts_helpful": sum(r["truth_with"] < r["truth_without"] - 1e-3
+                                            for e in operators if e["twin"] == mode for r in e.get("reverts", [])),
+            "operator_reverts_harmful": sum(r["truth_with"] > r["truth_without"] + 1e-3
+                                            for e in operators if e["twin"] == mode for r in e.get("reverts", [])),
         }
     return out
 
@@ -291,10 +323,14 @@ def main(argv=None):
                     help="high = test the twin against a plant with physics it doesn't model")
     ap.add_argument("--uncertainty", type=float, default=None,
                     help="scale the twin's uncertainty band (1 = policy default; e.g. 0.4 after calibration)")
+    ap.add_argument("--safe-hold", action="store_true",
+                    help="the twin guard also runs safe-hold (auto-revert after 15 min of unanswered warning)")
+    ap.add_argument("--attacker", choices=["unknown", "hmi"], default="unknown",
+                    help="hmi = the attacker has taken over the operator HMI and writes as a trusted source")
     a = ap.parse_args(argv)
-    global FIDELITY
-    FIDELITY = a.fidelity
-    print(f"plant fidelity: {FIDELITY}")
+    global FIDELITY, SAFE_HOLD, ATTACKER
+    FIDELITY, SAFE_HOLD, ATTACKER = a.fidelity, a.safe_hold, a.attacker
+    print(f"plant fidelity: {FIDELITY}; attacker writes as: {ATTACKER}; safe-hold: {'on' if SAFE_HOLD else 'off'}")
     policy = load_policy(Tags.load())
     if a.uncertainty is not None:
         u = policy["prediction"].get("uncertainty") or {"naoh_feed_strength": 0.1, "chlorine_decay_per_hr": 0.3,
@@ -331,6 +367,10 @@ def main(argv=None):
         print(f"  operator writes: {r['operator_writes']}, blocked by any rule: {r['operator_blocked_any_rule']}, "
               f"by twin: {r['operator_blocked_by_twin']} (justified {r['twin_blocks_justified']}, "
               f"false {r['twin_false_blocks']}); unsafe operator writes let through: {r['operator_mistakes_let_through']}")
+        if SAFE_HOLD and mode == "twin":
+            print(f"  safe-hold reverts: {r['attack_reverts']} in attack episodes; {r['operator_reverts']} of operator "
+                  f"changes (helpful {r['operator_reverts_helpful']}, harmful {r['operator_reverts_harmful']}, "
+                  f"neutral {r['operator_reverts'] - r['operator_reverts_helpful'] - r['operator_reverts_harmful']})")
     return res
 
 

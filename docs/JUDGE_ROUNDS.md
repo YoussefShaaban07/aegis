@@ -140,3 +140,31 @@ Diagnosed on **development** seeds only (held-out seeds stay untouched for repor
 Development seeds 0–39: twin operator blocks 17 → 9, false 10 → 5, all justified blocks retained.
 
 **Confirmed on new held-out seeds (200000–200199):** twin operator blocks 9, false **3** (standard) / 2 (high-fidelity), versus 14 false of 21 in the previous held-out run; attack success with the twin 31% / 33% versus 56% / 57% for static rules alone.
+
+## Round 8 (against v10)
+
+1. **"Your drain defence is a text message. 42 of 53 drain attacks still succeed, with a 2½-hour warning nobody read. At 3 AM a warning protects nothing."**
+2. **"Your evaluation's attacker is a stranger on the network. The real one sits on the HMI PC (that's how the 2021 Oldsmar intrusion worked). Your own Round 7 change made hydraulic setpoints *advice* for the HMI. So an HMI attacker drains the tank freely."**
+3. **"Why can an unknown IP write at all? An allowlist of writer IPs is a one-line firewall rule, and your evaluation pretends it doesn't exist."**
+4. **"MicroLogix speaks EtherNet/IP on 44818 alongside Modbus. The attacker skips your proxy entirely. You say 'segment the network' and never check it."**
+5. **"If Aegis starts writing to the PLC on its own, an attacker who fakes the sensors can make Aegis undo the operators' good changes. You've built them a weapon."**
+
+### What we did about it (v11)
+
+1. **Safe-hold** (`aegis/safehold.py`). If the twin forecasts unsafe water and nobody acknowledges for 15 min, Aegis restores the earlier setpoint value (one the plant really ran at within 12 h) that fixes the forecast most, and writes it to the PLC as "Aegis safe-hold". Critical alert, audit entry with before/after forecast scores. Acknowledging the incident means a human owns it, and Aegis does nothing.
+2. **The hold.** After a revert, Modbus writes that move that register are refused unless the twin calls them corrective. Release needs a login on the dashboard (or a console on the Aegis box). A hijacked HMI can send packets; it can't log in. Holds survive restarts. New evaluation option `--attacker hmi`: the attacker writes as the trusted operator.
+3. **`"unknown_writers": "block"`** in route mode makes every host not named in `--sources` read-only. We kept the evaluation's "unknown device" attacker anyway: it stands for anything that gets onto a writer's IP.
+4. **`python -m aegis.exposure <plc-ip>`**, run from any other machine: TCP probe of Modbus, EtherNet/IP 44818, S7, DNP3, 104, OPC UA, Fox, web, telnet, FTP, SSH. Every OPEN port is reported as a bypass. Exit code 1 if any, so it can run in a scheduled check.
+5. **Stand-down.** Safe-hold does nothing while the integrity monitor distrusts the sensors (shadow-physics mismatch, stuck analyzer, setpoints changed behind Aegis's back). It never acts in monitor mode, never touches pumps, and only restores values that operators themselves ran.
+
+**Development seeds 0–39** (40 attacks, 15 operator sessions):
+
+| | Attacks that made water unsafe |
+|---|---|
+| Static rules | 21/40 (52%) |
+| Rules + twin (v10) | 13/40 against an HMI attacker |
+| Rules + twin + safe-hold | **1/40** stranger attacker, **4/40** HMI attacker |
+
+**Costs, measured:**
+- Safe-hold reverted 13 operator changes: 9 made the true outcome better, 4 made no difference, 0 made it worse.
+- Holds refused 10 of 202 operator writes. In reality the operator would get the critical text and could release the hold. In the evaluation nobody does.

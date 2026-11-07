@@ -174,6 +174,7 @@ a{color:var(--blue)}code{font-size:11.5px}
     </div>
     <div class="panel">
       <h2>Operator alerts <span class="sp"></span><span id="alcfg" style="text-transform:none;letter-spacing:0"></span></h2>
+      <div id="holds"></div>
       <div id="incidents"></div>
       <div id="alerts" class="log" style="max-height:220px"><div class="trace">No alerts.</div></div>
     </div>
@@ -471,6 +472,9 @@ async function load(){let s;try{const r=await fetch('/api/state');if(r.status===
   $('incidents').innerHTML=(s.incidents||[]).map(i=>`<div class="verdict ${i.severity==='critical'&&!i.acked_by?'bad':''}" style="margin:0 0 8px">
     <b>Incident #${i.id}</b> · ${esc(i.severity)} · ${i.count} event${i.count>1?'s':''} grouped (one text sent${i.level?`, escalated to contact ${i.level+1}`:''})<br>${esc(i.title)}
     <div style="margin-top:6px">${i.acked_by?`<span class="okm">✔ acknowledged by ${esc(i.acked_by)}</span>`:`<button onclick="post('/api/incidents/${i.id}/ack').then(load)">Acknowledge</button> <span class="trace">unacknowledged critical incidents escalate to the next contact every 10 min</span>`}</div></div>`).join('');
+  $('holds').innerHTML=(s.holds||[]).map(h=>`<div class="verdict bad" style="margin:0 0 8px"><b>SAFE-HOLD</b> ${esc(h.register)} held at ${fmt(h.value)} (${esc(h.reason)}; ${h.remaining_min} min left). Modbus writes that move it are refused unless the twin calls them corrective.
+    <div style="margin-top:6px"><button onclick="post('/api/hold/release',{name:'${h.register}'}).then(load)">Release hold</button> <span class="trace">needs an operator login; logged</span></div></div>`).join('')
+    +(s.safe_hold&&s.safe_hold.standing_down?'<div class="verdict" style="margin:0 0 8px">Safe-hold is standing down: the integrity monitor doesn\'t trust the sensors right now.</div>':'');
   $('alerts').innerHTML=s.alerts.length?s.alerts.map(a=>`<div class="al ${a.severity}"><b>${a.severity.toUpperCase()}</b> ${esc(a.message)}<div class="d">${new Date(a.t*1000).toLocaleTimeString()} · ${esc(a.delivery)}</div></div>`).join(''):'<div class="trace">No alerts.</div>';
   $('alog').innerHTML=s.attack_log.slice(0,4).map(a=>`<div>${new Date(a.t*1000).toLocaleTimeString()} <b>${esc(a.attack)}</b>: ${esc(a.result)}</div>`).join('')+(s.patient_running?'<div style="color:var(--warn)">⏳ patient attacker is waiting out the ramp window…</div>':'');
   $('props').innerHTML=s.proposals.length?s.proposals.map(p=>`<div class="prop"><span class="st ${p.status}">${p.status}</span> <b>${esc(p.label)}</b>: ${fmt(p.old)} → ${fmt(p.value)} ${esc(p.unit)}${p.reason?` · “${esc(p.reason)}”`:''}<div class="trace">${esc(p.guard)}</div>${spark(p.forecast)}${p.status==='pending'?`<div class="act"><button onclick="decide(${p.id},'approve')">Approve</button><button onclick="decide(${p.id},'reject')">Reject</button></div>`:''}</div>`).join(''):'<div class="trace">None.</div>';

@@ -199,3 +199,14 @@ def test_incident_grouping_and_ack_endpoint(client):
 def test_operator_view_served(client):
     r = client.get("/operator")
     assert r.status_code == 200 and "AEGIS · Operator" in r.text
+
+
+def test_safe_hold_visible_and_release_needs_login(client):
+    from aegis.server import S
+    g = S["guard"]
+    g.holds["naoh_dose"] = {"value": 100, "until": g.clock() + 600, "by": "Aegis safe-hold", "reason": "test"}
+    s = client.get("/api/state").json()
+    assert s["holds"][0]["register"] == "naoh_dose" and s["safe_hold"]["enabled"]
+    assert client.post("/api/hold/release", json={"name": "naoh_dose"}).status_code == 200
+    assert "naoh_dose" not in g.holds
+    assert client.post("/api/hold/release", json={"name": "naoh_dose"}).status_code == 404

@@ -109,6 +109,18 @@ def validate_policy(p: dict, tags: Tags) -> dict:
     br = (p.get("prediction") or {}).get("block_registers")
     if br is not None and (not isinstance(br, list) or any(r not in tags.holding for r in br)):
         raise PolicyError("prediction.block_registers must list writable setpoints")
+    uw = p.get("unknown_writers", "allow")
+    if uw not in ("allow", "block"):
+        raise PolicyError("unknown_writers must be 'allow' or 'block'")
+    sh = p.get("safe_hold")
+    if sh is not None:
+        if not isinstance(sh, dict):
+            raise PolicyError("safe_hold must be an object")
+        for k in ("after_min", "lookback_min", "hold_min"):
+            if k in sh and (not isinstance(sh[k], (int, float)) or sh[k] <= 0):
+                raise PolicyError(f"safe_hold.{k} must be a positive number")
+        if any(r not in tags.holding or tags.holding[r].table == "coil" for r in sh.get("registers", [])):
+            raise PolicyError("safe_hold.registers must list writable holding-register setpoints (not pumps)")
     rc = p.get("max_reversals_per_10min")
     if rc is not None and (not isinstance(rc, int) or rc < 1):
         raise PolicyError("max_reversals_per_10min must be a positive integer or absent")

@@ -30,6 +30,7 @@ from .config import POLICY_PATH, Tags, verify_policy_file
 from .guard import MODES, Guard, read_plc_state
 from .forewarn import ForecastWatch
 from .integrity import IntegrityMonitor
+from .safehold import SafeHold
 from .twin import REQUIRED, Twin
 
 
@@ -63,6 +64,7 @@ async def integrity_loop(guard, twin, poll_s: float = 10.0, printer=print, histo
     """Poll the PLC, check the process matches what Aegis approved, and record history for calibration."""
     mon = IntegrityMonitor(twin.model if twin else None, alerter=guard.alerter, audit=guard.audit)
     watch = ForecastWatch(guard.alerter, guard.audit)
+    hold = SafeHold(guard)
     reader = modbus.Client(guard.upstream.host, guard.upstream.port, unit=guard.upstream.unit)
     seen = 0
     writer = None
@@ -85,7 +87,21 @@ async def integrity_loop(guard, twin, poll_s: float = 10.0, printer=print, histo
             mon.update(st, time.time(), guard.commanded)
             if twin:
                 twin.observe(st, time.time())
+                hold.cfg.update(guard.policy.get("safe_hold") or {})
+                act = hold.update(st, time.time(), sensors_trusted=mon.status.get("ok", True))
+                if act:            # write first; only a value the PLC accepted is recorded and held
+                    await guard.upstream.write_tag(guard.tags.holding[act["register"]], act["value"])
+                    guard.apply_safe_hold(act)
+                    printer(f"{time.strftime('%H:%M:%S')} SAFE-HOLD: {guard.log[0].reason}")
             guard.flush_suppressed()
+            if history_path:                    # an engineer logged in on this box releases a safe-hold with
+                from pathlib import Path        #   echo distribution_rate > data/release_hold
+                rel = Path(history_path).with_name("release_hold")
+                if rel.exists():
+                    for reg in rel.read_text().split():
+                        if guard.release_hold(reg, "engineer (console on the Aegis box)"):
+                            printer(f"{time.strftime('%H:%M:%S')} safe-hold on {reg} released from the console")
+                    rel.unlink()
             if history_path:
                 from pathlib import Path
                 guard.save_state(Path(history_path).with_name("guard_state.json"))

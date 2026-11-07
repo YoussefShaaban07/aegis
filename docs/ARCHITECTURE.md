@@ -76,6 +76,27 @@ A shadow copy of the process runs open-loop, driven by the setpoints *Aegis appr
 
 Measured (20 × 10 h runs each, operator changes, storms, blooms): **0 false alarms** on the standard simulator and on the high-fidelity simulator (4 cells vs the twin's 3, faster degassing, 15 °C, quantized lye pump, analyzer lag). Hidden 100 → 200 ppm lye attack: **detected in all 20 runs, 77–84 simulated minutes after it starts.** A creeping attack kept under ~2% per hour could be absorbed by re-anchoring; a full replay (setpoints and readings faked) is invisible without a lab grab sample.
 
+## Safe-hold (aegis/safehold.py)
+
+Runs every poll (gateway: 10 s; demo: every simulated minute). Order of decisions:
+
+1. Off in monitor/off mode, without a twin, or when sensor tags are missing.
+2. Stands down while the integrity monitor reports a problem: if the readings may be faked, acting on
+   them would let an attacker use Aegis to undo good operator changes.
+3. Nominal forecast at current settings crosses a forewarn band (pH/chlorine 120 min, clearwell 180 min)?
+   If not, reset the timer.
+4. An incident acknowledged since the warning started means a human owns it: do nothing.
+5. After `after_min` (15) unacknowledged minutes, candidates are the values each dose/rate setpoint had
+   before every change in the last `lookback_min` (720). Each is scored with the twin (same violation
+   score as the decision rule, nominal model + steady state). The best one that is better than doing
+   nothing by `margin` is written to the PLC (write first; only a value the PLC accepted is recorded).
+6. The register is held for `hold_min` (240): writes that move it are refused (check `hold`) unless the
+   twin calls them corrective. Release: dashboard (operator login) or, on the gateway box,
+   `echo <register> > data/release_hold`. Holds are saved with the guard state and survive restarts.
+7. At most one action per `after_min`.
+
+What it never does: invent values, touch pumps (permit-gated), act on acknowledged incidents.
+
 ## Authentication (aegis/auth.py)
 
 viewer < operator < engineer. scrypt (n=2¹⁴, r=8, p=1) password hashes; HMAC-SHA256-signed session tokens in HttpOnly SameSite=Strict cookies, 8 h expiry, invalidated if the user's role changes; `X-Aegis: 1` header required on every write (CSRF); 5 failures per user or IP per 5 min → locked out. Engineer actions also need the PIN. Every action is logged with the user's name.

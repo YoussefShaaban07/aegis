@@ -31,6 +31,7 @@ from .copilot import Copilot
 from .guard import MODES, Guard
 from .forewarn import ForecastWatch
 from .integrity import IntegrityMonitor
+from .safehold import SafeHold
 from .process import ProcessModel
 from .learn import observations_from_audit, simulated_week, suggest
 from .plant import HOLDING, SCENARIOS, TAGS, Plant
@@ -148,6 +149,7 @@ async def lifespan(app: FastAPI):
              accuracy=Accuracy(), forecast=None, attack_log=deque(maxlen=30), patient=None,
              integrity=IntegrityMonitor(ProcessModel(twin.model.params), alerter=alerter, audit=audit),
              forewarn=ForecastWatch(alerter, audit))
+    S["safehold"] = SafeHold(guard)
     S["copilot"] = Copilot(plant, GUARD_PORT, orders, proposals=props, mode_getter=lambda: S["autonomy"], twin=twin,
                            context=lambda: {"guard_log": [d.as_dict() for d in list(S["guard"].log)[:30]],
                                             "integrity": {**S["integrity"].status,
@@ -188,6 +190,12 @@ async def lifespan(app: FastAPI):
                     snap = plant.snapshot()
                     S["integrity"].update(snap, plant.sim_time, guard.commanded)
                     twin.observe(snap, plant.sim_time)          # raw-water trend for forecasts
+                    sh = S["safehold"]
+                    sh.cfg.update({k: v for k, v in (guard.policy.get("safe_hold") or {}).items()})
+                    act = sh.update(snap, plant.sim_time, sensors_trusted=S["integrity"].status.get("ok", True))
+                    if act:                      # restore the earlier value through the PLC, then hold it
+                        await upstream.write_tag(TAGS.holding[act["register"]], act["value"])
+                        guard.apply_safe_hold(act)
             except Exception as e:   # the sim loop must never die silently
                 print("tick error:", e)
             n += 1
@@ -265,6 +273,10 @@ def state(who: dict = Depends(role("viewer"))):
             "integrity": {**S["integrity"].status, "events": list(S["integrity"].events)[:10]},
             "truth": p.truth() if p.compromise else None,
             "forewarn": list(S["forewarn"].active.values()),
+            "holds": [{"register": r, **{k: v for k, v in h.items() if k != "until"},
+                       "remaining_min": round((h["until"] - g.clock()) / 60)} for r, h in g.holds.items()],
+            "safe_hold": {"enabled": S["safehold"].enabled, "standing_down": S["safehold"].standing_down,
+                          "after_min": S["safehold"].cfg["after_min"], "actions": S["safehold"].actions[-5:]},
             "attack_log": list(S["attack_log"]), "patient_running": bool(S["patient"] and not S["patient"].done()),
             "tags": {n: {"unit": t.unit, "label": t.label, "table": t.table} for n, t in TAGS.holding.items()},
             "llm": bool(os.getenv("GROQ_API_KEY") or os.getenv("AEGIS_LLM_KEY"))}
@@ -612,6 +624,18 @@ def permit(body: PermitIn, who: dict = Depends(role("operator"))):
         return S["guard"].issue_permit(body.name, body.value, max(1, min(60, body.minutes)), by=_by(who))
     except ValueError as e:
         raise HTTPException(400, str(e))
+
+
+class HoldIn(BaseModel):
+    name: str
+
+
+@app.post("/api/hold/release")
+def release_hold(body: HoldIn, who: dict = Depends(role("operator"))):
+    """Releasing a safe-hold needs a login: a Modbus packet (or a hijacked HMI) can't do it."""
+    if not S["guard"].release_hold(body.name, by=_by(who)):
+        raise HTTPException(404, f"{body.name} is not held")
+    return {"released": body.name}
 
 
 class Msg(BaseModel):

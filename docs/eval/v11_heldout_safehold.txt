@@ -1,0 +1,2 @@
+plant fidelity: standard; attacker writes as: unknown; safe-hold: on
+seeds 300000..300199  (HELD OUT: not used during development)
