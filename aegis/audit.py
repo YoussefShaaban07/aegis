@@ -11,8 +11,11 @@ defences against that:
   * keyed chain: set AEGIS_AUDIT_KEY and every link becomes HMAC-SHA256 with
     that secret, so rewriting history needs the key, not just the file;
   * checkpoints: head() returns the newest hash; it is printed in incident
-    reports and can be sent off-box, so a later rewrite won't match an
-    externally held copy.
+    reports, so a later rewrite won't match an externally held copy;
+  * off-box copy: set AEGIS_SYSLOG=host:port and every entry (with its hash) is
+    also sent as an RFC 5424 syslog message over UDP to a log server or SIEM.
+    Someone who owns the Aegis box can rewrite the local file, not the copy
+    that already left it.
 Changing or removing the key on an existing database makes verify() fail
 (by design): start a new database when you rotate it.
 """
@@ -24,6 +27,7 @@ import hmac
 import io
 import json
 import os
+import socket
 import sqlite3
 import threading
 import time
@@ -53,6 +57,24 @@ class AuditLog:
             id INTEGER PRIMARY KEY AUTOINCREMENT, t REAL, kind TEXT, data TEXT,
             prev_hash TEXT, hash TEXT)""")
         self.db.commit()
+        target = os.getenv("AEGIS_SYSLOG", "")
+        self.syslog = None
+        if target:
+            host, _, port = target.rpartition(":")
+            self.syslog = (host or "127.0.0.1", int(port or 514))
+            self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+    def _forward(self, entry_id: int, t: float, kind: str, payload: str, h: str):
+        if not self.syslog:
+            return
+        ts = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(t)) + f".{int((t % 1) * 1e6):06d}Z"
+        sev = 2 if kind in ("decision",) and '"allowed": false' in payload else 5        # crit vs notice
+        pri = 13 * 8 + sev                                                               # facility 13 (log audit)
+        msg = f"<{pri}>1 {ts} {socket.gethostname()} aegis - {kind} [aegis id=\"{entry_id}\" hash=\"{h}\"] {payload}"
+        try:
+            self._sock.sendto(msg.encode()[:8000], self.syslog)
+        except OSError:
+            pass                              # forwarding must never block or break the guard
 
     def append(self, kind: str, data: dict) -> dict:
         with self._lock:
@@ -64,7 +86,8 @@ class AuditLog:
             cur = self.db.execute("INSERT INTO audit (t, kind, data, prev_hash, hash) VALUES (?,?,?,?,?)",
                                   (t, kind, payload, prev, h))
             self.db.commit()
-            return {"id": cur.lastrowid, "t": t, "kind": kind, "data": data, "hash": h}
+        self._forward(cur.lastrowid, t, kind, payload, h)
+        return {"id": cur.lastrowid, "t": t, "kind": kind, "data": data, "hash": h}
 
     def recent(self, limit: int = 50, kind: str | None = None) -> list[dict]:
         q = "SELECT id, t, kind, data, hash FROM audit"

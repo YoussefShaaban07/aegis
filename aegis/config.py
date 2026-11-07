@@ -116,12 +116,48 @@ def validate_policy(p: dict, tags: Tags) -> dict:
     return p
 
 
+def _policy_sig(p: dict, key: bytes) -> str:
+    import hashlib
+    import hmac
+    body = json.dumps({k: v for k, v in p.items() if k != "_sig"}, sort_keys=True, separators=(",", ":"))
+    return hmac.new(key, body.encode(), hashlib.sha256).hexdigest()
+
+
+def policy_key() -> bytes | None:
+    k = os.getenv("AEGIS_POLICY_KEY", "")
+    return k.encode() if k else None
+
+
+def verify_policy_file(path: Path = POLICY_PATH) -> tuple[bool, str]:
+    """If AEGIS_POLICY_KEY is set, the policy file must carry a valid signature made by Aegis itself
+    (i.e. saved through the dashboard by an engineer). An edit on disk breaks it."""
+    key = policy_key()
+    if key is None:
+        return True, "unsigned (set AEGIS_POLICY_KEY to detect edits made outside Aegis)"
+    p = json.loads(Path(path).read_text())
+    if not p.get("_sig"):
+        return False, "policy file is not signed"
+    import hmac
+    if not hmac.compare_digest(p["_sig"], _policy_sig(p, key)):
+        return False, "policy file was modified outside Aegis (signature mismatch)"
+    return True, "signed, signature valid"
+
+
 def load_policy(tags: Tags, path: Path = POLICY_PATH) -> dict:
-    return validate_policy(json.loads(Path(path).read_text()), tags)
+    ok, msg = verify_policy_file(path)
+    if not ok:
+        raise PolicyError(msg)
+    p = json.loads(Path(path).read_text())
+    p.pop("_sig", None)
+    return validate_policy(p, tags)
 
 
 def save_policy(p: dict, path: Path = POLICY_PATH):
-    Path(path).write_text(json.dumps(p, indent=2))
+    out = {k: v for k, v in p.items() if k != "_sig"}
+    key = policy_key()
+    if key is not None:
+        out["_sig"] = _policy_sig(out, key)
+    Path(path).write_text(json.dumps(out, indent=2))
 
 
 def load_process(path: Path = PROCESS_PATH) -> dict:

@@ -349,6 +349,8 @@ function spark(fc){if(!fc)return'';const w=150,h=34,pts=fc.with,pw=fc.without,n=
 /* ---------- copilot ---------- */
 async function ask(){const q=$('q').value.trim();if(!q)return;$('reply').textContent='Thinking…';$('trace').innerHTML='';
   try{const r=await post('/api/copilot',{message:q});$('reply').textContent=r.reply||r.detail||'';
+  const rc=r.reply_check;$('reply').style.borderColor=rc&&!rc.ok?'var(--bad)':'';
+  if(rc&&!rc.ok)$('reply').insertAdjacentHTML('beforeend',`<div class="verdict bad" style="margin-top:8px">⚠ Aegis reply check: don't act on this answer.<br>${rc.flags.map(esc).join('<br>')}</div>`);
   $('trace').innerHTML=(r.trace||[]).map(t=>`→ <b>${esc(t.tool)}</b> ${esc(JSON.stringify(t.args))} ⇒ ${esc(t.result.twin_verdict||t.result.result||t.result.error||'ok')}`).join('<br>');load();}catch(e){$('reply').textContent='Error: '+e;}}
 
 /* ---------- rules ---------- */
@@ -478,7 +480,7 @@ async function load(){let s;try{const r=await fetch('/api/state');if(r.status===
   const I=s.integrity;$('intst').innerHTML=I.ok?'<span class="okm">✔ consistent</span>':'<span class="err">✖ MISMATCH</span>';
   $('intev').innerHTML=(I.events||[]).map(e=>`<div class="al critical">${esc(e.message)}</div>`).join('')+(I.ph_err!=null?`<div class="trace">measured vs chemistry right now: alkalinity <b>${I.alk_err_pct>=0?'+':''}${I.alk_err_pct}%</b> (alarm at ±4%), pH ${I.ph_err>=0?'+':''}${I.ph_err}, chlorine ${I.cl_err>=0?'+':''}${I.cl_err} mg/L · ${esc(I.message)}</div>`:'');
   $('truth').innerHTML=s.truth?`<span style="color:var(--warn)">Simulator truth (an operator can't see this): real pH <b>${s.truth.ph}</b>, real lye feed <b>${s.truth.naoh_dose_actual}</b> ppm${s.truth.sensors_frozen?' · PLC is replaying frozen readings':''}</span>`:'';
-  const au=s.audit;$('audit').innerHTML=au.ok?`<span class="audit-ok">✔ Chain intact</span> · ${au.entries} entries verified${au.keyed?' · keyed (HMAC)':' · unkeyed (set AEGIS_AUDIT_KEY)'}<div class="trace">head <code>${esc((au.head||'').slice(0,32))}…</code></div>`:`<span class="audit-bad">✖ ${esc(au.message)}</span>`;
+  const au=s.audit;$('audit').innerHTML=au.ok?`<span class="audit-ok">✔ Chain intact</span> · ${au.entries} entries verified${au.keyed?' · keyed (HMAC)':' · unkeyed (set AEGIS_AUDIT_KEY)'}<div class="trace">head <code>${esc((au.head||'').slice(0,32))}…</code></div>${s.policy_sig?`<div class="trace">Safety policy file: ${s.policy_sig.ok?'✔':'<span class="err">✖</span>'} ${esc(s.policy_sig.message)}</div>`:''}`:`<span class="audit-bad">✖ ${esc(au.message)}</span>`;
   const L=s.latency,f=v=>v==null?'–':v.toFixed(2)+' ms';
   $('lat').innerHTML=[['decide p50',f(L.check_p50_ms)],['decide p99',f(L.check_p99_ms)],['total p50',f(L.total_p50_ms)],['total p99',f(L.total_p99_ms)]].map(([l,v])=>`<div class="kpi"><div class="l">${l}</div><div class="v" style="font-size:18px">${v}</div><div class="r">${L.n} writes</div></div>`).join('');
   const A=s.accuracy.by_horizon_min;

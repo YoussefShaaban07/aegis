@@ -14,6 +14,7 @@ import os
 import httpx
 
 from . import modbus
+from .replyguard import check as check_reply
 from .plant import HOLDING, TAGS, UNITS
 
 API = os.getenv("AEGIS_LLM_URL", "https://api.groq.com/openai/v1/chat/completions")
@@ -81,6 +82,7 @@ class Copilot:
         self.plant = plant
         self.twin = twin
         self.context = context or (lambda: {})     # server passes guard log, integrity, early warnings
+        self.audit = None
         self.guard_port = guard_port
         self.work_orders = work_orders
         self.proposals = proposals
@@ -155,7 +157,12 @@ class Copilot:
                 msgs.append({k: v for k, v in m.items() if k in ("role", "content", "tool_calls")})
                 calls = m.get("tool_calls") or []
                 if not calls:
-                    return {"reply": m.get("content") or "", "trace": trace}
+                    reply = m.get("content") or ""
+                    rg = check_reply(reply, self.plant.snapshot())
+                    if not rg["ok"] and self.audit:
+                        self.audit.append("ai_reply_flagged", {"question": message[:300], "reply": reply[:1000],
+                                                               "flags": rg["flags"]})
+                    return {"reply": reply, "trace": trace, "reply_check": rg}
                 for c in calls:
                     try:
                         args = json.loads(c["function"].get("arguments") or "{}")

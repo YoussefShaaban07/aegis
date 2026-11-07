@@ -82,6 +82,9 @@ Every write is checked in this order; the first failure blocks it:
 - **Read-flood protection**: per-IP read rate limit and a 100 ms coalescing cache, so heavy polling can't knock a small PLC over.
 - **Onboarding** (`python -m aegis.onboard --export plc_tags.csv`): drafts the register map from the PLC's own tag export plus values observed on the wire; flags anything uncertain.
 - **Incidents, not alert storms**: related alerts become one incident and one text; unacknowledged critical incidents escalate down a contact list.
+- **Reply guard** (`aegis/replyguard.py`): the AI's answers are checked against live readings and for advice to disable safety, before the operator reads them.
+- **Tell the operator what *is* safe**: when the twin blocks an operator or AI change, Aegis computes the largest change it would accept right now.
+- **Tamper resistance**: signed policy file (edits outside Aegis are detected), off-box audit copy via syslog, monotonic rate windows.
 - **Guided demo**: one button walks through the whole story with what to say at each step; fast-forwards slow chemistry.
 - **Resilience**: per-request errors fail closed without taking the server down; a supervisor restarts the gateway; `/health` endpoint; systemd unit with least privilege (`deploy/aegis.service`); soak-tested with 20 concurrent HMIs.
 
@@ -93,7 +96,7 @@ Every write is checked in this order; the first failure blocks it:
 pip install -r requirements.txt
 cp .env.example .env          # add GROQ_API_KEY for the AI copilot (free at console.groq.com)
 python -m aegis.server        # open http://127.0.0.1:8000
-python -m pytest -q           # 111 tests
+python -m pytest -q           # 134 tests
 python -m aegis.evaluate      # attack/operator evaluation (~10 min)
 python -m aegis.redteam       # prompt-injection red team against the real copilot (needs GROQ_API_KEY)
 python scripts/bench.py       # latency on your machine
@@ -174,6 +177,7 @@ Sign in as **engineer**, type PIN **2468**, press **▶ Guided demo**. Each step
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md): how each part works, and the chemistry.
 - [`docs/JUDGE_ROUNDS.md`](docs/JUDGE_ROUNDS.md): adversarial review rounds: brutal judge questions and what changed in response.
 - [`docs/BUSINESS.md`](docs/BUSINESS.md): why now (July 2026 FBI/EPA alert on water PLC attacks in 7 states), who pays, competitors, honest gaps.
+- [`docs/STANDARDS.md`](docs/STANDARDS.md): mapping to IEC 62443-3-3, CISA CPGs and NIST CSF 2.0, including what Aegis does **not** meet.
 - [`docs/eval/`](docs/eval/): full results of the evaluation harness.
 
 ## Credits

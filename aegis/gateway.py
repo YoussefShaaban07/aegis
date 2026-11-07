@@ -23,7 +23,7 @@ from dotenv import load_dotenv
 from . import modbus
 from .alerts import Alerter
 from .audit import AuditLog
-from .config import POLICY_PATH, Tags
+from .config import POLICY_PATH, Tags, verify_policy_file
 from .guard import MODES, Guard, read_plc_state
 from .forewarn import ForecastWatch
 from .integrity import IntegrityMonitor
@@ -78,6 +78,9 @@ async def integrity_loop(guard, twin, poll_s: float = 10.0, printer=print, histo
                 fh.flush()
             guard.sync_commanded(st)
             mon.update(st, time.time(), guard.commanded)
+            ok, msg = verify_policy_file(POLICY_PATH)
+            if not ok:
+                guard.alerter.raise_alert("policy_tamper", "critical", f"Policy file integrity check failed: {msg}")
             if history_path and guard.seen:            # discovery for `python -m aegis.onboard`
                 import json
                 from pathlib import Path

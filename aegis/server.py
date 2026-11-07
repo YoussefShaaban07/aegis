@@ -26,7 +26,7 @@ from .attacks import INJECTION
 from .audit import AuditLog
 from .auth import Auth, allowed
 from .calibrate import fit as calibrate_fit
-from .config import POLICY_PATH, PolicyError
+from .config import POLICY_PATH, PolicyError, verify_policy_file
 from .copilot import Copilot
 from .guard import MODES, Guard
 from .forewarn import ForecastWatch
@@ -153,6 +153,7 @@ async def lifespan(app: FastAPI):
                                             "integrity": {**S["integrity"].status,
                                                           "events": list(S["integrity"].events)[:5]},
                                             "forewarn": list(S["forewarn"].active.values())})
+    S["copilot"].audit = audit
     audit.append("startup", {"guard_port": GUARD_PORT, "plc_port": PLC_PORT, "plant": PLANT_NAME})
 
     async def tick():
@@ -174,6 +175,13 @@ async def lifespan(app: FastAPI):
                 if n % 25 == 0:      # every 5 s: new accuracy sample, escalate unacknowledged incidents
                     S["accuracy"].predict(twin, plant)
                     alerter.tick()
+                if n % 50 == 0:      # every 10 s: has someone edited the policy file behind Aegis's back?
+                    ok, msg = verify_policy_file(POLICY_PATH)
+                    S["policy_sig"] = {"ok": ok, "message": msg}
+                    if not ok:
+                        alerter.raise_alert("policy_tamper", "critical",
+                                            f"Safety policy file on disk failed its integrity check: {msg}. Aegis "
+                                            "keeps enforcing the last good policy it loaded.")
                 S["accuracy"].score(plant)
                 if n % 5 == 0:       # every simulated minute: is the process what the PLC claims?
                     S["integrity"].update(plant.snapshot(), plant.sim_time, guard.commanded)
@@ -244,7 +252,7 @@ def state(who: dict = Depends(role("viewer"))):
             "incidents": [i for i in S["alerter"].incidents if i["closed"] is None][:5],
             "notifications_sent": len(S["alerter"].notifications),
             "proposals": S["proposals"].items[:15], "autonomy": S["autonomy"], "audit": S["verify"],
-            "latency": g.latency(), "counts": dict(g.counts), "accuracy": S["accuracy"].summary(),
+            "latency": g.latency(), "counts": dict(g.counts), "policy_sig": S.get("policy_sig"), "accuracy": S["accuracy"].summary(),
             "integrity": {**S["integrity"].status, "events": list(S["integrity"].events)[:10]},
             "truth": p.truth() if p.compromise else None,
             "forewarn": list(S["forewarn"].active.values()),

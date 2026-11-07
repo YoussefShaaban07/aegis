@@ -179,3 +179,16 @@ def test_permit_not_burned_by_rejected_write():
     assert not g.check("distribution_pump", 0, plant.snapshot(), "Operator HMI", "h:1").allowed
     plant.state.tank_level = 60
     assert g.check("distribution_pump", 0, plant.snapshot(), "Operator HMI", "h:1").allowed   # permit still there
+
+
+def test_blocked_operator_is_told_what_is_safe():
+    plant = Plant(noise=False)
+    g = Guard(None, plant.snapshot, twin=Twin())
+    g.policy["limits"]["naoh_dose"].update(max_step=None, max_change_per_min=None)
+    d = g.check("naoh_dose", 230, plant.snapshot(), "Operator HMI", "h:1")
+    assert not d.allowed and "Largest change the twin accepts right now: naoh_dose = " in d.reason
+    safe = float(d.reason.split("naoh_dose = ")[1].split()[0])
+    assert 120 <= safe < 230
+    assert g.check("naoh_dose", safe, plant.snapshot(), "Operator HMI", "h:1").allowed     # and it really is
+    att = g.check("naoh_dose", 230, plant.snapshot(), "Unknown device (unit 66)", "9.9.9.9:1")
+    assert "Largest change" not in att.reason                                             # attackers get no hint

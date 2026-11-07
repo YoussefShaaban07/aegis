@@ -97,7 +97,7 @@ def _pct(xs, q):
 class Guard:
     def __init__(self, upstream: modbus.Client | None, read_state, tags: Tags | None = None,
                  policy: dict | None = None, enabled: bool = True, audit=None, alerter=None,
-                 clock=time.time, policy_path=None, twin=None, mode: str | None = None):
+                 clock=time.monotonic, policy_path=None, twin=None, mode: str | None = None):
         """upstream: client to the real PLC. read_state(): current values (sync or async)."""
         self.upstream = upstream
         self.read_state = read_state
@@ -107,7 +107,7 @@ class Guard:
         self.mode = mode or ("enforce" if enabled else "off")
         self.audit = audit
         self.alerter = alerter
-        self.clock = clock
+        self.clock = clock          # monotonic by default: rate/ramp windows can't be reset by changing the system time
         self.twin = twin
         self.log: deque[Decision] = deque(maxlen=200)
         self._changes: dict[str, deque] = defaultdict(deque)   # register -> (t, before, after)
@@ -150,11 +150,13 @@ class Guard:
         old = state.get(register)
         u = self._unit(register)
 
+        wall = time.time()
+
         def deny(check, reason):
             tech = list(ATTACK.get(check, []))
             if source == "AI copilot":
                 tech.append(AI_TAG)
-            return Decision(False, source, register, old, new, reason, peer, check, now, u, fc, tech)
+            return Decision(False, source, register, old, new, reason, peer, check, wall, u, fc, tech)
 
         # 1. flood: counted per source label AND per IP address, because Modbus
         #    unit IDs are free to spoof (an attacker can rotate them to dodge a per-label cap)
@@ -237,7 +239,14 @@ class Guard:
             v = self._twin_eval(state, override, pred)
             forecast = v.forecast
             if not v.allowed:
-                d = deny("predict", v.reason)
+                reason = v.reason
+                if source in SOURCES.values() and old is not None:      # operator / AI: say what IS safe
+                    safe = self._safest_step(state, register, old, new, together, pred, lim)
+                    if safe is not None and safe != old:
+                        reason += f". Largest change the twin accepts right now: {register} = {safe:g} {u}"
+                    elif safe is not None:
+                        reason += ". The twin accepts no change in that direction right now"
+                d = deny("predict", reason)
                 d.forecast = forecast
                 return d
             if soft:
@@ -255,8 +264,23 @@ class Guard:
         if nb and not nb[0] <= new <= nb[1]:
             return Decision(True, source, register, old, new,
                             f"UNUSUAL: outside the learned normal band {nb[0]:g}-{nb[1]:g} {u} (allowed; operator alerted)",
-                            peer, "unusual", now, u, fc, [], False, forecast)
-        return Decision(True, source, register, old, new, note, peer, "ok", now, u, fc, [], False, forecast)
+                            peer, "unusual", wall, u, fc, [], False, forecast)
+        return Decision(True, source, register, old, new, note, peer, "ok", wall, u, fc, [], False, forecast)
+
+    def _safest_step(self, state, register, old, new, together, pred, lim, iters: int = 7):
+        """Binary-search the largest change from `old` toward `new` that the twin accepts."""
+        lo, hi = 0.0, 1.0           # fraction of the requested change
+        step = (lim.get("max_step") or abs(new - old)) / abs(new - old) if new != old else 1.0
+        hi = min(hi, step)
+        for _ in range(iters):
+            mid = (lo + hi) / 2
+            cand = old + (new - old) * mid
+            v = self._twin_eval(state, {**(together or {}), register: cand}, pred)
+            lo, hi = (mid, hi) if v.allowed else (lo, mid)
+        val = old + (new - old) * lo
+        nice = 10 ** max(0, len(str(int(abs(val)))) - 2) if abs(val) >= 100 else (1 if abs(val) >= 10 else 0.1)
+        val = (int(val / nice) * nice) if new > old else (-(-val // nice) * nice)
+        return round(val, 2)
 
     def _twin_eval(self, state, override: dict, pred: dict):
         u = pred.get("uncertainty")
@@ -270,12 +294,13 @@ class Guard:
 
     # ------------------------------------------------------------------ bookkeeping
     def _commit(self, d: Decision):
+        now = self.clock()                      # windows run on the guard's (monotonic) clock, not d.t
         if d.allowed and d.old is not None and d.new != d.old:
-            self._dirs[d.register].append((d.t, 1 if d.new > d.old else -1))
+            self._dirs[d.register].append((now, 1 if d.new > d.old else -1))
         if d.allowed:
             self.commanded[d.register] = d.new
         if d.allowed and d.old is not None and d.new != d.old:
-            self._changes[d.register].append((d.t, d.old, d.new))
+            self._changes[d.register].append((now, d.old, d.new))
 
     def sync_commanded(self, state: dict):
         """Seed the approved-setpoint record from the PLC (at startup, before any writes)."""
@@ -371,7 +396,7 @@ class Guard:
                 if len(dq) == cap + 1:            # one log entry per burst, not thousands
                     self._record(Decision(False, source, f"reads FC {req.fc}", None, len(dq),
                                           f"more than {cap} reads per second from {ip}: possible denial-of-service "
-                                          "against the PLC (answered 'busy')", peer_s, "read_flood", self.clock(), "",
+                                          "against the PLC (answered 'busy')", peer_s, "read_flood", time.time(), "",
                                           req.fc, [("T0814", "Denial of Service")]))
                 raise modbus.ModbusError(modbus.DEVICE_BUSY)
         ttl = (self.policy.get("read_cache_ms") or 0) / 1000
@@ -438,7 +463,7 @@ class Guard:
             tech = [FC_ATTACK[req.fc]] if req.fc in FC_ATTACK else list(ATTACK["function"])
             d = Decision(False, source, f"FC {req.fc}", None, req.fc,
                          f"function code {req.fc} ({name}) is not allowed through the guard",
-                         peer_s, "function", self.clock(), "", req.fc, tech)
+                         peer_s, "function", time.time(), "", req.fc, tech)
             self._record(self._apply_mode(d))
             self.lat_check.append((time.perf_counter() - t0) * 1000)
             if not d.allowed:
