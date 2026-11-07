@@ -138,3 +138,5 @@ Diagnosed on **development** seeds only (held-out seeds stay untouched for repor
 - *Remaining blocks we keep:* lye 165 on a normal day (the price of the ±10% feed uncertainty; calibration narrows it), raising lye during a bloom, and chlorine cuts that make a storm failure marginally worse.
 
 Development seeds 0–39: twin operator blocks 17 → 9, false 10 → 5, all justified blocks retained.
+
+**Confirmed on new held-out seeds (200000–200199):** twin operator blocks 9, false **3** (standard) / 2 (high-fidelity), versus 14 false of 21 in the previous held-out run; attack success with the twin 31% / 33% versus 56% / 57% for static rules alone.

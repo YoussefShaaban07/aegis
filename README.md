@@ -131,18 +131,18 @@ Point the HMI and AI at the gateway instead of the PLC, and firewall the PLC so 
 
 ## Measured numbers (this repo, not marketing)
 
-**Evaluation on held-out seeds** (`python -m aegis.evaluate --seed-offset 100000`; seeds never looked at during development). 200 randomized attack episodes per guard: attackers who know the static rules (stepper, boundary-prober, weather-timed) going for caustic water, no disinfection, chlorine overdose, draining the clearwell, or cycling equipment. Plus 30 episodes of a simulated operator. Ground truth from the simulated "true" plant; an attack counts only if it caused harm or made it clearly worse than the same weather with no attacker. **Nobody responds to alarms in these runs**, which overstates harm.
+**Evaluation on held-out seeds** (`python -m aegis.evaluate --seed-offset 200000`; seeds never looked at during development). 200 randomized attack episodes per guard: attackers who know the static rules (stepper, boundary-prober, weather-timed) going for caustic water, no disinfection, chlorine overdose, draining the clearwell, or cycling equipment. Plus 30 episodes of a simulated operator. Ground truth from the simulated "true" plant; an attack counts only if it caused harm or made it clearly worse than the same weather with no attacker. **Nobody responds to alarms in these runs**, which overstates harm.
 
-| | Static rules only | Rules + digital twin |
+| Held-out seeds 200000–200199 | Static rules only | Rules + digital twin |
 |---|---|---|
-| Attacks that made the water unsafe, standard simulator | 49% (98/200) | **24%** (48/200) |
-| Same, high-fidelity simulator (physics the twin gets wrong) | 49% | **29%** (58/200) |
-| caustic / no disinfection | 38/46, 24/32 | 10/46, 5/32 (high-fidelity: 20/46, 5/32) |
-| chlorine overdose / equipment cycling | 0/37, 0/46 | 0/37, 0/46 |
-| clearwell drain | 36/39 | 33/39. **Not stopped**, but the twin's early warning comes a median **148 min** before harm vs 13 min for the alarm |
-| Operator writes blocked | 0 of 396 | 21 of 395: **7 justified, 14 false**. Biggest open weakness |
+| Attacks that made the water unsafe, standard simulator | 56% (113/200) | **31%** (62/200) |
+| Same, high-fidelity simulator (physics the twin gets wrong) | 57% (114/200) | **33%** (66/200) |
+| caustic / no disinfection (standard) | 32/35, 31/39 | **10/35, 10/39** |
+| chlorine overdose / equipment cycling | 0/39, 0/34 | 0/39, 0/34 |
+| clearwell drain | 50/53 | 42/53. **Not stopped**: the twin's early warning comes a median **151 min** before harm vs 13 min for the alarm |
+| Operator writes blocked by the twin (standard / high-fidelity) | — | 9 / 9: **3 / 2 false**, 6 / 7 justified |
 
-Development-seed runs looked better (e.g. 10% vs 24%); that gap is why held-out results are the ones reported. Full output: `docs/eval/`.
+The previous held-out run (seeds 100000+, before Round 7) had the twin blocking 21 operator writes, **14 of them false**. Round 7 cut that without losing protection (`docs/JUDGE_ROUNDS.md`). Development seeds always looked better than held-out ones, which is why only held-out results are reported. Full output: `docs/eval/`.
 
 | Other measurements | Result | How to reproduce |
 |---|---|---|
