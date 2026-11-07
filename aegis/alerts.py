@@ -56,13 +56,23 @@ class Alerter:
                 return inc
         return None
 
-    def raise_alert(self, key: str, severity: str, message: str) -> dict | None:
-        """severity: 'warning' (SMS) or 'critical' (SMS + phone call). Throttled per key; grouped into incidents."""
+    def raise_alert(self, key: str, severity: str, message: str, fresh: bool = False) -> dict | None:
+        """severity: 'info' (dashboard only, never texted), 'warning' (SMS) or 'critical' (SMS + phone call).
+        Throttled per key; warnings and criticals are grouped into incidents."""
         now = self.clock()
         if now - self._last.get(key, 0) < self.throttle_s:
             return None
         self._last[key] = now
+        if severity == "info":       # judge round 10: operational, not public health -> don't wake anyone
+            alert = {"t": now, "key": key, "severity": "info", "message": message, "incident": None,
+                     "delivery": "dashboard only (not a water-safety issue)"}
+            self.recent.appendleft(alert)
+            if self.audit:
+                self.audit.append("alert", {k: alert[k] for k in ("key", "severity", "message", "incident")})
+            return alert
         inc = self.open_incident()
+        if fresh and inc is not None and inc["acked_by"]:
+            inc = None              # needs a NEW acknowledgement: don't hide it in an incident someone already acked
         notify = False
         if inc is None:
             self._ids += 1

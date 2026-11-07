@@ -1,0 +1,22 @@
+52 simulated weeks (233 calm days, 131 storm/bloom days), operator acknowledges after 10 min
+  messages sent: 497 (9.6 per week); escalations 50
+  on calm days: 12 (0.05 per calm day)  <- nuisance
+  on storm/bloom days: 3.7 per day
+  by cause: {'forecast': 353, 'process alarm': 136, 'other': 8}
+  operator writes: {'allowed': 2364, 'blocked:predict': 1}; safe-hold actions: 0
+    calm-day text: Twin forecast: clearwell level will go below 10% in about 176 min at current settings (now
+    calm-day text: Twin forecast: clearwell level will go below 10% in about 180 min at current settings (now
+    calm-day text: Process alarm TANK HIGH
+    calm-day text: Twin forecast: clearwell level will go below 10% in about 180 min at current settings (now
+    calm-day text: Twin forecast: clearwell level will go below 10% in about 180 min at current settings (now
+    calm-day text: Twin forecast: clearwell level will go below 10% in about 180 min at current settings (now
+    calm-day text: Twin forecast: clearwell level will go below 10% in about 180 min at current settings (now
+    calm-day text: Twin forecast: clearwell level will go below 10% in about 176 min at current settings (now
+    calm-day text: Twin forecast: clearwell level will go below 10% in about 180 min at current settings (now
+    calm-day text: Twin forecast: clearwell level will go below 10% in about 176 min at current settings (now
+    calm-day text: Twin forecast: clearwell level will go below 10% in about 180 min at current settings (now
+    calm-day text: Twin forecast: clearwell level will go below 10% in about 176 min at current settings (now
+
+real	4m31.776s
+user	4m30.161s
+sys	0m0.042s

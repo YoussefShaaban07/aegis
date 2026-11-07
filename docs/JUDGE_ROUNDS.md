@@ -197,3 +197,28 @@ Development seeds 0–39: twin operator blocks 17 → 9, false 10 → 5, all jus
 | Twin + safe-hold, stranger attacker | **25/200 (12%)** |
 
 Operator cost: 380 writes, 12 twin blocks (10 justified, 2 false), 4 hold refusals (v11: 12). Safe-hold undid 19 operator changes: 15 better, 3 neutral, **1 slightly worse**.
+
+## Round 10: the VOXO method (state the flow, then attack each step)
+
+At the hatchathon kickoff VOXO asked for the project's flow first, then took each step apart. We did the same to Aegis:
+
+1. *Problem: legacy PLCs, Oldsmar 2021.* → **"Oldsmar may not have been a hack"** (the former city manager said in 2023 it was probably an employee's error). **"Who installs and maintains this at a utility with no engineer?"**
+2. *Aegis sits between the HMI and the PLC and reads every Modbus command.* → **"Rockwell HMIs talk to a MicroLogix over EtherNet/IP + PCCC, not Modbus. In many real plants Aegis would see none of the writes it's meant to judge."** This was the biggest hole. **"What happens when the box dies?"**
+3. *Rule checks.* → **"Tofino's Modbus enforcer did range/function filtering in 2009."**
+4. *Digital twin.* → **"Graded by your own simulator; no real plant data."**
+5. *Early-warning texts.* → **"Operators already ignore alarms. How many texts does a normal week produce?"** We didn't know.
+6. *Safe-hold.* → **"A box that writes to a drinking-water PLC by itself. What if it overrides an operator who is already handling it?"**
+7. *AI copilot.* → **"Why an LLM in a water plant? Has it run against a real model?"**
+8. *12% of attacks still succeed.* → **"Your attackers, your simulator, nobody responds."**
+
+### What we did about it (v13)
+
+- **EtherNet/IP + PCCC guard** (`aegis/cip.py`, `python -m aegis.gateway --protocol cip`). Written from the ODVA encapsulation/CIP structure and Rockwell's DF1 command set (pub. 1770-6.5.16). Typed writes (`0x0F/0xAA, 0xAB, 0xA9`) on the data files in `tags.json` (`"pccc": "N7:1"`) go through **`Guard.judge_writes`**, the same function the Modbus proxy uses, so rules, twin, holds and safe-hold apply unchanged. Typed reads, diagnostic status, forward open/close and identity pass. Everything else is refused and logged with its ATT&CK technique: RUN→PROGRAM (T0858), download (T0843), Logix tag writes, Set Attribute, Reset, unknown commands, and anything that fails to parse. Writes wrapped in an Unconnected Send are unwrapped and judged. Partial-word masked writes to a setpoint word are refused. Also: `MicroLogixSim` (the plant answering as a MicroLogix 1400), `PCCCClient` (gateway polling and safe-hold writes), two dashboard attack buttons. **Tested with pycomm3's SLCDriver**, an independent client: 12 tests, including twin verdicts over EtherNet/IP and the full gateway in `cip` mode. Not tested on a real MicroLogix.
+- **Alert load** (`python -m aegis.alertload`): a simulated year. First run: 11.8 texts/week, **0.64 per calm day** (mostly clearwell-overflow forecasts), and **safe-hold acted 51 times on an operator who was acknowledging and responding**: their 60-minute acknowledgement lapsed during long storms. Fixes:
+  - overflow forecasts are `info`: dashboard only, never texted, and ignored by safe-hold (it's not a safety condition);
+  - safe-hold texts the operator when its countdown starts ("acknowledge within 15 min if you're handling it, otherwise Aegis will restore…"), so it never acts on a warning the operator wasn't actually texted about;
+  - when an acknowledgement lapses and the forecast is still bad, it texts a **reminder** in a fresh incident before acting.
+  
+  After: **9.6 texts/week, 0.05 per calm day, 3.7 per storm/bloom day, 0 safe-hold actions against the engaged operator, 0 hold refusals.** Unattended (the attack evaluation), safe-hold behaves as before.
+- Already answered in earlier rounds and kept: Oldsmar caveat (now framed as "attack or mistake, the guard catches both"); Tofino named as prior art; supervisor + break-glass bypass for a dead box (Round 1); second high-fidelity simulator (Round 2).
+- **Still open, said plainly:** no real plant data; no real MicroLogix; the copilot has not been run with a real model key; the evaluation's attackers are ours.

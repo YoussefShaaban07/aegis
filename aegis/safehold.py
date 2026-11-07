@@ -40,7 +40,7 @@ Off by default. An engineer turns it on per plant, after a trial in monitor mode
 """
 from __future__ import annotations
 
-from .forewarn import first_crossings
+from .forewarn import INFO_ONLY, first_crossings
 
 DEFAULTS = {"enabled": False, "after_min": 15, "lookback_min": 720, "hold_min": 240,
             "registers": ["naoh_dose", "chlorine_dose", "distribution_rate"], "margin": 0.01,
@@ -57,6 +57,8 @@ class SafeHold:
         self.last_action: float | None = None
         self.actions: list[dict] = []
         self.standing_down = False
+        self.reminded_at: float | None = None
+        self.was_acked = False
 
     @property
     def enabled(self) -> bool:
@@ -110,15 +112,41 @@ class SafeHold:
             return None
         self.standing_down = False
         fc = self.guard.twin.forecast(state, None, 180, every_min=5)
-        cross = first_crossings(fc)
+        cross = {v: c for v, c in first_crossings(fc).items() if f"{v}:{c[1]}" not in INFO_ONLY}  # overflow: not safety
         if not cross:
             self.warn_since = None
+            self.was_acked = False
             return None
         if self.warn_since is None:
             self.warn_since = now
             self.warn_alert_t = self.guard.alerter.clock() if self.guard.alerter else None
+            if self.guard.alerter:
+                # Never act on a warning the operator wasn't actually texted about: the forecast text may have
+                # gone out hours ago (and been grouped or throttled since). Say plainly what will happen.
+                var, (mins, direction, _) = next(iter(cross.items()))
+                self.guard.alerter.raise_alert(
+                    f"safe_hold_pending:{int(now)}", "warning",
+                    f"Twin forecast: {var} goes {direction} its limit in ~{mins:g} min at current settings. "
+                    f"Acknowledge within {self.cfg['after_min']:g} min if you're handling it; otherwise Aegis will "
+                    "restore the earlier setting that fixes it.", fresh=True)
         if self._acked():
             self.last_action = now        # after the ack lapses, wait a full after_min before acting
+            self.reminded_at = None
+            self.was_acked = True
+            return None
+        if self.was_acked and self.reminded_at is None and self.guard.alerter:
+            # An acknowledgement just lapsed and the forecast is still bad: tell the operator BEFORE acting,
+            # so someone who is handling it can say so again (judge round 10: a simulated year showed
+            # safe-hold overriding operators who had acknowledged and were responding).
+            self.reminded_at = now
+            var, (mins, direction, _) = next(iter(cross.items()))
+            self.guard.alerter.raise_alert(
+                f"safe_hold_reminder:{int(now)}", "warning",
+                f"Twin forecast still unsafe ({var} {direction} limit in ~{mins:g} min) "
+                f"{self.cfg.get('ack_valid_min', 60):g} min after it was acknowledged. Acknowledge again within "
+                f"{self.cfg['after_min']:g} min if you're on it; otherwise Aegis will restore the earlier setting.", fresh=True)
+            self.warn_alert_t = self.guard.alerter.clock()      # a new ack of this reminder counts
+            self.last_action = now
             return None
         wait = self.cfg["after_min"] * 60
         if now - self.warn_since < wait or (self.last_action is not None and now - self.last_action < wait):
@@ -140,6 +168,7 @@ class SafeHold:
                   "score_after": round(s, 4), "forecast": f"{var} {direction} limit in ~{mins:g} min",
                   "unacked_min": round((now - self.warn_since) / 60, 1)}
         self.actions.append(action)
+        self.was_acked = False
         return action
 
 

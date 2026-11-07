@@ -17,6 +17,9 @@ ALARM_BANDS = {"ph": (6.5, 8.5, 120, "pH", ""), "chlorine_residual": (0.2, 4.0, 
                "tank_level": (10.0, 95.0, 180, "clearwell level", "%")}
 
 
+INFO_ONLY = {"tank_level:above"}
+
+
 def first_crossings(forecast: list[dict], bands: dict = ALARM_BANDS) -> dict:
     """{var: (minutes, 'below'|'above', value)} for the first forecast point outside each band."""
     out = {}
@@ -57,7 +60,10 @@ class ForecastWatch:
             if self.audit:
                 self.audit.append("forecast_warning", self.active[key])
             if self.alerter:
-                self.alerter.raise_alert(f"forecast:{key}", "warning", msg)
+                # Overflowing the clearwell wastes water but doesn't make it unsafe: dashboard, not a text
+                # (judge round 10: in a simulated year these were most of the texts on calm days).
+                sev = "info" if key in INFO_ONLY else "warning"
+                self.alerter.raise_alert(f"forecast:{key}", sev, msg)
         for key in list(self.active):
             var, direction = key.split(":")
             if var not in cross or cross[var][1] != direction:

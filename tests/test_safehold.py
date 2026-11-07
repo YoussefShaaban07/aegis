@@ -14,7 +14,7 @@ class Clock:
         return self.t
 
 
-def drained(source="Operator HMI", ack=False):
+def drained(source="Operator HMI", ack=False, re_ack=False):
     """A writer raises the distribution rate in legal steps while the clearwell is full; then nobody responds."""
     plant, clk = Plant(noise=False), Clock()
     al = Alerter(None, throttle_s=0, clock=clk)
@@ -34,6 +34,8 @@ def drained(source="Operator HMI", ack=False):
         if minute == 0:
             al.raise_alert("forecast:tank_level:below", "warning", "Twin forecast: clearwell low")   # forewarn's text
         if ack and minute == 10 and al.incidents:
+            al.ack(al.incidents[0]["id"], "night operator")
+        if re_ack and al.recent and al.recent[0]["key"].startswith("safe_hold_reminder") and not al.incidents[0]["acked_by"]:
             al.ack(al.incidents[0]["id"], "night operator")
         if minute % 5 == 0:
             a = sh.update(plant.snapshot(), clk())
@@ -196,3 +198,12 @@ def test_failed_safe_hold_write_is_loud_and_holds_nothing():
         written.append((tag.name, value))
     assert asyncio.run(execute(g, act, ok)) is True
     assert written == [("distribution_rate", 500)] and g.holds["distribution_rate"]["value"] == 500
+
+
+def test_reminder_before_acting_on_an_operator_who_acknowledged():
+    """Judge round 10: after an ack lapses Aegis texts a reminder first; re-acknowledging keeps it hands-off."""
+    plant, g, sh, acts, clk = drained(ack=True, re_ack=True)
+    assert acts == []
+    assert any(a["key"].startswith("safe_hold_reminder") for a in g.alerter.recent)
+    plant, g, sh, acts, clk = drained(ack=True)          # nobody answers the reminder: it acts
+    assert acts and any(a["key"].startswith("safe_hold_reminder") for a in g.alerter.recent)
