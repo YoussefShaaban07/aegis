@@ -55,3 +55,31 @@ def test_ramp_window_not_reset_by_wall_clock_jump(monkeypatch):
     monkeypatch.setattr(_t, "time", lambda: real() + 86400)
     d2 = g.check("chlorine_dose", 2.3, plant.snapshot(), "x", "h:1")
     assert not d2.allowed and d2.check == "ramp"
+
+
+
+def test_blocked_write_flood_cannot_fill_the_audit_log():
+    import asyncio
+    from aegis import modbus
+
+    async def run():
+        plant = Plant(noise=False)
+        plc = await modbus.serve(plant.handle, "127.0.0.1", 0)
+        audit = AuditLog(":memory:")
+        g = Guard(modbus.Client("127.0.0.1", plc.sockets[0].getsockname()[1]), plant.snapshot, audit=audit)
+        g.policy["max_writes_per_min_per_source"] = 10 ** 9          # let every write reach the range check
+        srv = await modbus.serve(g.handle, "127.0.0.1", 0)
+        c = await modbus.Client("127.0.0.1", srv.sockets[0].getsockname()[1], unit=66).connect()
+        for _ in range(1000):
+            try:
+                await c.write(1, 11100)
+            except modbus.ModbusError:
+                pass
+        g.flush_suppressed(force=True)
+        kinds = [e["kind"] for e in audit.recent(5000)]
+        assert kinds.count("decision") <= 6                          # not 1000
+        summ = [e for e in audit.recent(5000) if e["kind"] == "decisions_suppressed"]
+        assert summ and summ[0]["data"]["suppressed"] == 995
+        assert g.counts["blocked"] == 1000 and audit.verify()["ok"]
+        await c.close(); plc.close(); srv.close()
+    asyncio.run(run())

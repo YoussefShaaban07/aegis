@@ -15,7 +15,7 @@ import html
 import time
 from collections import Counter, defaultdict
 
-KINDS = ("decision", "alert", "alert_delivery", "policy_change", "guard_mode", "guard_toggle",
+KINDS = ("decision", "decisions_suppressed", "alert", "alert_delivery", "policy_change", "guard_mode", "guard_toggle",
          "auth_failure", "proposal", "proposal_decision", "settings", "scenario", "demo_reset", "startup")
 
 
@@ -35,6 +35,7 @@ def build(entries: list[dict], verify: dict, head: dict, plant: str, since: floa
     auth = [e for e in entries if e["kind"] == "auth_failure"]
     props = [e for e in entries if e["kind"] == "proposal"]
     pdec = {e["data"]["id"]: e["data"] for e in entries if e["kind"] == "proposal_decision"}
+    suppressed = sum(e["data"]["suppressed"] for e in entries if e["kind"] == "decisions_suppressed")
 
     by_source = defaultdict(Counter)
     techniques = Counter()
@@ -53,8 +54,9 @@ def build(entries: list[dict], verify: dict, head: dict, plant: str, since: floa
     L.append("## Summary")
     L.append(f"- Assessed severity: **{severity}** "
              "(HIGH = blocked commands from a non-operator source; rule-based, review before sending)")
-    L.append(f"- Write commands seen: {len(dec)}; allowed {len(allowed)}; **blocked {len(blocked)}**; "
-             f"would-block in monitor mode {len(would)}; unusual-but-allowed {len(unusual)}")
+    L.append(f"- Write commands seen: {len(dec) + suppressed}; allowed {len(allowed)}; **blocked {len(blocked) + suppressed}**"
+             + (f" ({suppressed} repeats summarised to protect the log)" if suppressed else "")
+             + f"; would-block in monitor mode {len(would)}; unusual-but-allowed {len(unusual)}")
     L.append(f"- Operator alerts raised: {len(alerts)}; engineer/admin changes: {len(admin)}; "
              f"failed PIN attempts: {len(auth)}; AI proposals: {len(props)}")
     if blocked:
@@ -138,7 +140,7 @@ def build(entries: list[dict], verify: dict, head: dict, plant: str, since: floa
              "bypasses the gateway).")
     md = "\n".join(L)
     return {"markdown": md, "html": to_html(md, plant), "severity": severity,
-            "counts": {"writes": len(dec), "blocked": len(blocked), "would_block": len(would),
+            "counts": {"writes": len(dec) + suppressed, "blocked": len(blocked) + suppressed, "would_block": len(would),
                        "unusual": len(unusual), "alerts": len(alerts)}}
 
 

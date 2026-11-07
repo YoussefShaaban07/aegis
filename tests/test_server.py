@@ -194,3 +194,8 @@ def test_incident_grouping_and_ack_endpoint(client):
     r = client.post(f"/api/incidents/{inc['id']}/ack").json()
     assert r["acked_by"] == "engineer (engineer)"
     assert any(e["kind"] == "alert_ack" for e in client.get("/api/audit").json()["entries"])
+
+
+def test_operator_view_served(client):
+    r = client.get("/operator")
+    assert r.status_code == 200 and "AEGIS · Operator" in r.text

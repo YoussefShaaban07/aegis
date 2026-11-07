@@ -102,3 +102,52 @@ def test_gateway_health_endpoint():
         assert "503" in (await r.read()).decode()
         hs.close()
     asyncio.run(run())
+
+
+def test_slow_twin_falls_back_and_never_freezes_reads():
+    """Emulate slow hardware: each twin model run takes 0.4 s. Reads from another HMI must keep flowing
+    while a write is being decided, and the write must fall back to static checks within its budget."""
+    from aegis.twin import Twin
+
+    class SlowTwin(Twin):
+        def forecast(self, *a, **k):
+            time.sleep(0.4)
+            return super().forecast(*a, **k)
+
+    async def run():
+        plant = Plant(noise=False)
+        plc = await modbus.serve(plant.handle, "127.0.0.1", 0)
+        g = Guard(modbus.Client("127.0.0.1", plc.sockets[0].getsockname()[1]), plant.snapshot, twin=SlowTwin())
+        g.policy["prediction"]["budget_ms"] = 300
+        srv = await modbus.serve(g.handle, "127.0.0.1", 0)
+        port = srv.sockets[0].getsockname()[1]
+        w = await modbus.Client("127.0.0.1", port, unit=1).connect()
+        r = await modbus.Client("127.0.0.1", port, unit=1).connect()
+        read_times = []
+
+        async def reader():
+            for _ in range(15):
+                t = time.perf_counter(); await r.read_input(0, 8); read_times.append(time.perf_counter() - t)
+                await asyncio.sleep(0.02)
+        t0 = time.perf_counter()
+        await asyncio.gather(w.write(NAOH, 110), reader())
+        assert plant.setpoint("naoh_dose") == 110                      # static checks passed it
+        assert "twin skipped" in g.log[0].reason and g.counts["twin_timeouts"] == 1
+        assert time.perf_counter() - t0 < 2.0                          # budget respected (0.3 s + one model run)
+        assert max(read_times) < 0.25                                   # reads never waited on the twin
+        await w.close(); await r.close(); plc.close(); srv.close()
+    asyncio.run(run())
+
+
+def test_on_timeout_block_policy():
+    from aegis.twin import Twin
+
+    class SlowTwin(Twin):
+        def forecast(self, *a, **k):
+            time.sleep(0.3)
+            return super().forecast(*a, **k)
+    plant = Plant(noise=False)
+    g = Guard(None, plant.snapshot, twin=SlowTwin())
+    g.policy["prediction"].update(budget_ms=100, on_timeout="block")
+    d = g.check("naoh_dose", 110, plant.snapshot(), "Operator HMI", "h:1")
+    assert not d.allowed and "time budget" in d.reason

@@ -30,6 +30,7 @@ No LLM anywhere in here: a hijacked AI cannot talk its way past it.
 """
 from __future__ import annotations
 
+import asyncio
 import inspect
 import statistics
 import struct
@@ -42,6 +43,7 @@ from .config import Tags, load_policy, save_policy, validate_policy
 
 SOURCES = {1: "Operator HMI", 2: "AI copilot"}   # Modbus unit-id labels (spoofable; log only)
 WINDOW = 60.0
+LOG_BURST = 5          # identical blocked decisions per sender/register/check per minute before summarising
 MODES = ("enforce", "monitor", "off")
 
 # MITRE ATT&CK for ICS technique IDs, attached to each block so incident
@@ -97,7 +99,8 @@ def _pct(xs, q):
 class Guard:
     def __init__(self, upstream: modbus.Client | None, read_state, tags: Tags | None = None,
                  policy: dict | None = None, enabled: bool = True, audit=None, alerter=None,
-                 clock=time.monotonic, policy_path=None, twin=None, mode: str | None = None):
+                 clock=time.monotonic, policy_path=None, twin=None, mode: str | None = None,
+                 unit_mode: str = "label", plc_units: set | None = None, ip_sources: dict | None = None):
         """upstream: client to the real PLC. read_state(): current values (sync or async)."""
         self.upstream = upstream
         self.read_state = read_state
@@ -107,6 +110,12 @@ class Guard:
         self.mode = mode or ("enforce" if enabled else "off")
         self.audit = audit
         self.alerter = alerter
+        # Unit IDs. In Modbus TCP the unit ID addresses the TARGET (e.g. a PLC behind a TCP-to-serial
+        # gateway). "route" (real deployments): forward it unchanged, allow only `plc_units`, and name
+        # sources by IP (`ip_sources`). "label" (all-in-one demo only): unit 1/2 label the HMI/AI.
+        self.unit_mode = unit_mode
+        self.plc_units = set(plc_units or {1})
+        self.ip_sources = dict(ip_sources or {})
         self.clock = clock          # monotonic by default: rate/ramp windows can't be reset by changing the system time
         self.twin = twin
         self.log: deque[Decision] = deque(maxlen=200)
@@ -116,7 +125,9 @@ class Guard:
         self._reads: dict[str, deque] = defaultdict(deque)     # ip -> read request times (last 1 s)
         self._read_cache: dict[tuple, tuple[float, bytes]] = {}
         self.read_stats = {"served": 0, "from_cache": 0, "throttled": 0}
-        self.seen: dict[str, dict] = {}          # "table:address" -> observed raw min/max, reads, writes
+        self.seen: dict[str, dict] = {}
+        self._decide_lock = asyncio.Lock()
+        self._rec: dict[tuple, list] = {}       # log-flood suppression state          # "table:address" -> observed raw min/max, reads, writes
         self.lat_check: deque = deque(maxlen=5000)   # ms spent deciding (per write request)
         self.lat_total: deque = deque(maxlen=5000)   # ms per request incl. PLC round trip
         self.counts = defaultdict(int)
@@ -236,12 +247,26 @@ class Guard:
         if use_twin:
             override = dict(together or {})
             override[register] = new
-            v = self._twin_eval(state, override, pred)
+            deadline = time.perf_counter() + pred.get("budget_ms", 500) / 1000
+            v = self._twin_eval(state, override, pred, deadline)
             forecast = v.forecast
+            if v.timed_out:
+                self.counts["twin_timeouts"] += 1
+                if self.alerter:
+                    self.alerter.raise_alert("twin_timeout", "warning", "Digital twin couldn't finish within its "
+                                             "time budget on this hardware; static checks only for that command.")
+                if pred.get("on_timeout", "static") == "block":
+                    return deny("predict", "digital twin couldn't finish within its time budget; blocked "
+                                           "(prediction.on_timeout = block)")
+                if soft:
+                    return deny(*soft)
+                return Decision(True, source, register, old, new, "within static envelope; twin skipped "
+                                "(time budget exceeded)" + permit_note, peer, "ok", wall, u, fc)
             if not v.allowed:
                 reason = v.reason
-                if source in SOURCES.values() and old is not None:      # operator / AI: say what IS safe
-                    safe = self._safest_step(state, register, old, new, together, pred, lim)
+                if (source in SOURCES.values() or source in self.ip_sources.values()) and old is not None \
+                        and time.perf_counter() < deadline:                  # operator / AI: say what IS safe
+                    safe = self._safest_step(state, register, old, new, together, pred, lim, deadline=deadline + 0.5)
                     if safe is not None and safe != old:
                         reason += f". Largest change the twin accepts right now: {register} = {safe:g} {u}"
                     elif safe is not None:
@@ -267,7 +292,7 @@ class Guard:
                             peer, "unusual", wall, u, fc, [], False, forecast)
         return Decision(True, source, register, old, new, note, peer, "ok", wall, u, fc, [], False, forecast)
 
-    def _safest_step(self, state, register, old, new, together, pred, lim, iters: int = 7):
+    def _safest_step(self, state, register, old, new, together, pred, lim, iters: int = 7, deadline=None):
         """Binary-search the largest change from `old` toward `new` that the twin accepts."""
         lo, hi = 0.0, 1.0           # fraction of the requested change
         step = (lim.get("max_step") or abs(new - old)) / abs(new - old) if new != old else 1.0
@@ -275,14 +300,16 @@ class Guard:
         for _ in range(iters):
             mid = (lo + hi) / 2
             cand = old + (new - old) * mid
-            v = self._twin_eval(state, {**(together or {}), register: cand}, pred)
+            v = self._twin_eval(state, {**(together or {}), register: cand}, pred, deadline)
+            if v.timed_out:
+                return None
             lo, hi = (mid, hi) if v.allowed else (lo, mid)
         val = old + (new - old) * lo
         nice = 10 ** max(0, len(str(int(abs(val)))) - 2) if abs(val) >= 100 else (1 if abs(val) >= 10 else 0.1)
         val = (int(val / nice) * nice) if new > old else (-(-val // nice) * nice)
         return round(val, 2)
 
-    def _twin_eval(self, state, override: dict, pred: dict):
+    def _twin_eval(self, state, override: dict, pred: dict, deadline: float | None = None):
         u = pred.get("uncertainty")
         if u is not None and u != self.twin.uncertainty:
             self.twin.set_uncertainty(u)
@@ -290,7 +317,8 @@ class Guard:
         *rest, last = list(override.items())
         st = dict(state)
         st.update(dict(rest))
-        return self.twin.evaluate(st, last[0], last[1], pred.get("horizon_min", 360), pred.get("limits"))
+        return self.twin.evaluate(st, last[0], last[1], pred.get("horizon_min", 360), pred.get("limits"),
+                                  deadline=deadline)
 
     # ------------------------------------------------------------------ bookkeeping
     def _commit(self, d: Decision):
@@ -308,7 +336,45 @@ class Guard:
             if n in state and n not in self.commanded:
                 self.commanded[n] = state[n]
 
+    def _suppress(self, d: Decision) -> bool:
+        """Log-flood protection: after LOG_BURST identical blocked decisions (same sender, register and
+        check) within 60 s, stop writing them one by one; a summary entry records how many were dropped."""
+        if d.allowed:
+            return False
+        who = d.peer.rsplit(":", 1)[0] if d.peer and ":" in d.peer else d.source
+        key = (who, d.register, d.check)
+        now = self.clock()
+        e = self._rec.get(key)
+        if e is None or now - e[0] > 60:
+            if e is not None and e[2]:
+                self._flush_one(key, e)
+            self._rec[key] = [now, 1, 0]
+            return False
+        e[1] += 1
+        if e[1] <= LOG_BURST:
+            return False
+        e[2] += 1
+        self.counts["blocked"] += 1
+        return True
+
+    def _flush_one(self, key, e):
+        if self.audit:
+            self.audit.append("decisions_suppressed", {"sender": key[0], "register": key[1], "check": key[2],
+                                                       "suppressed": e[2], "window_s": 60})
+
+    def flush_suppressed(self, force: bool = False):
+        """Write summary entries for bursts whose window has closed (call periodically)."""
+        now = self.clock()
+        for key, e in list(self._rec.items()):
+            if e[2] and (force or now - e[0] > 60):
+                self._flush_one(key, e)
+                e[2] = 0
+            if now - e[0] > 120:
+                del self._rec[key]
+
     def _record(self, d: Decision):
+        if self._suppress(d):
+            return
         self.log.appendleft(d)
         self.counts["blocked" if not d.allowed else ("would_block" if d.would_block else "allowed")] += 1
         if self.audit:
@@ -456,8 +522,19 @@ class Guard:
     async def handle(self, req: modbus.Request, peer) -> bytes:
         t0 = time.perf_counter()
         peer_s = f"{peer[0]}:{peer[1]}" if peer else "?"
-        source = SOURCES.get(req.unit, f"Unknown device (unit {req.unit})")
+        if self.unit_mode == "route":
+            ip = peer[0] if peer else "?"
+            source = self.ip_sources.get(ip, f"Unknown host {ip}")
+        else:
+            source = SOURCES.get(req.unit, f"Unknown device (unit {req.unit})")
         checked = False
+        if self.unit_mode == "route" and req.unit not in self.plc_units:
+            d = Decision(False, source, f"unit {req.unit}", None, req.unit,
+                         f"unit ID {req.unit} is not a device Aegis protects (allowed: {sorted(self.plc_units)})",
+                         peer_s, "unit", time.time(), "", req.fc, list(ATTACK["allowlist"]))
+            self._record(self._apply_mode(d))
+            if not d.allowed:
+                raise modbus.ModbusError(modbus.GATEWAY_PATH_UNAVAILABLE)
         if not req.known:
             name = modbus.FC_NAMES.get(req.fc, f"function code {req.fc}")
             tech = [FC_ATTACK[req.fc]] if req.fc in FC_ATTACK else list(ATTACK["function"])
@@ -476,11 +553,18 @@ class Guard:
             except (ConnectionError, OSError):
                 raise modbus.ModbusError(modbus.GATEWAY_TARGET_FAILED)
             together = {n: v for n, v, _ in targets}
-            decisions = []
-            for name, value, _ in targets:
-                others = {k: v for k, v in together.items() if k != name}
-                decisions.append(self._apply_mode(
-                    self.check(name, value, state, source, peer_s, together=others, fc=req.fc)))
+
+            def decide():
+                out = []
+                for name, value, _ in targets:
+                    others = {k: v for k, v in together.items() if k != name}
+                    out.append(self._apply_mode(
+                        self.check(name, value, state, source, peer_s, together=others, fc=req.fc)))
+                return out
+            # The twin can take tens of ms (more on slow hardware): decide in a worker thread so reads
+            # from other HMIs keep flowing; one write decision at a time keeps the rate windows consistent.
+            async with self._decide_lock:
+                decisions = await asyncio.to_thread(decide)
             ok = all(d.allowed for d in decisions)
             for d in decisions:
                 if not d.allowed or ok:
@@ -496,7 +580,7 @@ class Guard:
             if out is not None:
                 return out
         try:
-            out = await self.upstream.call_pdu(req.raw, unit=None)
+            out = await self.upstream.call_pdu(req.raw, unit=req.unit if self.unit_mode == "route" else None)
             self._observe(req, out)
             if not req.is_write and req.known:
                 self._read_cache[(req.fc, req.address, req.count)] = (time.monotonic(), out)

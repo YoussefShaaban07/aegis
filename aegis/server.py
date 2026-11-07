@@ -176,6 +176,7 @@ async def lifespan(app: FastAPI):
                     S["accuracy"].predict(twin, plant)
                     alerter.tick()
                 if n % 50 == 0:      # every 10 s: has someone edited the policy file behind Aegis's back?
+                    guard.flush_suppressed()
                     ok, msg = verify_policy_file(POLICY_PATH)
                     S["policy_sig"] = {"ok": ok, "message": msg}
                     if not ok:
@@ -203,6 +204,12 @@ app = FastAPI(title="Aegis", lifespan=lifespan)
 @app.get("/")
 def index():
     return FileResponse(ROOT / "static" / "index.html")
+
+
+@app.get("/operator")
+def operator_view():
+    """Phone-sized view for the on-call operator: is the water safe, what needs acknowledging."""
+    return FileResponse(ROOT / "static" / "operator.html")
 
 
 class LoginIn(BaseModel):

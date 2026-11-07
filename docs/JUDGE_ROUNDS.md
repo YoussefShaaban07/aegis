@@ -86,3 +86,19 @@ can't be fixed in software or in a hackathon are recorded as limitations, not hi
 3. **"What is safe" on every twin block (operator and AI only).** The guard binary-searches the largest change the twin accepts right now and says so: "Largest change the twin accepts right now: naoh_dose = 160 ppm" (tested: 160 really is accepted). Attackers don't get the hint.
 4. **Monotonic clock.** Ramp, flood, cycling and permit windows run on a monotonic clock; jumping the system time a day forward doesn't reset them (tested). Timestamps in the log stay wall-clock.
 5. **`docs/STANDARDS.md`.** Mapping to IEC 62443-3-3 (14 system requirements, including the ones Aegis does **not** meet: SR 1.2 device authentication and SR 3.1 communication integrity, because Modbus has neither), CISA CPGs (incl. 2.X "Limit OT Connections to Public Internet", the FBI/EPA's first July 2026 mitigation; and the gap, 2.K MFA) and NIST CSF 2.0 functions. States clearly that Aegis is not certified.
+
+## Round 5 (against v7)
+
+1. **"In Modbus TCP the unit ID addresses the *target* device behind a gateway. You use it as a source label and always forward to unit 1; a TCP-to-serial gateway with several PLCs breaks. And you've only tested Python implementations."**
+2. **"18 ms per write on a cloud VM, 220 ms for suggestions. On a cheap industrial PC that's 10× slower, and your guard blocks its event loop while thinking. HMIs time out."**
+3. **"Flood blocked writes and you write an audit entry for each one. I'll fill your disk."**
+4. **"You tuned thresholds by looking at results on the same seeds you report. That's overfitting your test set."**
+5. **"At 3 AM the operator opens this on a phone. Your dashboard is an engineer's cockpit."**
+
+### What we did about it (v8)
+
+1. **Route mode** (default for the gateway): unit IDs are forwarded unchanged to the target device, only configured PLC unit IDs are allowed (others get exception 0x0A), and writers are named by IP (`--sources "10.0.0.5=Operator HMI"`). Label mode remains only for the all-in-one demo. **Tested with a C implementation**: `mbpoll` (built on libmodbus) through the gateway: reads, a safe write, Oldsmar blocked, unit 7 refused, a pump stop refused for lack of a permit.
+2. **Time budget + worker thread.** Write decisions run in a worker thread (one at a time), so reads keep flowing; the twin has a budget (default 500 ms) and falls back to the static rules if it can't finish (or blocks, if `on_timeout: block`), with an alert. Tested with a twin slowed to 0.4 s per model run: the write was decided within budget and concurrent reads never waited more than 0.25 s.
+3. **Log-flood protection.** After 5 identical blocked writes from one sender per minute, entries are summarised: 1,000 blocked writes → 5 entries + one "995 more like this" summary, all still counted, chain intact. Incident reports include the summarised counts.
+4. **Held-out seeds.** `python -m aegis.evaluate --seed-offset 100000` runs on seeds never looked at during development. The final numbers in the README come from held-out seeds.
+5. **Operator view** at `/operator`: phone-sized, one status ("WATER IS SAFE" / "WATCH" / "ACTION NEEDED"), pH/chlorine/level/guard tiles, open incidents with a one-tap Acknowledge, the twin's early warnings, and recent blocks in plain English. Checked on an emulated iPhone 13: no horizontal scroll.

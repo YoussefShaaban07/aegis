@@ -98,6 +98,7 @@ a{color:var(--blue)}code{font-size:11.5px}
   <label class="sub">AI autonomy <select id="auto" onchange="setAutonomy()"><option value="propose">propose → approve</option><option value="direct">direct (via guard)</option></select></label>
   <input id="pin" class="f" style="width:96px" type="password" placeholder="Eng. PIN" autocomplete="off">
   <button style="padding:4px 9px;font-size:12px;background:#122436;border-color:#24496b" onclick="guideStart()">▶ Guided demo</button>
+  <a href="/operator" class="sub" style="color:var(--blue)" title="phone-sized view for the on-call operator">📱 Operator view</a>
   <span class="sub" id="who"></span><button style="padding:4px 9px;font-size:12px" onclick="logout()">Sign out</button>
   <div class="seg" id="modes" title="Guard mode"><button data-m="enforce" onclick="setMode('enforce')">ENFORCE</button><button data-m="monitor" onclick="setMode('monitor')">MONITOR</button><button data-m="off" onclick="setMode('off')">OFF</button></div>
 </header>

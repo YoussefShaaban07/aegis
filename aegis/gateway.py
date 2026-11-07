@@ -3,6 +3,9 @@
     python -m aegis.gateway --plc-host 192.168.1.50 --plc-port 502 --listen-port 502
     python -m aegis.gateway --plc-host 192.168.1.50 --mode monitor     # trial period: log only
 
+Unit IDs are routed (Modbus TCP semantics): requests are forwarded to the same
+unit ID, and only --plc-unit is allowed. Writers are named by IP with --sources.
+
 Point the HMI / AI / everything else at this machine instead of the PLC, and
 firewall the PLC so only this machine can reach it. Uses config/tags.json for
 the register map, config/policy.json for the safety envelope and
@@ -31,7 +34,8 @@ from .twin import REQUIRED, Twin
 
 
 def build(plc_host: str, plc_port: int, mode: str = "enforce", plc_unit: int = 1, audit=None, alerter=None,
-          use_twin: bool = True, printer=print):
+          use_twin: bool = True, printer=print, unit_mode: str = "route", plc_units: set | None = None,
+          ip_sources: dict | None = None):
     tags = Tags.load()
     audit = audit or AuditLog()
     alerter = alerter or Alerter(audit)
@@ -40,7 +44,8 @@ def build(plc_host: str, plc_port: int, mode: str = "enforce", plc_unit: int = 1
     has_sensors = all(k in tags.all for k in REQUIRED)
     twin = Twin() if (use_twin and has_sensors) else None
     guard = Guard(upstream, lambda: read_plc_state(state_client, tags), tags=tags, audit=audit,
-                  alerter=alerter, policy_path=POLICY_PATH, twin=twin, mode=mode)
+                  alerter=alerter, policy_path=POLICY_PATH, twin=twin, mode=mode, unit_mode=unit_mode,
+                  plc_units=plc_units or {plc_unit}, ip_sources=ip_sources)
     orig = guard._record
 
     def record_and_print(d):
@@ -78,6 +83,7 @@ async def integrity_loop(guard, twin, poll_s: float = 10.0, printer=print, histo
                 fh.flush()
             guard.sync_commanded(st)
             mon.update(st, time.time(), guard.commanded)
+            guard.flush_suppressed()
             ok, msg = verify_policy_file(POLICY_PATH)
             if not ok:
                 guard.alerter.raise_alert("policy_tamper", "critical", f"Policy file integrity check failed: {msg}")
@@ -124,8 +130,9 @@ async def health_server(guard, audit, port: int, host: str = "127.0.0.1"):
     return await asyncio.start_server(on, host, port)
 
 
-async def run(plc_host, plc_port, listen_host, listen_port, mode, plc_unit, use_twin, health_port=None):
-    guard, audit, twin = build(plc_host, plc_port, mode, plc_unit, use_twin=use_twin)
+async def run(plc_host, plc_port, listen_host, listen_port, mode, plc_unit, use_twin, health_port=None,
+              ip_sources=None):
+    guard, audit, twin = build(plc_host, plc_port, mode, plc_unit, use_twin=use_twin, ip_sources=ip_sources)
     if health_port:
         await health_server(guard, audit, health_port)
         print(f"Health: http://127.0.0.1:{health_port}/health")
@@ -150,9 +157,11 @@ def main():
     p.add_argument("--mode", choices=MODES, default="enforce")
     p.add_argument("--no-twin", action="store_true", help="static checks only")
     p.add_argument("--health-port", type=int, default=None, help="serve GET /health on 127.0.0.1:PORT")
+    p.add_argument("--sources", default="", help='name writers by IP, e.g. "10.0.0.5=Operator HMI,10.0.0.9=AI copilot"')
     a = p.parse_args()
+    srcs = dict(x.split("=", 1) for x in a.sources.split(",") if "=" in x)
     asyncio.run(run(a.plc_host, a.plc_port, a.listen_host, a.listen_port, a.mode, a.plc_unit, not a.no_twin,
-                    a.health_port))
+                    a.health_port, srcs))
 
 
 if __name__ == "__main__":

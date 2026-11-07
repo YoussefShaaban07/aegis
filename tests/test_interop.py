@@ -94,3 +94,81 @@ def test_gateway_integrity_loop_spots_change_made_behind_its_back():
         assert any("INTEGRITY CRITICAL" in l and "naoh_dose = 180" in l for l in lines), lines
         loop.cancel(); await srv.shutdown(); task.cancel()
     asyncio.run(run())
+
+
+# ---------------- a C implementation: mbpoll (built on libmodbus) ----------------
+import shutil
+import subprocess
+
+import pytest
+
+MBPOLL = shutil.which("mbpoll")
+
+
+def _mbpoll(port, *args, unit=1):
+    """mbpoll [options] host [write values]. -0: zero-based addresses; -1: one poll;
+    -t: 0 coil, 3 input reg, 4 holding reg. Trailing numeric args are values to write."""
+    opts = list(args)
+    values = []
+    while opts and opts[-1].lstrip("-").isdigit() and opts[-2] not in ("-t", "-r", "-c"):
+        values.insert(0, opts.pop())
+    cmd = ["mbpoll", "-m", "tcp", "-a", str(unit), "-0", "-1", "-p", str(port), *opts, "127.0.0.1", *values]
+    return subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+
+
+@pytest.mark.skipif(not MBPOLL, reason="mbpoll not installed (apt install mbpoll)")
+def test_libmodbus_client_through_gateway_route_mode():
+    from aegis.plant import Plant
+
+    async def run():
+        plant = Plant(noise=False)
+        plc = await modbus.serve(plant.handle, "127.0.0.1", 0)
+        lines = []
+        guard, audit, twin = build("127.0.0.1", plc.sockets[0].getsockname()[1], audit=AuditLog(":memory:"),
+                                   printer=lines.append, ip_sources={"127.0.0.1": "Operator HMI"})
+        gsrv = await modbus.serve(guard.handle, "127.0.0.1", 0)
+        port = gsrv.sockets[0].getsockname()[1]
+        loop = asyncio.get_running_loop()
+        naoh = str(TAGS.holding["naoh_dose"].address)
+        r = await loop.run_in_executor(None, lambda: _mbpoll(port, "-t", "3", "-r", "0", "-c", "8"))
+        assert r.returncode == 0 and "[2]:" in r.stdout                       # input registers read
+        r = await loop.run_in_executor(None, lambda: _mbpoll(port, "-t", "4", "-r", naoh, "110"))
+        assert r.returncode == 0 and plant.setpoint("naoh_dose") == 110         # safe write lands
+        r = await loop.run_in_executor(None, lambda: _mbpoll(port, "-t", "4", "-r", naoh, "11100"))
+        assert r.returncode != 0 and plant.setpoint("naoh_dose") == 110         # Oldsmar blocked
+        r = await loop.run_in_executor(None, lambda: _mbpoll(port, "-t", "4", "-r", naoh, "110", unit=7))
+        assert r.returncode != 0                                                 # unit 7 isn't protected
+        r = await loop.run_in_executor(None, lambda: _mbpoll(port, "-t", "0", "-r", "1", "0"))
+        assert r.returncode != 0 and plant.setpoint("distribution_pump") == 1    # pump stop needs a permit
+        checks = [d.check for d in guard.log]
+        assert {"range", "unit", "permit"} <= set(checks)
+        assert all(d.source == "Operator HMI" for d in guard.log if d.check != "unit")   # named by IP
+        gsrv.close(); plc.close()
+    asyncio.run(run())
+
+
+def test_route_mode_forwards_unit_id_to_target():
+    """Behind a TCP-to-serial gateway the unit ID selects the device; Aegis must pass it through."""
+    from aegis.guard import Guard
+    from aegis.plant import Plant
+
+    async def run():
+        seen = []
+        plant = Plant(noise=False)
+
+        async def plc_handler(req, peer):
+            seen.append(req.unit)
+            return await plant.handle(req, peer)
+        plc = await modbus.serve(plc_handler, "127.0.0.1", 0)
+        g = Guard(modbus.Client("127.0.0.1", plc.sockets[0].getsockname()[1]), plant.snapshot,
+                  unit_mode="route", plc_units={5})
+        srv = await modbus.serve(g.handle, "127.0.0.1", 0)
+        c = await modbus.Client("127.0.0.1", srv.sockets[0].getsockname()[1], unit=5).connect()
+        await c.read_holding(0, 2); await c.write(1, 105)
+        assert seen == [5, 5] and plant.setpoint("naoh_dose") == 105
+        c.unit = 1
+        with pytest.raises(modbus.ModbusError) as e:
+            await c.read_holding(0, 2)
+        assert e.value.code == modbus.GATEWAY_PATH_UNAVAILABLE and seen == [5, 5]
+        await c.close(); plc.close(); srv.close()
+    asyncio.run(run())

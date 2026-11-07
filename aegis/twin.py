@@ -25,6 +25,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import itertools
+import time
 
 from .config import load_process
 from .process import ProcessModel, ProcessState, Raw, hocl_fraction, raw_from
@@ -43,6 +44,7 @@ class Verdict:
     worst_value: float | None = None
     minutes: float | None = None
     forecast: dict | None = None      # {"with": [...], "without": [...]} for the UI
+    timed_out: bool = False
 
 
 class Twin:
@@ -142,7 +144,9 @@ class Twin:
         return None
 
     def evaluate(self, state: dict, register: str, value: float, horizon_min: float = 360,
-                 limits: dict | None = None) -> Verdict:
+                 limits: dict | None = None, deadline: float | None = None) -> Verdict:
+        """deadline: time.perf_counter() value; if passed before all model variants are done,
+        returns timed_out=True instead of a partial (possibly optimistic) answer."""
         limits = limits or DEFAULT_LIMITS
         if not self.available(state):
             return Verdict(True, "prediction unavailable (missing sensor tags)")
@@ -150,6 +154,8 @@ class Twin:
         worst_c, worst_b, why = 0.0, 0.0, None
         fc = None
         for i, m in enumerate(self.ensemble):
+            if deadline is not None and time.perf_counter() > deadline:
+                return Verdict(True, "prediction skipped: time budget exceeded", timed_out=True)
             base = self.forecast(state, None, horizon_min, model=m)
             cand = self.forecast(state, override, horizon_min, model=m)
             if i == 0:

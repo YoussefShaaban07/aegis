@@ -280,6 +280,9 @@ def main(argv=None):
     ap.add_argument("--episodes", type=int, default=200)
     ap.add_argument("--operator-episodes", type=int, default=40)
     ap.add_argument("--json", default=None, help="write all episode results here")
+    ap.add_argument("--seed-offset", type=int, default=0,
+                    help="seeds 0.. were used while developing and tuning; report results on unseen "
+                         "seeds, e.g. --seed-offset 100000")
     ap.add_argument("--fidelity", choices=["standard", "high"], default="standard",
                     help="high = test the twin against a plant with physics it doesn't model")
     ap.add_argument("--uncertainty", type=float, default=None,
@@ -295,8 +298,12 @@ def main(argv=None):
         policy["prediction"]["uncertainty"] = {k: v * a.uncertainty for k, v in u.items()}
         print(f"twin uncertainty: {policy['prediction']['uncertainty']}")
     t0 = time.time()
-    attacks = [attack_episode(s, tw, policy) for s in range(a.episodes) for tw in (None, False, True)]
-    ops = [operator_episode(s, tw, policy) for s in range(a.operator_episodes) for tw in (False, True)]
+    seeds = range(a.seed_offset, a.seed_offset + a.episodes)
+    print(f"seeds {seeds.start}..{seeds.stop - 1}" + ("  (HELD OUT: not used during development)" if a.seed_offset else
+                                                       "  (development seeds)"))
+    attacks = [attack_episode(s, tw, policy) for s in seeds for tw in (None, False, True)]
+    ops = [operator_episode(s, tw, policy) for s in range(a.seed_offset, a.seed_offset + a.operator_episodes)
+           for tw in (False, True)]
     res = summarize(attacks, ops)
     if a.json:
         import json

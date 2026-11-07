@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aegis · Operator</title>
+<style>
+:root{--bg:#0b1118;--panel:#111a24;--line:#1f2c3a;--ink:#e6eef6;--muted:#8aa0b5;--ok:#2ecc71;--warn:#f5b642;--bad:#ff4d4f}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 Inter,system-ui,-apple-system,Segoe UI,sans-serif}
+.wrap{max-width:560px;margin:0 auto;padding:12px 16px 40px}
+h1{font-size:18px;margin:4px 0 2px}.sub{color:var(--muted);font-size:13px}
+.status{border-radius:14px;padding:18px;margin:12px 0;font-size:22px;font-weight:800;text-align:center}
+.s-ok{background:rgba(46,204,113,.14);border:2px solid var(--ok);color:#9ff0c2}
+.s-warn{background:rgba(245,182,66,.14);border:2px solid var(--warn);color:#ffe2a8}
+.s-bad{background:rgba(255,77,79,.16);border:2px solid var(--bad);color:#ffb3b4}
+.status small{display:block;font-size:14px;font-weight:500;margin-top:6px;color:var(--ink)}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px}
+.tile .l{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}.tile .v{font-size:28px;font-weight:800}
+.tile.bad{border-color:var(--bad)}.tile.bad .v{color:var(--bad)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:12px}
+.card h2{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin:0 0 8px}
+.item{padding:8px 0;border-top:1px solid var(--line);font-size:14.5px}.item:first-of-type{border-top:0}
+button{font:inherit;font-weight:700;border-radius:10px;border:1px solid #36506b;background:#16212d;color:var(--ink);padding:12px 14px;width:100%;margin-top:8px}
+button.big{background:#3a1416;border-color:#6b2226;color:#ffd0d1}
+input{font:inherit;width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:#0d151e;color:var(--ink);margin:4px 0}
+a{color:#7cc4ff}.muted{color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>AEGIS · Operator</h1><div class="sub" id="who">…</div>
+  <div id="login" class="card" style="display:none"><h2>Sign in</h2>
+    <input id="lu" placeholder="username" autocomplete="username"><input id="lp" type="password" placeholder="password" autocomplete="current-password">
+    <button onclick="login()">Sign in</button><div class="muted" id="lerr"></div></div>
+  <div id="main" style="display:none">
+    <div id="status" class="status s-ok">…</div>
+    <div class="tiles">
+      <div class="tile" id="t-ph"><div class="l">pH</div><div class="v" id="v-ph">–</div><div class="muted">safe 6.5–8.5</div></div>
+      <div class="tile" id="t-cl"><div class="l">Chlorine</div><div class="v" id="v-cl">–</div><div class="muted">mg/L · safe 0.2–4.0</div></div>
+      <div class="tile" id="t-lv"><div class="l">Clearwell</div><div class="v" id="v-lv">–</div><div class="muted">%</div></div>
+      <div class="tile"><div class="l">Guard</div><div class="v" id="v-g" style="font-size:20px">–</div><div class="muted" id="v-int"></div></div>
+    </div>
+    <div class="card" id="inc-card"><h2>Open incidents</h2><div id="inc"></div></div>
+    <div class="card"><h2>Coming up (twin forecast)</h2><div id="fw"></div></div>
+    <div class="card"><h2>Recently blocked</h2><div id="blk"></div></div>
+    <div class="muted" style="margin-top:14px">Full console: <a href="/">dashboard</a></div>
+  </div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const H={'Content-Type':'application/json','X-Aegis':'1'};
+async function login(){const r=await fetch('/api/login',{method:'POST',headers:H,body:JSON.stringify({username:$('lu').value,password:$('lp').value})});
+  const j=await r.json().catch(()=>({}));if(!r.ok){$('lerr').textContent=j.detail||'failed';return;}load();}
+async function ack(id){await fetch(`/api/incidents/${id}/ack`,{method:'POST',headers:H});load();}
+function ago(t){const m=Math.round((Date.now()/1000-t)/60);return m<1?'just now':m+' min ago';}
+async function load(){
+  const r=await fetch('/api/state');if(r.status===401){$('login').style.display='';$('main').style.display='none';return;}
+  const s=await r.json();$('login').style.display='none';$('main').style.display='';
+  const me=await (await fetch('/api/me')).json();$('who').textContent=`${me.user} · ${me.role} · ${new Date().toLocaleTimeString()}`;
+  const p=s.plant, open=(s.incidents||[]).filter(i=>!i.acked_by), bad=p.alarms.length>0||!s.integrity.ok;
+  const warn=(s.forewarn||[]).length>0||open.length>0||s.guard_mode!=='enforce';
+  const st=$('status');
+  if(bad){st.className='status s-bad';st.innerHTML=`ACTION NEEDED<small>${esc(p.alarms.join(' · ')||'')}${!s.integrity.ok?(p.alarms.length?' · ':'')+'PLC readings don\'t match the chemistry, take a grab sample':''}</small>`;}
+  else if(warn){st.className='status s-warn';st.innerHTML=`WATCH<small>${open.length?open.length+' open incident(s)':''}${(s.forewarn||[]).length?(open.length?' · ':'')+'a limit is forecast to be crossed':''}${s.guard_mode!=='enforce'?' · guard is '+s.guard_mode.toUpperCase():''}</small>`;}
+  else{st.className='status s-ok';st.innerHTML='WATER IS SAFE<small>all readings in range · Aegis enforcing</small>';}
+  $('v-ph').textContent=p.ph.toFixed(2);$('v-cl').textContent=p.chlorine_residual.toFixed(2);$('v-lv').textContent=p.tank_level.toFixed(0);
+  $('t-ph').classList.toggle('bad',p.ph>8.5||p.ph<6.5);$('t-cl').classList.toggle('bad',p.chlorine_residual<.2||p.chlorine_residual>4);$('t-lv').classList.toggle('bad',p.tank_level<10||p.tank_level>95);
+  $('v-g').textContent=s.guard_mode.toUpperCase();$('v-int').textContent=s.integrity.ok?'PLC readings consistent':'PLC readings suspect';
+  $('inc').innerHTML=(s.incidents||[]).length?(s.incidents).map(i=>`<div class="item"><b>#${i.id} · ${esc(i.severity)}</b> · ${i.count} event(s) · ${ago(i.opened)}<br>${esc(i.title)}
+    ${i.acked_by?`<div class="muted">✔ acknowledged by ${esc(i.acked_by)}</div>`:`<button class="big" onclick="ack(${i.id})">Acknowledge</button>`}</div>`).join(''):'<div class="muted">None.</div>';
+  $('fw').innerHTML=(s.forewarn||[]).length?s.forewarn.map(w=>`<div class="item">🔮 ${esc(w.message)}</div>`).join(''):'<div class="muted">Nothing forecast to cross a limit in the next 2–3 hours.</div>';
+  const blk=(s.log||[]).filter(d=>!d.allowed).slice(0,5);
+  $('blk').innerHTML=blk.length?blk.map(d=>`<div class="item"><b>${esc(d.source)}</b> tried ${esc(d.register)} = ${esc(d.new)} ${esc(d.unit)}<div class="muted">${esc(d.reason).slice(0,160)} · ${ago(d.t)}</div></div>`).join(''):'<div class="muted">Nothing blocked recently.</div>';
+}
+load();setInterval(load,3000);
+</script>
+</body>
+</html>

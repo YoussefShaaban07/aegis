@@ -84,7 +84,9 @@
       "naoh_feed_strength": 0.1,
       "chlorine_decay_per_hr": 0.3,
       "chlorine_demand": 0.25
-    }
+    },
+    "budget_ms": 500,
+    "on_timeout": "static"
   },
   "max_reversals_per_10min": 4,
   "max_reads_per_sec_per_ip": 50,
