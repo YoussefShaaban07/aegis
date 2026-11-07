@@ -43,7 +43,8 @@ from .config import Tags, load_policy, save_policy, validate_policy
 
 SOURCES = {1: "Operator HMI", 2: "AI copilot"}   # Modbus unit-id labels (spoofable; log only)
 WINDOW = 60.0
-LOG_BURST = 5          # identical blocked decisions per sender/register/check per minute before summarising
+LOG_BURST = 5
+BLOCK_REGISTERS = ("naoh_dose", "chlorine_dose")   # twin blocks these for everyone; others: advice for operators          # identical blocked decisions per sender/register/check per minute before summarising
 MODES = ("enforce", "monitor", "off")
 
 # MITRE ATT&CK for ICS technique IDs, attached to each block so incident
@@ -262,6 +263,19 @@ class Guard:
                     return deny(*soft)
                 return Decision(True, source, register, old, new, "within static envelope; twin skipped "
                                 "(time budget exceeded)" + permit_note, peer, "ok", wall, u, fc)
+            trusted = source in SOURCES.values() or source in self.ip_sources.values()
+            if not v.allowed and trusted and register not in pred.get("block_registers", BLOCK_REGISTERS):
+                # Hydraulic setpoints (rates, pumps): a known operator gets the forecast as advice and
+                # an alert, not a block. Unknown writers are still blocked; chemical doses block for all.
+                if self.alerter:
+                    self.alerter.raise_alert(f"twin_advice:{register}", "warning",
+                                             f"{source} set {register} to {new:g} {u} against the twin's advice: "
+                                             f"{v.reason}.")
+                note = f"ALLOWED AGAINST TWIN ADVICE (operator's call on a hydraulic setpoint): {v.reason}"
+                if permit_key:
+                    self.permits.pop(permit_key, None)
+                return Decision(True, source, register, old, new, note, peer, "advice", wall, u, fc,
+                                [], False, forecast)
             if not v.allowed:
                 reason = v.reason
                 if (source in SOURCES.values() or source in self.ip_sources.values()) and old is not None \

@@ -223,3 +223,19 @@ def test_wrong_way_safety_net_when_failure_saturates():
         plant.step(1.0)
     v = Twin().evaluate(plant.snapshot(), "chlorine_dose", 1.0)
     assert not v.allowed and "already forecast to go below" in v.reason
+
+
+def test_hydraulic_changes_are_advice_for_operators_but_blocked_for_unknown_writers():
+    from aegis.alerts import Alerter
+    plant = Plant(noise=False)
+    plant.state.tank_level = 30
+    al = Alerter(None, throttle_s=0)
+    g = Guard(None, plant.snapshot, twin=Twin(), alerter=al)
+    g.policy["limits"]["distribution_rate"].update(max_step=None, max_change_per_min=None)
+    op = g.check("distribution_rate", 900, plant.snapshot(), "Operator HMI", "10.0.0.5:5000")
+    assert op.allowed and op.check == "advice" and "AGAINST TWIN ADVICE" in op.reason
+    assert al.recent[0]["key"] == "twin_advice:distribution_rate"
+    att = g.check("distribution_rate", 900, plant.snapshot(), "Unknown host 9.9.9.9", "9.9.9.9:1")
+    assert not att.allowed and att.check == "predict"
+    lye = g.check("naoh_dose", 150, plant.snapshot(), "Operator HMI", "10.0.0.5:5000")   # chemistry still blocks
+    assert lye.allowed or lye.check != "advice"

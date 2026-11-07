@@ -127,3 +127,14 @@ Plus what our own v6 evaluation showed: with fairer attribution (storm/bloom epi
 - *Saturated failures:* when chlorine is forecast at zero whatever the dose, magnitudes can't rank options. Safety net: while a variable is forecast out of band, a dose change that pushes it further that way is blocked.
 - *Marginal false blocks:* most were distribution-rate changes during storms that changed the true outcome by <0.1%. The twin now blocks only changes that are **materially** worse than doing nothing (configurable margin).
 - *Bloom cases that remain:* legal, safe lye increases made *before* a bloom, which no forecaster can see coming, and then nobody responds for hours. Aegis's answer is the early warning (36–90 min before harm in those runs), not a block. The evaluation's "nobody responds" assumption makes these count as losses; we report them anyway.
+
+## Round 7 (against v9, after the held-out evaluation)
+
+**Judge:** "Your own held-out numbers: 14 of the twin's 21 blocks of operator actions were unnecessary. Operators will turn it off on day two."
+
+Diagnosed on **development** seeds only (held-out seeds stay untouched for reporting). Twin blocks of operators fell into four groups:
+- *The wrong-way safety net was too strict.* It fired when **any** member of the uncertainty ensemble predicted a violation, even a worst-case corner grazing the limit (chlorine reaching exactly 0.20 mg/L), and then blocked every small trim. It was meant for saturated failures in the nominal forecast. **Fix:** only the nominal forecast triggers it; the worst-case corners still feed the magnitude comparison.
+- *Hydraulic setpoints* (distribution rate): blocked because their worst-case effect on residence time looked bad; the true effect was usually negligible, and the evaluation showed the twin doesn't stop drain attacks anyway. **Fix:** for *known* operators (HMI / named IPs), the twin advises on hydraulic setpoints: the change goes through, with the forecast in the log and a warning alert ("allowed against twin advice"). Unknown writers are still blocked; chemical doses (lye, chlorine) block for everyone. Configurable via `prediction.block_registers`.
+- *Remaining blocks we keep:* lye 165 on a normal day (the price of the ±10% feed uncertainty; calibration narrows it), raising lye during a bloom, and chlorine cuts that make a storm failure marginally worse.
+
+Development seeds 0–39: twin operator blocks 17 → 9, false 10 → 5, all justified blocks retained.

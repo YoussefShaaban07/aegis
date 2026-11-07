@@ -87,7 +87,11 @@
     },
     "budget_ms": 500,
     "on_timeout": "static",
-    "margin": 0.01
+    "margin": 0.01,
+    "block_registers": [
+      "naoh_dose",
+      "chlorine_dose"
+    ]
   },
   "max_reversals_per_10min": 4,
   "max_reads_per_sec_per_ip": 50,

@@ -106,6 +106,9 @@ def validate_policy(p: dict, tags: Tags) -> dict:
             if (not isinstance(band, list) or len(band) not in (2, 3) or band[0] >= band[1]
                     or (len(band) == 3 and not 5 <= band[2] <= 24 * 60)):
                 raise PolicyError(f"prediction limit for {var} must be [low, high] or [low, high, horizon_min]")
+    br = (p.get("prediction") or {}).get("block_registers")
+    if br is not None and (not isinstance(br, list) or any(r not in tags.holding for r in br)):
+        raise PolicyError("prediction.block_registers must list writable setpoints")
     rc = p.get("max_reversals_per_10min")
     if rc is not None and (not isinstance(rc, int) or rc < 1):
         raise PolicyError("max_reversals_per_10min must be a positive integer or absent")

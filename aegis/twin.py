@@ -232,7 +232,9 @@ class Twin:
             if i == 0:
                 fc = {"with": cand, "without": base}
             base_all = base + [self.steady(state, None, m)]
-            for k, band in limits.items():                 # which way is the do-nothing future failing?
+            for k, band in (limits.items() if i == 0 else ()):   # nominal model: which way is the
+                # do-nothing future failing? (worst-case members only feed the magnitude comparison;
+                # using them here blocked harmless trims whenever one corner grazed a limit)
                 for pt in base_all:
                     v = pt.get(k)
                     if v is None or (len(band) > 2 and pt["min"] > band[2]):
