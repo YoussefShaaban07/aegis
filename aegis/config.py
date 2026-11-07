@@ -116,7 +116,7 @@ def validate_policy(p: dict, tags: Tags) -> dict:
     if sh is not None:
         if not isinstance(sh, dict):
             raise PolicyError("safe_hold must be an object")
-        for k in ("after_min", "lookback_min", "hold_min"):
+        for k in ("after_min", "lookback_min", "hold_min", "ack_valid_min"):
             if k in sh and (not isinstance(sh[k], (int, float)) or sh[k] <= 0):
                 raise PolicyError(f"safe_hold.{k} must be a positive number")
         if any(r not in tags.holding or tags.holding[r].table == "coil" for r in sh.get("registers", [])):

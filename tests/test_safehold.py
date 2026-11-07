@@ -58,9 +58,11 @@ def test_unanswered_drain_is_reverted_and_held():
     assert d.check != "hold"
 
 
-def test_acknowledged_warning_means_a_human_owns_it():
-    plant, g, sh, acts, clk = drained(ack=True)
-    assert acts == []
+def test_acknowledged_warning_means_a_human_owns_it_for_an_hour():
+    plant, g, sh, acts, clk = drained(ack=True)          # acked at minute 10, nobody acts after that
+    assert acts, "an acknowledgement shouldn't switch safe-hold off for the rest of the night"
+    first = acts[0]["unacked_min"]
+    assert first >= 10 + 60 + 15 - 1                      # not before the ack (60 min) and after_min lapse
 
 
 def test_corrective_change_allowed_during_hold_but_not_others():
@@ -172,3 +174,25 @@ def test_slow_large_swings_are_capped_per_hour():
         d = g2.check("distribution_rate", new, {**plant.snapshot(), "distribution_rate": cur}, "Operator HMI", "h:1")
         assert d.allowed, d.reason
         g2._commit(d); cur = new
+
+
+def test_failed_safe_hold_write_is_loud_and_holds_nothing():
+    import asyncio
+    from aegis.safehold import execute
+    plant, clk = Plant(noise=False), Clock()
+    al = Alerter(None, throttle_s=0, clock=clk)
+    g = Guard(None, plant.snapshot, twin=Twin(), clock=clk, alerter=al)
+    act = {"register": "distribution_rate", "value": 500, "from": 900, "forecast": "tank_level below limit in ~90 min",
+           "score_before": 0.3, "score_after": 0.0, "unacked_min": 15}
+
+    async def refuse(tag, value):
+        raise ConnectionError("PLC in program mode")
+    assert asyncio.run(execute(g, act, refuse)) is False
+    assert "distribution_rate" not in g.holds and act["failed"].startswith("ConnectionError")
+    assert al.recent[0]["key"] == "safe_hold_failed:distribution_rate" and al.recent[0]["severity"] == "critical"
+    written = []
+
+    async def ok(tag, value):
+        written.append((tag.name, value))
+    assert asyncio.run(execute(g, act, ok)) is True
+    assert written == [("distribution_rate", 500)] and g.holds["distribution_rate"]["value"] == 500

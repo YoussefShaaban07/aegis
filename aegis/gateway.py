@@ -30,7 +30,7 @@ from .config import POLICY_PATH, Tags, verify_policy_file
 from .guard import MODES, Guard, read_plc_state
 from .forewarn import ForecastWatch
 from .integrity import IntegrityMonitor
-from .safehold import SafeHold
+from .safehold import SafeHold, execute as safehold_execute
 from .twin import REQUIRED, Twin
 
 
@@ -90,9 +90,10 @@ async def integrity_loop(guard, twin, poll_s: float = 10.0, printer=print, histo
                 hold.cfg.update(guard.policy.get("safe_hold") or {})
                 act = hold.update(st, time.time(), sensors_trusted=mon.status.get("ok", True))
                 if act:            # write first; only a value the PLC accepted is recorded and held
-                    await guard.upstream.write_tag(guard.tags.holding[act["register"]], act["value"])
-                    guard.apply_safe_hold(act)
-                    printer(f"{time.strftime('%H:%M:%S')} SAFE-HOLD: {guard.log[0].reason}")
+                    if await safehold_execute(guard, act, guard.upstream.write_tag):
+                        printer(f"{time.strftime('%H:%M:%S')} SAFE-HOLD: {guard.log[0].reason}")
+                    else:
+                        printer(f"{time.strftime('%H:%M:%S')} SAFE-HOLD FAILED: {act['failed']}")
             guard.flush_suppressed()
             if history_path:                    # an engineer logged in on this box releases a safe-hold with
                 from pathlib import Path        #   echo distribution_rate > data/release_hold

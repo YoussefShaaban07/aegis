@@ -31,7 +31,7 @@ from .copilot import Copilot
 from .guard import MODES, Guard
 from .forewarn import ForecastWatch
 from .integrity import IntegrityMonitor
-from .safehold import SafeHold
+from .safehold import SafeHold, execute as safehold_execute
 from .process import ProcessModel
 from .learn import observations_from_audit, simulated_week, suggest
 from .plant import HOLDING, SCENARIOS, TAGS, Plant
@@ -194,8 +194,7 @@ async def lifespan(app: FastAPI):
                     sh.cfg.update({k: v for k, v in (guard.policy.get("safe_hold") or {}).items()})
                     act = sh.update(snap, plant.sim_time, sensors_trusted=S["integrity"].status.get("ok", True))
                     if act:                      # restore the earlier value through the PLC, then hold it
-                        await upstream.write_tag(TAGS.holding[act["register"]], act["value"])
-                        guard.apply_safe_hold(act)
+                        await safehold_execute(guard, act, upstream.write_tag)
             except Exception as e:   # the sim loop must never die silently
                 print("tick error:", e)
             n += 1

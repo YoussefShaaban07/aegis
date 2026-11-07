@@ -110,7 +110,8 @@
       "distribution_rate"
     ],
     "margin": 0.01,
-    "_doc": "If the twin forecasts unsafe water and nobody acknowledges for after_min, restore the earlier value (within lookback_min) that fixes the forecast most, and hold it for hold_min (only corrective changes until released on the dashboard). Never acts in monitor mode or while the integrity monitor distrusts the sensors."
+    "ack_valid_min": 60,
+    "_doc": "If the twin forecasts unsafe water and nobody acknowledges for after_min, restore the earlier value (within lookback_min) that fixes the forecast most, and hold it for hold_min (only corrective changes until released on the dashboard). An acknowledgement pauses it for ack_valid_min. Never acts in monitor mode or while the integrity monitor distrusts the sensors."
   },
   "_doc_unknown_writers": "gateway (route mode): 'block' makes every host not named in --sources read-only. Recommended once the writers are known."
 }

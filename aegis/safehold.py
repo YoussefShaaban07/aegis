@@ -29,7 +29,9 @@ What it deliberately does NOT do:
   - invent new setpoints: it only restores values the plant actually ran at
     recently (the operators' own choices);
   - act when the operator has acknowledged: an acknowledged incident means a
-    human owns the situation;
+    human owns the situation. An acknowledgement lasts `ack_valid_min` (60):
+    if the forecast still crosses a limit after that, safe-hold re-arms (judge
+    round 9: a half-asleep "ack" on the phone shouldn't switch it off all night);
   - act on pumps (on/off coils): stopping or starting a pump is a permit-gated
     decision for a person;
   - act more than once per `after_min`.
@@ -41,7 +43,8 @@ from __future__ import annotations
 from .forewarn import first_crossings
 
 DEFAULTS = {"enabled": False, "after_min": 15, "lookback_min": 720, "hold_min": 240,
-            "registers": ["naoh_dose", "chlorine_dose", "distribution_rate"], "margin": 0.01}
+            "registers": ["naoh_dose", "chlorine_dose", "distribution_rate"], "margin": 0.01,
+            "ack_valid_min": 60}
 SOURCE = "Aegis safe-hold"
 
 
@@ -66,7 +69,8 @@ class SafeHold:
         if al is None or self.warn_alert_t is None:
             return False
         since = self.warn_alert_t - getattr(al, "incident_window_s", 900)
-        return any(inc.get("acked_at") is not None and inc["acked_at"] >= since and inc["last"] >= since
+        fresh = al.clock() - self.cfg.get("ack_valid_min", 60) * 60
+        return any(inc.get("acked_at") is not None and inc["acked_at"] >= max(since, fresh) and inc["last"] >= since
                    for inc in al.incidents)
 
     def _score(self, state: dict, override: dict | None) -> float:
@@ -114,6 +118,7 @@ class SafeHold:
             self.warn_since = now
             self.warn_alert_t = self.guard.alerter.clock() if self.guard.alerter else None
         if self._acked():
+            self.last_action = now        # after the ack lapses, wait a full after_min before acting
             return None
         wait = self.cfg["after_min"] * 60
         if now - self.warn_since < wait or (self.last_action is not None and now - self.last_action < wait):
@@ -136,3 +141,23 @@ class SafeHold:
                   "unacked_min": round((now - self.warn_since) / 60, 1)}
         self.actions.append(action)
         return action
+
+
+async def execute(guard, action: dict, write) -> bool:
+    """Write the revert to the PLC, then record and hold it. If the PLC refuses or can't be reached
+    (program mode, Modbus exception, network down), nothing is held and the operator is told loudly,
+    because the plant is still heading for the limit and Aegis could NOT fix it (judge round 9)."""
+    try:
+        await write(guard.tags.holding[action["register"]], action["value"])
+    except Exception as e:                      # noqa: BLE001 - any failure here must reach a human
+        action["failed"] = f"{type(e).__name__}: {e}"
+        if guard.alerter:
+            guard.alerter.raise_alert(f"safe_hold_failed:{action['register']}", "critical",
+                                      f"SAFE-HOLD COULD NOT ACT: writing {action['register']} = {action['value']:g} "
+                                      f"to the PLC failed ({action['failed']}). {action['forecast']}. "
+                                      "Someone needs to act on site now.")
+        if guard.audit:
+            guard.audit.append("safe_hold_failed", {k: action[k] for k in ("register", "value", "failed")})
+        return False
+    guard.apply_safe_hold(action)
+    return True
