@@ -7,17 +7,15 @@
 <style>
 /* Styled after ISA-101 "high-performance HMI" practice: grey, quiet, and colour ONLY for abnormal
    conditions, so the one thing that is wrong is the thing the eye goes to. */
-:root{--bg:#c8cbcd;--panel:#dddfe0;--panel2:#eaebec;--line:#a9aeb2;--ink:#16191c;--muted:#4f565c;--proc:#6b7379;
---blue:#1d5a91;--ok:#2f5d3a;--warn:#b07800;--bad:#c4161c;--lye:#4f565c;--cl:#4f565c;--orange:#1d5a91;
---mono:ui-monospace,"Cascadia Mono","Segoe UI Mono",Consolas,Menlo,monospace}
+
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 "Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif}
-header{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:8px 16px;background:#b9bdc0;border-bottom:1px solid var(--line)}
+header{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:8px 16px;background:var(--hdr);border-bottom:1px solid var(--line)}
 header h1{margin:0;font-size:17px;font-weight:700;letter-spacing:.02em}header .sub{color:var(--muted);font-size:13px}
 .sp{flex:1}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:3px;overflow:hidden;background:var(--panel2)}
 .seg button{border:0;border-right:1px solid var(--line);border-radius:0;padding:5px 12px;background:transparent;color:var(--muted);font-weight:600}
 .seg button:last-child{border-right:0}
-.seg button.on.enforce{background:var(--ink);color:#fff}.seg button.on.monitor{background:var(--warn);color:#fff}
+.seg button.on.enforce{background:var(--ink);color:var(--onink)}.seg button.on.monitor{background:var(--warn);color:#fff}
 .seg button.on.off{background:var(--bad);color:#fff}
 main{display:grid;grid-template-columns:1.35fr 1fr;gap:12px;padding:12px}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:3px;padding:12px 14px;margin-bottom:12px}
@@ -29,7 +27,7 @@ svg text{fill:var(--ink);font-family:inherit}
 .kpi .l{font-size:12px;color:var(--muted)}
 .kpi .v{font:600 24px/1.2 var(--mono);font-variant-numeric:tabular-nums}.kpi .r{font-size:11.5px;color:var(--muted)}
 .kpi.bad{background:var(--bad);border-color:var(--bad)}.kpi.bad .v,.kpi.bad .l,.kpi.bad .r{color:#fff}
-.kpi.warn{background:#f2d27a;border-color:var(--warn)}
+.kpi.warn{background:var(--warnfill);border-color:var(--warn)}
 .raw{display:flex;flex-wrap:wrap;gap:16px;font-size:12.5px;color:var(--muted);margin-top:8px}.raw b{color:var(--ink);font-family:var(--mono);font-weight:600}
 canvas{width:100%;display:block;background:var(--panel2);border:1px solid var(--line)}
 .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--muted);margin-top:6px}
@@ -37,36 +35,36 @@ canvas{width:100%;display:block;background:var(--panel2);border:1px solid var(--
 .alarm{display:none;margin-top:10px;padding:9px 12px;border-radius:2px;background:var(--bad);color:#fff;font-weight:700}
 .btns{display:flex;flex-wrap:wrap;gap:6px}
 .grp{font-size:12px;font-weight:600;color:var(--muted);margin:12px 0 5px}
-button{font:inherit;font-weight:600;border-radius:3px;border:1px solid #8e9499;background:#f3f4f4;color:var(--ink);padding:5px 10px;cursor:pointer;font-size:13px}
-button:hover{background:#fff;border-color:#6b7379}
+button{font:inherit;font-weight:600;border-radius:3px;border:1px solid var(--btnline);background:var(--btn);color:var(--ink);padding:5px 10px;cursor:pointer;font-size:13px}
+button:hover{background:var(--btnhover);border-color:var(--proc)}
 button.red{border-left:3px solid var(--bad)}button.purple{border-left:3px solid var(--blue)}button.wx{}
-button.wx.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+button.wx.on{background:var(--ink);color:var(--onink);border-color:var(--ink)}
 .log{max-height:340px;overflow:auto;display:flex;flex-direction:column;gap:4px}
 .ev{padding:6px 9px;border-left:3px solid var(--line);background:var(--panel2);font-size:13px}
-.ev.ok{border-color:#9aa0a5}.ev.no{border-color:var(--bad);background:#f6e3e3}.ev.wb{border-color:var(--warn);background:#f7efd9}
+.ev.ok{border-color:var(--proc)}.ev.no{border-color:var(--bad);background:var(--badbg)}.ev.wb{border-color:var(--warn);background:var(--warnbg)}
 .ev.un{border-color:var(--warn)}
 .ev .h{display:flex;justify-content:space-between;gap:8px;font-weight:600}.ev .m{color:var(--muted);font-size:12px}
-.tag{font-size:11px;padding:1px 6px;border-radius:2px;font-weight:700;white-space:nowrap}.tag.ok{background:#c9cdd0;color:var(--muted)}
+.tag{font-size:11px;padding:1px 6px;border-radius:2px;font-weight:700;white-space:nowrap}.tag.ok{background:var(--chip);color:var(--muted)}
 .tag.no{background:var(--bad);color:#fff}.tag.wb{background:var(--warn);color:#fff}
 .chk{font-size:10.5px;padding:0 5px;border:1px solid var(--line);border-radius:2px;background:transparent;color:var(--muted);margin-left:6px;font-weight:600}
 .chk.predict{border-color:var(--blue);color:var(--blue)}
 .tech{font-size:10.5px;padding:0 5px;border:1px solid var(--line);border-radius:2px;color:var(--muted);margin-left:4px;font-family:var(--mono)}
-.chat{display:flex;gap:8px}.chat input{flex:1;font:inherit;background:#fff;color:var(--ink);border:1px solid #8e9499;border-radius:3px;padding:7px 9px}
+.chat{display:flex;gap:8px}.chat input{flex:1;font:inherit;background:var(--input);color:var(--ink);border:1px solid var(--btnline);border-radius:3px;padding:7px 9px}
 .reply{margin-top:10px;white-space:pre-wrap;background:var(--panel2);border:1px solid var(--line);border-radius:2px;padding:10px;min-height:44px}
 .trace{margin-top:6px;font-size:12.5px;color:var(--muted)}.trace b{color:var(--ink)}
 .wo{font-size:12.5px;color:var(--muted);margin:4px 0;padding:6px 8px;background:var(--panel2);border:1px solid var(--line)}
 .wo.evil{border:1px dashed var(--bad);color:var(--ink)}
-input.f,select{font:inherit;background:#fff;color:var(--ink);border:1px solid #8e9499;border-radius:3px;padding:5px 7px}
+input.f,select{font:inherit;background:var(--input);color:var(--ink);border:1px solid var(--btnline);border-radius:3px;padding:5px 7px}
 .err{color:var(--bad);font-size:12.5px;min-height:16px}.okm{color:var(--ok);font-size:12.5px;font-weight:600}
 .al{padding:6px 9px;background:var(--panel2);border-left:3px solid var(--warn);font-size:13px;margin-bottom:4px}
 .al.critical{border-color:var(--bad)}.al.info{border-color:var(--line)}.al .d{color:var(--muted);font-size:12px}
 .prop{padding:8px 10px;background:var(--panel2);border:1px solid var(--line);margin-bottom:6px;font-size:13px}
 .prop .act{display:flex;gap:6px;margin-top:6px}.prop button{padding:3px 9px;font-size:12px}
 .st{font-size:11px;font-weight:700;padding:1px 6px;border-radius:2px;text-transform:uppercase}
-.st.pending{background:var(--warn);color:#fff}.st.blocked,.st.failed,.st.rejected{background:var(--bad);color:#fff}.st.approved{background:#c9cdd0;color:var(--ink)}
+.st.pending{background:var(--warn);color:#fff}.st.blocked,.st.failed,.st.rejected{background:var(--bad);color:#fff}.st.approved{background:var(--chip);color:var(--ink)}
 table.t{width:100%;border-collapse:collapse;font-size:12.5px}table.t th{color:var(--muted);text-align:left;font-weight:600;padding:4px}
 table.t td{padding:3px 4px;border-top:1px solid var(--line);vertical-align:top;font-variant-numeric:tabular-nums}
-table.t input{width:64px;font:inherit;background:#fff;color:var(--ink);border:1px solid #8e9499;border-radius:2px;padding:2px 4px}
+table.t input{width:64px;font:inherit;background:var(--input);color:var(--ink);border:1px solid var(--btnline);border-radius:2px;padding:2px 4px}
 .tabs{display:flex;gap:0;margin:10px 12px 0;border-bottom:1px solid var(--line)}
 .tabs button{border-radius:0;border:1px solid transparent;border-bottom:0;background:transparent;color:var(--muted);padding:6px 14px}
 .tabs button.on{background:var(--panel);color:var(--ink);border-color:var(--line)}
@@ -74,7 +72,7 @@ table.t input{width:64px;font:inherit;background:#fff;color:var(--ink);border:1p
 .stat{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .audit-ok{color:var(--ok);font-weight:700}.audit-bad{color:var(--bad);font-weight:700}
 .verdict{margin-top:8px;font-size:13px;padding:7px 10px;background:var(--panel2);border:1px solid var(--line);border-left-width:3px}
-.verdict.bad{border-left-color:var(--bad)}.verdict.good{border-left-color:#7d858b}.verdict.warn{border-left-color:var(--warn)}
+.verdict.bad{border-left-color:var(--bad)}.verdict.good{border-left-color:var(--proc)}.verdict.warn{border-left-color:var(--warn)}
 a{color:var(--blue)}code{font:11.5px var(--mono)}
 details.demo{background:var(--panel);border:1px solid var(--line);border-radius:3px;margin-bottom:12px}
 details.demo>summary{cursor:pointer;padding:10px 14px;font-weight:600;list-style:none;display:flex;gap:8px;align-items:center}
@@ -82,14 +80,42 @@ details.demo>summary::-webkit-details-marker{display:none}
 details.demo>summary:before{content:"+";font-family:var(--mono);width:12px}details.demo[open]>summary:before{content:"\2212"}
 details.demo>summary .trace{margin:0;font-weight:400}
 details.demo>.in{padding:0 14px 12px}
-#guide{position:fixed;right:16px;bottom:16px;width:420px;max-width:calc(100vw - 32px);background:var(--panel2);border:1px solid #6b7379;
+#guide{position:fixed;right:16px;bottom:16px;width:420px;max-width:calc(100vw - 32px);background:var(--panel2);border:1px solid var(--proc);
   border-radius:3px;padding:12px 14px;z-index:40;box-shadow:0 6px 24px rgba(0,0,0,.25);display:none}
-#guide h3{margin:0 0 4px;font-size:15px}#guide .say{background:#fff;border-left:3px solid var(--blue);padding:8px 10px;margin:8px 0;font-size:13px}
+#guide h3{margin:0 0 4px;font-size:15px}#guide .say{background:var(--input);border-left:3px solid var(--blue);padding:8px 10px;margin:8px 0;font-size:13px}
 #guide .meta{font-size:11.5px;color:var(--muted)}#guide .gst{font-size:12.5px;color:var(--warn);min-height:16px}
 #login{position:fixed;inset:0;background:var(--bg);display:none;align-items:center;justify-content:center;z-index:50}
 #login .box{background:var(--panel);border:1px solid var(--line);border-radius:3px;padding:24px;width:360px;max-width:calc(100vw - 32px)}
 #login input{width:100%;margin:6px 0}
 @media(max-width:1000px){main,.page.on{grid-template-columns:1fr}.kpis,.stat{grid-template-columns:repeat(2,1fr)}}
+
+:root{--mono:ui-monospace,"Cascadia Mono","Segoe UI Mono",Consolas,Menlo,monospace}
+/* ---- colour themes: same rule in every theme (calm base, colour only for abnormal) ---- */
+:root,[data-theme="grey"]{--bg:#c8cbcd;--panel:#dddfe0;--panel2:#eaebec;--line:#a9aeb2;--ink:#16191c;--muted:#4f565c;--proc:#6b7379;
+--blue:#1d5a91;--ok:#2f5d3a;--warn:#b07800;--bad:#c4161c;--hdr:#b9bdc0;--btn:#f3f4f4;--btnhover:#fff;--btnline:#8e9499;--input:#fff;
+--chip:#c9cdd0;--badbg:#f6e3e3;--warnbg:#f7efd9;--warnfill:#f2d27a;--pump:#4f565c;--pumpink:#fff;--lvl1:#8b949b;--lvl2:#6b7379;
+--band:rgba(22,25,28,.05);--limit:rgba(22,25,28,.45);--c-cl:#7d858b;--c-fc:rgba(22,25,28,.45);--c-fccl:rgba(125,133,139,.6);--onink:#fff}
+[data-theme="slate"]{--bg:#161b21;--panel:#1e252d;--panel2:#252d36;--line:#36404b;--ink:#e3e8ed;--muted:#9aa5b1;--proc:#6f7b88;
+--blue:#5a9fe0;--ok:#5fb37e;--warn:#e5a50a;--bad:#e5484d;--hdr:#12171c;--btn:#2a333d;--btnhover:#333e49;--btnline:#45515d;--input:#141a20;
+--chip:#36404b;--badbg:#3a1f22;--warnbg:#3a3019;--warnfill:#6b5212;--pump:#c9d1d9;--pumpink:#161b21;--lvl1:#5f6c79;--lvl2:#46525e;
+--band:rgba(255,255,255,.04);--limit:rgba(227,232,237,.35);--c-cl:#8e9aa6;--c-fc:rgba(227,232,237,.45);--c-fccl:rgba(142,154,166,.6);--onink:#161b21}
+[data-theme="white"]{--bg:#f3f4f6;--panel:#ffffff;--panel2:#f8f9fb;--line:#d8dce2;--ink:#12161b;--muted:#5a6370;--proc:#9aa3ad;
+--blue:#1f5fbf;--ok:#2b7a4b;--warn:#b07800;--bad:#d1242f;--hdr:#ffffff;--btn:#ffffff;--btnhover:#f3f4f6;--btnline:#c4cad2;--input:#fff;
+--chip:#e7eaee;--badbg:#fdecec;--warnbg:#fdf5e1;--warnfill:#fbe3a3;--pump:#3b4450;--pumpink:#fff;--lvl1:#c9d6e3;--lvl2:#a9bccf;
+--band:rgba(31,95,191,.05);--limit:rgba(18,22,27,.35);--c-cl:#8a95a1;--c-fc:rgba(18,22,27,.4);--c-fccl:rgba(138,149,161,.6);--onink:#fff}
+[data-theme="steel"]{--bg:#dfe6ee;--panel:#f2f6fa;--panel2:#e8eef5;--line:#b9c6d4;--ink:#0e1a28;--muted:#46576a;--proc:#7d90a5;
+--blue:#0b5cad;--ok:#25704a;--warn:#a86f00;--bad:#c81e28;--hdr:#1c2e44;--btn:#ffffff;--btnhover:#f2f6fa;--btnline:#a8b7c7;--input:#fff;
+--chip:#d5dee8;--badbg:#f8e4e5;--warnbg:#f8efdc;--warnfill:#f2d58a;--pump:#2b4562;--pumpink:#fff;--lvl1:#9fb7cf;--lvl2:#7d9bb9;
+--band:rgba(11,92,173,.06);--limit:rgba(14,26,40,.4);--c-cl:#7d90a5;--c-fc:rgba(14,26,40,.45);--c-fccl:rgba(125,144,165,.6);--onink:#fff}
+[data-theme="steel"] header,[data-theme="steel"] header h1{color:#fff}[data-theme="steel"] header .sub,[data-theme="steel"] header a{color:#c9d6e3}
+[data-theme="steel"] header button{background:#2b4562;color:#fff;border-color:#47627f}[data-theme="steel"] header .seg button{color:#c9d6e3}
+/* the process graphic follows the theme (SVG presentation attributes are restyled here) */
+#p-ops svg [fill="#eaebec"]{fill:var(--panel2)}#p-ops svg [fill="#4f565c"]{fill:var(--muted)}#p-ops svg [fill="#16191c"]{fill:var(--ink)}
+#p-ops svg circle[fill="#4f565c"]{fill:var(--pump)}#p-ops svg text[fill="#fff"]{fill:var(--pumpink)}
+#p-ops svg [stroke="#6b7379"]{stroke:var(--proc)}#p-ops svg [stroke="#4f565c"]{stroke:var(--muted)}#p-ops svg [stroke="#16191c"]{stroke:var(--ink)}
+#p-ops svg [fill="#c4161c"]{fill:var(--bad)}
+#p-ops svg stop[stop-color="#8b949b"]{stop-color:var(--lvl1)}#p-ops svg stop[stop-color="#6b7379"]{stop-color:var(--lvl2)}
+#simbanner{background:var(--panel2);color:var(--muted);border-bottom:1px solid var(--line)}
 </style>
 </head>
 <body>
@@ -109,11 +135,12 @@ details.demo>.in{padding:0 14px 12px}
   <label class="sub">AI autonomy <select id="auto" onchange="setAutonomy()"><option value="propose">propose → approve</option><option value="direct">direct (via guard)</option></select></label>
   <input id="pin" class="f" style="width:96px" type="password" placeholder="Eng. PIN" autocomplete="off">
   <button onclick="guideStart()">Guided demo</button>
-  <a href="/operator" class="sub" style="color:var(--blue)" title="phone-sized view for the on-call operator">Operator view</a>
+  <a href="/operator" class="sub" title="phone-sized view for the on-call operator">Operator view</a>
+  <label class="sub" title="Colour theme">Theme <select id="theme" onchange="setTheme(this.value)"><option value="grey">Control-room grey</option><option value="slate">Night shift (dark)</option><option value="white">Clean white</option><option value="steel">Steel blue</option></select></label>
   <span class="sub" id="who"></span><button style="padding:4px 9px;font-size:12px" onclick="logout()">Sign out</button>
   <div class="seg" id="modes" title="Guard mode"><button data-m="enforce" onclick="setMode('enforce')">ENFORCE</button><button data-m="monitor" onclick="setMode('monitor')">MONITOR</button><button data-m="off" onclick="setMode('off')">OFF</button></div>
 </header>
-<div id="simbanner" style="display:none;background:#e3e4e5;color:#4f565c;border-bottom:1px solid #a9aeb2;padding:4px 16px;font-size:12.5px">
+<div id="simbanner" style="display:none;padding:4px 16px;font-size:12.5px">
   SIMULATED PLANT · demo controls and demo accounts are on (AEGIS_DEMO=1). Attacks and weather on this page are simulated; the protocol traffic is real.</div>
 <div class="err" id="hdrerr" style="padding:0 18px"></div>
 <div class="tabs"><button class="on" data-p="ops" onclick="tab('ops')">Operations</button><button data-p="eng" onclick="tab('eng')">Engineering</button><button data-p="evi" onclick="tab('evi')">Evidence &amp; performance</button></div>
@@ -167,8 +194,8 @@ details.demo>.in{padding:0 14px 12px}
     <div class="panel">
       <h2>pH and chlorine: past and the twin's forecast <span class="sp"></span><span class="sub" id="clock" style="text-transform:none;letter-spacing:0"></span></h2>
       <canvas id="chart" width="1000" height="260" style="height:230px"></canvas>
-      <div class="legend"><span><i style="background:#16191c"></i>pH (measured)</span><span><i style="background:#16191c;opacity:.45"></i>pH forecast, no changes</span>
-        <span><i style="background:#7d858b"></i>chlorine mg/L (right axis)</span><span><i style="background:#1d5a91"></i>forecast IF the change is made</span><span>shaded band: safe pH 6.5 – 8.5</span></div>
+      <div class="legend"><span><i style="background:var(--ink)"></i>pH (measured)</span><span><i style="background:var(--ink);opacity:.45"></i>pH forecast, no changes</span>
+        <span><i style="background:var(--c-cl)"></i>chlorine mg/L (right axis)</span><span><i style="background:var(--blue)"></i>forecast IF the change is made</span><span>shaded band: safe pH 6.5 – 8.5</span></div>
       <div class="grp">What-if: ask the digital twin before you touch anything</div>
       <div class="btns" style="align-items:center"><select id="wi-n"></select><input id="wi-v" class="f" style="width:90px" type="number" step="any" placeholder="value">
         <button onclick="whatif()">Predict</button><button onclick="opSet()">Apply as operator</button></div>
@@ -293,6 +320,10 @@ details.demo>.in{padding:0 14px 12px}
 
 <script>
 const $=id=>document.getElementById(id);
+const DEFAULT_THEME='grey';
+function setTheme(t){document.documentElement.dataset.theme=t;try{localStorage.setItem('aegis-theme',t)}catch(e){}if($('theme'))$('theme').value=t;if(typeof chart==='function')chart();}
+(()=>{let t=new URLSearchParams(location.search).get('theme');try{t=t||localStorage.getItem('aegis-theme')}catch(e){}
+  document.documentElement.dataset.theme=t||DEFAULT_THEME;addEventListener('DOMContentLoaded',()=>{$('theme').value=document.documentElement.dataset.theme;});})();
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fmt=v=>typeof v==='number'?(Math.abs(v)>=1000?v.toLocaleString():String(+v.toFixed(3))):esc(v);
 let S=null, dash=0, overlay=null, policy=null, rulesShown=false, tagsFilled=false;
@@ -339,29 +370,29 @@ async function permitRetry(){const n=$('wi-n').value,v=parseFloat($('wi-v').valu
 function chart(){const c=$('chart'),x=c.getContext('2d'),W=c.width,H=c.height,L=44,R=W-44,T=10,B=H-24;x.clearRect(0,0,W,H);
   if(!S)return;const now=S.sim_t/60, t0=now-100, t1=now+360;
   const X=m=>L+(m-t0)/(t1-t0)*(R-L), Y=v=>B-(Math.min(10.5,Math.max(5.5,v))-5.5)/5*(B-T), Yc=v=>B-Math.min(5,Math.max(0,v))/5*(B-T);
-  x.fillStyle='rgba(22,25,28,.05)';x.fillRect(L,Y(8.5),R-L,Y(6.5)-Y(8.5));
-  x.strokeStyle='rgba(22,25,28,.45)';x.setLineDash([6,6]);[8.5,6.5].forEach(v=>{x.beginPath();x.moveTo(L,Y(v));x.lineTo(R,Y(v));x.stroke();});x.setLineDash([]);
-  x.fillStyle='#4f565c';x.font='13px Segoe UI,system-ui';
+  const V=k=>getComputedStyle(document.documentElement).getPropertyValue(k).trim();x.fillStyle=V('--band');x.fillRect(L,Y(8.5),R-L,Y(6.5)-Y(8.5));
+  x.strokeStyle=V('--limit');x.setLineDash([6,6]);[8.5,6.5].forEach(v=>{x.beginPath();x.moveTo(L,Y(v));x.lineTo(R,Y(v));x.stroke();});x.setLineDash([]);
+  x.fillStyle=V('--muted');x.font='13px Segoe UI,system-ui';
   for(let v=6;v<=10;v++)x.fillText(v,L-22,Y(v)+4);for(let v=0;v<=4;v++)x.fillText(v,R+8,Yc(v)+4);
   x.fillText('pH',8,T+10);x.fillText('Cl',R+20,T+10);
   for(let k=-1;k<=6;k++){const m=now+k*60;x.fillText(k===0?'':(k>0?'+':'')+k+'h',X(m)-10,H-6);}
-  x.strokeStyle='#6b7379';x.beginPath();x.moveTo(X(now),T);x.lineTo(X(now),B);x.stroke();x.fillText('now',X(now)+4,T+12);
+  x.strokeStyle=V('--proc');x.beginPath();x.moveTo(X(now),T);x.lineTo(X(now),B);x.stroke();x.fillText('now',X(now)+4,T+12);
   const line=(pts,fx,fy,col,w,dashA)=>{if(pts.length<2)return;x.strokeStyle=col;x.lineWidth=w;x.setLineDash(dashA||[]);x.beginPath();
     pts.forEach((p,i)=>{const a=fx(p),b=fy(p);i?x.lineTo(a,b):x.moveTo(a,b);});x.stroke();x.setLineDash([]);x.lineWidth=1;};
   const h=S.history.filter(p=>p.sim_t/60>=t0);
-  line(h,p=>X(p.sim_t/60),p=>Yc(p.chlorine_residual),'#7d858b',2);
-  line(h,p=>X(p.sim_t/60),p=>Y(p.ph),'#16191c',2.5);
-  if(S.forecast){line(S.forecast,p=>X(now+p.min),p=>Y(p.ph),'rgba(22,25,28,.45)',2,[8,6]);
-    line(S.forecast,p=>X(now+p.min),p=>Yc(p.chlorine_residual),'rgba(125,133,139,.6)',1.5,[8,6]);}
+  line(h,p=>X(p.sim_t/60),p=>Yc(p.chlorine_residual),V('--c-cl'),2);
+  line(h,p=>X(p.sim_t/60),p=>Y(p.ph),V('--ink'),2.5);
+  if(S.forecast){line(S.forecast,p=>X(now+p.min),p=>Y(p.ph),V('--c-fc'),2,[8,6]);
+    line(S.forecast,p=>X(now+p.min),p=>Yc(p.chlorine_residual),V('--c-fccl'),1.5,[8,6]);}
   if(overlay&&Date.now()<overlay.until){const pts=overlay.pts;
-    line(pts,p=>X(now+p.min),p=>Y(p.ph),'#1d5a91',3,[4,4]);x.fillStyle='#1d5a91';
+    line(pts,p=>X(now+p.min),p=>Y(p.ph),V('--blue'),3,[4,4]);x.fillStyle=V('--blue');
     const last=pts[pts.length-1];if(last)x.fillText(`${overlay.label}: pH ${last.ph.toFixed(2)} at +${(last.min/60).toFixed(0)}h`,Math.max(L,X(now+last.min)-280),Math.max(T+14,Y(last.ph)-8));}
 }
 function spark(fc){if(!fc)return'';const w=150,h=34,pts=fc.with,pw=fc.without,n=Math.max(pts.length-1,1);
   const y=v=>h-(Math.min(10,Math.max(6,v))-6)/4*h, p=a=>a.map((q,i)=>`${(i/n*w).toFixed(1)},${y(q.ph).toFixed(1)}`).join(' ');
-  return `<svg width="${w}" height="${h}" style="vertical-align:middle;background:#eaebec;border:1px solid #a9aeb2"><rect x="0" y="${y(8.5)}" width="${w}" height="${y(6.5)-y(8.5)}" fill="rgba(22,25,28,.06)"/>
-  <polyline points="${p(pw)}" fill="none" stroke="#16191c" stroke-width="1.5" stroke-dasharray="3 3"/><polyline points="${p(pts)}" fill="none" stroke="#1d5a91" stroke-width="2"/></svg>
-  <span class="trace">pH next ${pts[pts.length-1].min/60} h: <span style="color:#1d5a91">with</span> ${pts[pts.length-1].ph.toFixed(2)} vs without ${pw[pw.length-1].ph.toFixed(2)}</span>`;}
+  return `<svg width="${w}" height="${h}" style="vertical-align:middle;background:var(--panel2);border:1px solid var(--line)"><rect x="0" y="${y(8.5)}" width="${w}" height="${y(6.5)-y(8.5)}" style="fill:var(--band)"/>
+  <polyline points="${p(pw)}" fill="none" style="stroke:var(--ink)" stroke-width="1.5" stroke-dasharray="3 3"/><polyline points="${p(pts)}" fill="none" style="stroke:var(--blue)" stroke-width="2"/></svg>
+  <span class="trace">pH next ${pts[pts.length-1].min/60} h: <span style="color:var(--blue)">with</span> ${pts[pts.length-1].ph.toFixed(2)} vs without ${pw[pw.length-1].ph.toFixed(2)}</span>`;}
 
 /* ---------- copilot ---------- */
 async function ask(){const q=$('q').value.trim();if(!q)return;$('reply').textContent='Thinking…';$('trace').innerHTML='';
@@ -466,7 +497,7 @@ async function load(){let s;try{const r=await fetch('/api/state');if(r.status===
   $('k-ph').classList.toggle('bad',p.ph>8.5||p.ph<6.5);$('k-cl').classList.toggle('bad',p.chlorine_residual>4||p.chlorine_residual<.2);
   $('k-lv').classList.toggle('bad',p.tank_level>95||p.tank_level<10);$('k-hocl').classList.toggle('warn',p.hocl_pct<20);
   $('clsp').textContent=p.chlorine_dose.toFixed(1);$('lyesp').textContent=p.naoh_dose.toLocaleString();
-  $('lyebox').setAttribute('fill',p.naoh_dose>250?'#c4161c':'#eaebec');$('lyesp').setAttribute('fill',p.naoh_dose>250?'#fff':'#16191c');['lyel','lyeu'].forEach(i=>$(i).setAttribute('fill',p.naoh_dose>250?'#fff':'#4f565c'));
+  $('lyebox').setAttribute('fill',p.naoh_dose>250?'#c4161c':'#eaebec');$('lyesp').setAttribute('fill',p.naoh_dose>250?'#ffffff':'#16191c');['lyel','lyeu'].forEach(i=>$(i).setAttribute('fill',p.naoh_dose>250?'#ffffff':'#4f565c'));
   const h=166*p.tank_level/100;$('water').setAttribute('y',228-h);$('water').setAttribute('height',h);$('lvl').textContent=p.tank_level.toFixed(0)+'%';
   const bad=p.ph>8.5;$('water').setAttribute('fill',bad?'#c4161c':'url(#wg)');
   $('river').setAttribute('stroke','#6b7379');
