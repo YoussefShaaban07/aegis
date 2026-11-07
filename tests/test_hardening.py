@@ -217,7 +217,7 @@ def test_read_plc_state_from_real_modbus():
         plc = await modbus.serve(plant.handle, "127.0.0.1", 0)
         c = await modbus.Client("127.0.0.1", plc.sockets[0].getsockname()[1]).connect()
         s = await read_plc_state(c, TAGS)
-        assert s["naoh_dose"] == 100 and s["chlorine_dose"] == 1.5 and abs(s["ph"] - 7.33) < 0.05
+        assert s["naoh_dose"] == 100 and s["chlorine_dose"] == 1.5 and abs(s["ph"] - plant.snapshot()["ph"]) < 0.05
         assert s["intake_pump"] == 1 and s["raw_alkalinity"] == 77    # coils + input registers
         # guard with an async state reader (as used against a real/OpenPLC controller)
         g = Guard(c, lambda: read_plc_state(c, TAGS))

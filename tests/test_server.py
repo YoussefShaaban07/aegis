@@ -9,6 +9,8 @@ from fastapi.testclient import TestClient
 @pytest.fixture
 def client(tmp_path, monkeypatch):
     monkeypatch.setenv("AEGIS_DB", str(tmp_path / "audit.db"))
+    monkeypatch.setenv("AEGIS_USERS", str(tmp_path / "users.json"))
+    monkeypatch.setenv("AEGIS_DEMO", "1")
     monkeypatch.setenv("AEGIS_PLC_PORT", "0")
     import importlib, json, shutil
     from aegis import config
@@ -19,6 +21,8 @@ def client(tmp_path, monkeypatch):
     server.PLC_PORT, server.GUARD_PORT = 15020 + (int(time.time() * 1000) % 300), 16020 + (int(time.time() * 1000) % 300)
     with TestClient(server.app) as c:
         c.server = server
+        c.headers["X-Aegis"] = "1"
+        assert c.post("/api/login", json={"username": "engineer", "password": "engineer"}).status_code == 200
         yield c
 
 
@@ -107,8 +111,7 @@ def test_permit_flow(client):
     assert "rejected" in client.post("/api/attack/coil").json()["result"]
     r = client.post("/api/operator/setpoint", json={"name": "distribution_pump", "value": 0}).json()
     assert r["result"] == "blocked" and "permit" in r["reason"]
-    assert client.post("/api/permit", json={"name": "distribution_pump", "value": 0}).status_code == 403
-    assert client.post("/api/permit", json={"name": "naoh_dose", "value": 5, "pin": "2468"}).status_code == 400
+    assert client.post("/api/permit", json={"name": "naoh_dose", "value": 5}).status_code == 400
     assert client.post("/api/permit", json={"name": "distribution_pump", "value": 0, "pin": "2468"}).status_code == 200
     r = client.post("/api/operator/setpoint", json={"name": "distribution_pump", "value": 0}).json()
     assert r["result"] == "accepted"
@@ -121,7 +124,7 @@ def test_compromise_grab_and_calibrate_endpoints(client):
         plant.step(1.0)
     r = client.post("/api/attack/plc-compromise", json={"freeze_sensors": True}).json()
     assert "No command passed through Aegis" in r["result"]
-    for _ in range(90):
+    for _ in range(240):
         plant.step(1.0)
     s = client.get("/api/state").json()
     assert s["plant"]["naoh_dose"] == 100 and s["truth"]["naoh_dose_actual"] == 200   # PLC hides it
@@ -139,10 +142,43 @@ def test_compromise_grab_and_calibrate_endpoints(client):
 
 def test_calibration_applies_on_clean_history(client):
     plant = client.server.S["plant"]
-    for m in range(240):
-        if m == 60:
-            plant.set("naoh_dose", 130)
+    for m in range(360):
+        if m == 60:     # through Aegis, like an operator (a direct PLC change would trip the integrity check)
+            assert client.post("/api/operator/setpoint", json={"name": "naoh_dose", "value": 130}).json()["result"] == "accepted"
         plant.step(1.0)
     c = client.get("/api/calibrate").json()
     assert c["warnings"] == [] and c["after"]["ph_mae"] <= c["before"]["ph_mae"]
     assert client.post("/api/calibrate/apply", json={"pin": "2468"}).status_code == 200
+
+
+
+# ---------------- authentication ----------------
+def test_auth_required_and_roles(client):
+    client.post("/api/logout")
+    assert client.get("/api/state").status_code == 401                         # logged out
+    assert client.post("/api/login", json={"username": "operator", "password": "operator"}).status_code == 200
+    assert client.get("/api/state").status_code == 200
+    assert client.post("/api/mode", json={"mode": "off", "pin": "2468"}).status_code == 403   # operator can't
+    r = client.post("/api/operator/setpoint", json={"name": "naoh_dose", "value": 110})
+    assert r.json()["result"] == "accepted"
+    denied = [e for e in client.get("/api/audit").json()["entries"] if e["kind"] == "auth_denied"]
+    assert denied and denied[0]["data"]["user"] == "operator"
+
+
+def test_csrf_header_required(client):
+    r = client.post("/api/operator/setpoint", json={"name": "naoh_dose", "value": 110}, headers={"X-Aegis": "0"})
+    assert r.status_code == 403 and "CSRF" in r.json()["detail"]
+
+
+def test_login_bruteforce_lockout(client):
+    client.post("/api/logout")
+    codes = [client.post("/api/login", json={"username": "engineer", "password": f"guess{i}"}).status_code
+             for i in range(7)]
+    assert codes[:5] == [401] * 5 and codes[5] == 429
+    assert client.post("/api/login", json={"username": "engineer", "password": "engineer"}).status_code == 429
+
+
+def test_actions_attributed_to_named_user(client):
+    client.post("/api/mode", json={"mode": "monitor", "pin": "2468"})
+    e = [x for x in client.get("/api/audit").json()["entries"] if x["kind"] == "guard_mode"][0]
+    assert e["data"]["by"] == "engineer (engineer)"

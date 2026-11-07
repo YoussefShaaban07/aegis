@@ -55,7 +55,7 @@ def test_compromised_plc_hidden_setpoint_caught_by_physics():
         if mon.events and "at" not in caught:
             caught["at"] = m
     run(plant, mon, 120, cmd, on_minute=watch)
-    assert "at" in caught and caught["at"] < 60, caught      # within an hour of plant time
+    assert "at" in caught and caught["at"] < 100, caught     # ~80 min of plant time (baffled clearwell)
     ev = mon.events[0]
     assert ev["severity"] == "critical" and "chemistry predicts" in ev["message"]
     assert plant.truth()["ph"] > 8.0                          # the real water really was drifting
@@ -87,10 +87,10 @@ def test_grab_sample_agrees_when_honest():
 
 
 def test_grab_sample_catches_replay_early():
-    """30 simulated minutes into a replay attack, the lab sample already disagrees."""
+    """An hour into a replay attack (dose still travelling through the baffles), the lab sample disagrees."""
     plant, mon, cmd = fresh()
     plant.compromise_plc({"naoh_dose": 220}, freeze_sensors=True)
-    run(plant, mon, 30, cmd)
+    run(plant, mon, 60, cmd)
     t = plant.truth()
     assert t["ph"] - plant.snapshot()["ph"] > 0.2
     assert not mon.grab_sample(plant.snapshot(), ph=t["ph"])["ok"]

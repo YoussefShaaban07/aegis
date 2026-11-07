@@ -27,7 +27,7 @@ from dataclasses import dataclass
 import itertools
 
 from .config import load_process
-from .process import ProcessModel, ProcessState, Raw, hocl_fraction
+from .process import ProcessModel, ProcessState, Raw, hocl_fraction, raw_from
 
 REQUIRED = ("ph", "chlorine_residual", "tank_level", "raw_ph", "raw_alkalinity", "raw_turbidity")
 DEFAULT_LIMITS = {"ph": [6.5, 8.5], "chlorine_residual": [0.2, 4.0], "tank_level": [5.0, 100.0, 180]}
@@ -80,7 +80,7 @@ class Twin:
     def forecast(self, state: dict, override: dict | None = None, horizon_min: float = 240,
                  every_min: float = 10, model: ProcessModel | None = None) -> list[dict]:
         model = model or self.model
-        raw = Raw(state["raw_ph"], state["raw_alkalinity"], state["raw_turbidity"])
+        raw = raw_from(state)
         s: ProcessState = model.estimate(state, raw)
         sp = self._setpoints(state, override)
         out, t, next_pt = [], 0.0, 0.0
@@ -97,7 +97,7 @@ class Twin:
     def steady(self, state: dict, override: dict | None = None, model: ProcessModel | None = None) -> dict:
         """Where the water ends up if nothing else changes (point for the violation check)."""
         model = model or self.model
-        raw = Raw(state["raw_ph"], state["raw_alkalinity"], state["raw_turbidity"])
+        raw = raw_from(state)
         sp = self._setpoints(state, override)
         if not sp.get("intake_pump"):
             return {"min": float("inf"), "ph": state["ph"], "chlorine_residual": state["chlorine_residual"]}

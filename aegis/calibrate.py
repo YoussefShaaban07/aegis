@@ -31,9 +31,9 @@ import math
 from pathlib import Path
 
 from .config import PROCESS_PATH, load_process
-from .process import ProcessModel, Raw
+from .process import ProcessModel, Raw, raw_from
 
-FIELDS = ("naoh_feed_strength", "chlorine_decay_per_hr", "chlorine_demand_base")
+FIELDS = ("naoh_feed_strength", "chlorine_decay_per_hr", "chlorine_demand_base", "kla_per_hr")
 SP = ("intake_pump", "distribution_pump", "chlorine_dose", "naoh_dose", "distribution_rate")
 
 
@@ -41,32 +41,41 @@ def _t(row):
     return row.get("sim_t", row.get("t"))
 
 
-def window_errors(history: list[dict], params: dict, window_min: float = 60, stride_min: float = 20):
-    """Replay windows open-loop; return list of (pH error, chlorine error) at each window end."""
-    model = ProcessModel(params)
+def window_errors(history: list[dict], params: dict, window_min: float = 60, stride_min: float = 20,
+                  warmup_min: float = 60):
+    """Replay windows open-loop; return list of (pH error, chlorine error) at each window end.
+
+    Each window starts from a state estimated `warmup_min` earlier and simulated forward
+    (not scored), so the baffled cells' internal state is realistic when scoring begins.
+    """
+    model = ProcessModel(dict(params))
     out = []
-    i = 0
     n = len(history)
+    times = [_t(r) for r in history]
+    i = 0
     while i < n:
-        t0 = _t(history[i])
+        t0 = times[i]
+        if t0 - times[0] < warmup_min * 60:         # need history before the window for warm-up
+            i += 1
+            continue
         j = i
-        while j + 1 < n and _t(history[j + 1]) - t0 <= window_min * 60:
+        while j + 1 < n and times[j + 1] - t0 <= window_min * 60:
             j += 1
-        if _t(history[j]) - t0 < window_min * 60 * 0.8:
+        if times[j] - t0 < window_min * 60 * 0.8:
             break
-        r0 = history[i]
-        raw = Raw(r0["raw_ph"], r0["raw_alkalinity"], r0["raw_turbidity"])
-        s = model.estimate(r0, raw)
-        for k in range(i, j):
+        k0 = i
+        while k0 > 0 and t0 - times[k0 - 1] <= warmup_min * 60:
+            k0 -= 1
+        s = model.estimate(history[k0], raw_from(history[k0]))
+        for k in range(k0, j):
             row = history[k]
-            raw = Raw(row["raw_ph"], row["raw_alkalinity"], row["raw_turbidity"])
             sp = {x: row[x] for x in SP}
             s.tank_level = row["tank_level"]
-            model.step(s, raw, sp, _t(history[k + 1]) - _t(row))
+            model.step(s, raw_from(row), sp, times[k + 1] - times[k])
         end = history[j]
         out.append((model.ph(s) - end["ph"], s.chlorine - end["chlorine_residual"]))
         nxt = i
-        while nxt < n and _t(history[nxt]) - t0 < stride_min * 60:
+        while nxt < n and times[nxt] - t0 < stride_min * 60:
             nxt += 1
         i = max(nxt, i + 1)
     return out

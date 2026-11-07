@@ -25,6 +25,7 @@ from .alerts import Alerter
 from .audit import AuditLog
 from .config import POLICY_PATH, Tags
 from .guard import MODES, Guard, read_plc_state
+from .forewarn import ForecastWatch
 from .integrity import IntegrityMonitor
 from .twin import REQUIRED, Twin
 
@@ -56,6 +57,7 @@ def build(plc_host: str, plc_port: int, mode: str = "enforce", plc_unit: int = 1
 async def integrity_loop(guard, twin, poll_s: float = 10.0, printer=print, history_path: str | None = None):
     """Poll the PLC, check the process matches what Aegis approved, and record history for calibration."""
     mon = IntegrityMonitor(twin.model if twin else None, alerter=guard.alerter, audit=guard.audit)
+    watch = ForecastWatch(guard.alerter, guard.audit)
     reader = modbus.Client(guard.upstream.host, guard.upstream.port, unit=guard.upstream.unit)
     seen = 0
     writer = None
@@ -76,6 +78,11 @@ async def integrity_loop(guard, twin, poll_s: float = 10.0, printer=print, histo
                 fh.flush()
             guard.sync_commanded(st)
             mon.update(st, time.time(), guard.commanded)
+            if twin and twin.available(st):
+                for w in watch.update(twin.forecast(st, None, 180, every_min=5), st).values():
+                    if w.get("printed") is None:
+                        printer(f"{time.strftime('%H:%M:%S')} EARLY WARNING: {w['message']}")
+                        w["printed"] = True
             if len(mon.events) > seen:
                 for ev in list(mon.events)[:len(mon.events) - seen]:
                     printer(f"{time.strftime('%H:%M:%S')} INTEGRITY {ev['severity'].upper()}: {ev['message']}")

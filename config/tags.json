@@ -1,22 +1,91 @@
 {
   "_doc": "Modbus register map. Tables: coils (on/off outputs, FC 1/5/15), holding (setpoints, FC 3/6/16), input (sensors, FC 4). Engineering value = raw / scale. Edit to match your PLC program.",
   "coils": {
-    "intake_pump":       {"address": 0, "unit": "on/off", "label": "Intake pump P-1"},
-    "distribution_pump": {"address": 1, "unit": "on/off", "label": "Distribution pump P-2"}
+    "intake_pump": {
+      "address": 0,
+      "unit": "on/off",
+      "label": "Intake pump P-1"
+    },
+    "distribution_pump": {
+      "address": 1,
+      "unit": "on/off",
+      "label": "Distribution pump P-2"
+    }
   },
   "holding": {
-    "chlorine_dose":     {"address": 0, "scale": 100, "unit": "mg/L",   "label": "Chlorine dose"},
-    "naoh_dose":         {"address": 1, "scale": 1,   "unit": "ppm",    "label": "Lye (NaOH) feed"},
-    "distribution_rate": {"address": 2, "scale": 1,   "unit": "gpm",    "label": "Distribution rate"}
+    "chlorine_dose": {
+      "address": 0,
+      "scale": 100,
+      "unit": "mg/L",
+      "label": "Chlorine dose"
+    },
+    "naoh_dose": {
+      "address": 1,
+      "scale": 1,
+      "unit": "ppm",
+      "label": "Lye (NaOH) feed"
+    },
+    "distribution_rate": {
+      "address": 2,
+      "scale": 1,
+      "unit": "gpm",
+      "label": "Distribution rate"
+    }
   },
   "input": {
-    "tank_level":        {"address": 0, "scale": 10,  "unit": "%",      "label": "Clearwell level"},
-    "chlorine_residual": {"address": 1, "scale": 100, "unit": "mg/L",   "label": "Chlorine residual"},
-    "ph":                {"address": 2, "scale": 100, "unit": "pH",     "label": "Finished water pH"},
-    "flow_out":          {"address": 3, "scale": 1,   "unit": "gpm",    "label": "Flow to town"},
-    "raw_ph":            {"address": 4, "scale": 100, "unit": "pH",     "label": "Raw water pH"},
-    "raw_alkalinity":    {"address": 5, "scale": 1,   "unit": "mg/L CaCO3", "label": "Raw water alkalinity"},
-    "raw_turbidity":     {"address": 6, "scale": 10,  "unit": "NTU",    "label": "Raw water turbidity"},
-    "alarms":            {"address": 7, "scale": 1,   "unit": "bits",   "label": "Alarm bits"}
+    "tank_level": {
+      "address": 0,
+      "scale": 10,
+      "unit": "%",
+      "label": "Clearwell level"
+    },
+    "chlorine_residual": {
+      "address": 1,
+      "scale": 100,
+      "unit": "mg/L",
+      "label": "Chlorine residual"
+    },
+    "ph": {
+      "address": 2,
+      "scale": 100,
+      "unit": "pH",
+      "label": "Finished water pH"
+    },
+    "flow_out": {
+      "address": 3,
+      "scale": 1,
+      "unit": "gpm",
+      "label": "Flow to town"
+    },
+    "raw_ph": {
+      "address": 4,
+      "scale": 100,
+      "unit": "pH",
+      "label": "Raw water pH"
+    },
+    "raw_alkalinity": {
+      "address": 5,
+      "scale": 1,
+      "unit": "mg/L CaCO3",
+      "label": "Raw water alkalinity"
+    },
+    "raw_turbidity": {
+      "address": 6,
+      "scale": 10,
+      "unit": "NTU",
+      "label": "Raw water turbidity"
+    },
+    "alarms": {
+      "address": 7,
+      "scale": 1,
+      "unit": "bits",
+      "label": "Alarm bits"
+    },
+    "water_temp": {
+      "address": 8,
+      "scale": 10,
+      "unit": "C",
+      "label": "Water temperature"
+    }
   }
 }

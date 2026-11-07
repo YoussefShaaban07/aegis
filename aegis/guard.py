@@ -174,16 +174,22 @@ class Guard:
         # 3. range
         if not lim["min"] <= new <= lim["max"]:
             return deny("range", f"outside safe range {lim['min']:g}-{lim['max']:g} {u} ({reason})")
-        # 4. step
+        # 4. step / 5. ramp. These stop someone *steering* the plant somewhere; a change the
+        #    twin says fixes an unsafe trend may bypass them (see 7), because a safety
+        #    system must never stop the operator from correcting a dangerous situation.
+        soft = None
         step = lim.get("max_step")
         if step is not None and old is not None and abs(new - old) > step + 1e-9:
-            return deny("step", f"change of {abs(new - old):g} {u} exceeds max {step:g} per command ({reason})")
-        # 5. ramp
+            soft = ("step", f"change of {abs(new - old):g} {u} exceeds max {step:g} per command ({reason})")
         per_min = lim.get("max_change_per_min")
         base = self._baseline(register, old, now)
-        if per_min is not None and base is not None and abs(new - base) > per_min + 1e-9:
-            return deny("ramp", f"net change of {abs(new - base):g} {u} within 60 s would exceed "
-                                f"{per_min:g} {u}/min (slow-ramp protection; was {base:g} a minute ago)")
+        if soft is None and per_min is not None and base is not None and abs(new - base) > per_min + 1e-9:
+            soft = ("ramp", f"net change of {abs(new - base):g} {u} within 60 s would exceed "
+                            f"{per_min:g} {u}/min (slow-ramp protection; was {base:g} a minute ago)")
+        pred = self.policy.get("prediction") or {}
+        use_twin = self.twin is not None and pred and pred.get("enabled", True)
+        if soft and not use_twin:
+            return deny(*soft)
         # 6. interlocks
         for il in self.policy.get("interlocks", []):
             if il["register"] == register and new == il["value"]:
@@ -194,19 +200,17 @@ class Guard:
         # 6b. critical commands need an operator permit issued out-of-band (dashboard + PIN).
         #     A Modbus packet can claim to be the HMI; it can't create a permit.
         need = lim.get("permit_values") or []
-        permit_note = ""
+        permit_note, permit_key = "", None
         if new in need and new != old and not dry_run:   # a proposal's approval issues the permit
-            key = (register, float(new))
-            pm = self.permits.get(key)
+            permit_key = (register, float(new))
+            pm = self.permits.get(permit_key)
             if not pm or pm["expires"] < now:
                 return deny("permit", f"{register} = {new:g} is a critical command and needs an operator permit "
-                                      "(issued on the Aegis dashboard with the engineer PIN)")
-            self.permits.pop(key, None)            # single use
+                                      "(issued on the Aegis dashboard)")
             permit_note = f"; used single-use permit issued by {pm['by']}"
         # 7. digital twin
-        pred = self.policy.get("prediction") or {}
         forecast, note = None, "within safety envelope"
-        if self.twin is not None and pred.get("enabled", True) and pred:
+        if use_twin:
             override = dict(together or {})
             override[register] = new
             v = self._twin_eval(state, override, pred)
@@ -215,8 +219,16 @@ class Guard:
                 d = deny("predict", v.reason)
                 d.forecast = forecast
                 return d
-            note = f"within safety envelope; {v.reason}"
+            if soft:
+                if not v.reason.startswith("corrective"):
+                    return deny(*soft)
+                note = (f"CORRECTIVE OVERRIDE of the {soft[0]} limit: the twin forecasts this change fixes an "
+                        f"unsafe trend ({soft[1]})")
+            else:
+                note = f"within safety envelope; {v.reason}"
         note += permit_note
+        if permit_key:
+            self.permits.pop(permit_key, None)          # single use, consumed only when the write is allowed
         # 8. learned-normal band: allowed, but unusual values are flagged to the operator
         nb = lim.get("normal")
         if nb and not nb[0] <= new <= nb[1]:

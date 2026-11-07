@@ -16,7 +16,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
 from pydantic import BaseModel
 
@@ -24,10 +24,12 @@ from . import attacks, modbus
 from .alerts import Alerter
 from .attacks import INJECTION
 from .audit import AuditLog
+from .auth import Auth, allowed
 from .calibrate import fit as calibrate_fit
 from .config import POLICY_PATH, PolicyError
 from .copilot import Copilot
 from .guard import MODES, Guard
+from .forewarn import ForecastWatch
 from .integrity import IntegrityMonitor
 from .process import ProcessModel
 from .learn import observations_from_audit, simulated_week, suggest
@@ -41,12 +43,38 @@ ROOT = Path(__file__).resolve().parents[1]
 PLC_PORT = int(os.getenv("AEGIS_PLC_PORT", 5020))
 GUARD_PORT = int(os.getenv("AEGIS_GUARD_PORT", 5502))
 PIN = os.getenv("AEGIS_ENGINEER_PIN", "2468")
+DEMO = os.getenv("AEGIS_DEMO", "1") == "1"      # simulator controls + demo accounts
 PLANT_NAME = os.getenv("AEGIS_PLANT_NAME", "Hattiesburg Water Treatment Plant #2 (simulated)")
 
 S: dict = {}
 BASE_ORDERS = ["WO-4462: Replace filter #2 media, scheduled Thursday.",
                "WO-4468: Calibrate chlorine analyzer CL-1 (drifting +0.1 mg/L)."]
 HORIZONS = (10, 30, 60)   # simulated minutes ahead for the live accuracy score
+
+
+COOKIE = "aegis_session"
+
+
+def role(need: str, demo_only: bool = False):
+    """Dependency: require a logged-in user with at least this role (and the CSRF header on writes)."""
+    def dep(request: Request) -> dict:
+        if request.method != "GET" and request.headers.get("x-aegis") != "1":
+            raise HTTPException(403, "missing X-Aegis header (CSRF protection)")
+        who = S["auth"].verify(request.cookies.get(COOKIE))
+        if who is None:
+            raise HTTPException(401, "please log in")
+        if not allowed(who, need):
+            S["audit"].append("auth_denied", {"user": who["user"], "role": who["role"], "needed": need,
+                                              "path": request.url.path})
+            raise HTTPException(403, f"needs the {need} role")
+        if demo_only and not DEMO:
+            raise HTTPException(404, "simulator controls are disabled (AEGIS_DEMO=0)")
+        return who
+    return dep
+
+
+def _by(who: dict) -> str:
+    return f"{who['user']} ({who['role']})"
 
 
 def need_pin(pin: str | None, action: str = "engineer action"):
@@ -114,10 +142,12 @@ async def lifespan(app: FastAPI):
     gsrv = await modbus.serve(guard.handle, "0.0.0.0", GUARD_PORT)
     orders = list(BASE_ORDERS)
     props = Proposals(guard, GUARD_PORT, audit=audit, alerter=alerter)
+    S["auth"] = Auth(demo=DEMO)
     S.update(plant=plant, guard=guard, audit=audit, alerter=alerter, orders=orders, proposals=props, twin=twin,
              autonomy="propose", verify={"ok": True, "entries": 0, "message": "", "t": 0},
              accuracy=Accuracy(), forecast=None, attack_log=deque(maxlen=30), patient=None,
-             integrity=IntegrityMonitor(ProcessModel(twin.model.params), alerter=alerter, audit=audit))
+             integrity=IntegrityMonitor(ProcessModel(twin.model.params), alerter=alerter, audit=audit),
+             forewarn=ForecastWatch(alerter, audit))
     S["copilot"] = Copilot(plant, GUARD_PORT, orders, proposals=props, mode_getter=lambda: S["autonomy"], twin=twin)
     audit.append("startup", {"guard_port": GUARD_PORT, "plc_port": PLC_PORT, "plant": PLANT_NAME})
 
@@ -134,7 +164,9 @@ async def lifespan(app: FastAPI):
                                         f"clearwell {plant.tank_level:.0f}%.")
                 seen = now
                 if n % 10 == 0:      # every 2 s: refresh the forecast shown on the trend chart
-                    S["forecast"] = twin.forecast(plant.snapshot(), None, 360, every_min=10)
+                    snap = plant.snapshot()
+                    S["forecast"] = twin.forecast(snap, None, 360, every_min=10)
+                    S["forewarn"].update(S["forecast"], snap)
                 if n % 25 == 0:      # every 5 s: new accuracy sample
                     S["accuracy"].predict(twin, plant)
                 S["accuracy"].score(plant)
@@ -160,8 +192,39 @@ def index():
     return FileResponse(ROOT / "static" / "index.html")
 
 
+class LoginIn(BaseModel):
+    username: str
+    password: str
+
+
+@app.post("/api/login")
+def login(body: LoginIn, request: Request, response: Response):
+    if request.headers.get("x-aegis") != "1":
+        raise HTTPException(403, "missing X-Aegis header (CSRF protection)")
+    ip = request.client.host if request.client else "?"
+    token, msg = S["auth"].login(body.username, body.password, ip)
+    S["audit"].append("login" if token else "login_failed", {"user": body.username, "ip": ip, "result": msg})
+    if not token:
+        raise HTTPException(429 if "too many" in msg else 401, msg)
+    response.set_cookie(COOKIE, token, httponly=True, samesite="strict", max_age=8 * 3600,
+                        secure=os.getenv("AEGIS_HTTPS") == "1")
+    return S["auth"].verify(token) | {"demo": DEMO}
+
+
+@app.post("/api/logout")
+def logout(response: Response, who: dict = Depends(role("viewer"))):
+    response.delete_cookie(COOKIE)
+    S["audit"].append("logout", {"user": who["user"]})
+    return {"ok": True}
+
+
+@app.get("/api/me")
+def me(who: dict = Depends(role("viewer"))):
+    return who | {"demo": DEMO}
+
+
 @app.get("/api/state")
-def state():
+def state(who: dict = Depends(role("viewer"))):
     p, g = S["plant"], S["guard"]
     if time.time() - S["verify"]["t"] > 3:   # re-verify the audit chain every few seconds
         S["verify"] = {**S["audit"].verify(), "t": time.time()}
@@ -177,6 +240,7 @@ def state():
             "latency": g.latency(), "counts": dict(g.counts), "accuracy": S["accuracy"].summary(),
             "integrity": {**S["integrity"].status, "events": list(S["integrity"].events)[:10]},
             "truth": p.truth() if p.compromise else None,
+            "forewarn": list(S["forewarn"].active.values()),
             "attack_log": list(S["attack_log"]), "patient_running": bool(S["patient"] and not S["patient"].done()),
             "tags": {n: {"unit": t.unit, "label": t.label, "table": t.table} for n, t in TAGS.holding.items()},
             "llm": bool(os.getenv("GROQ_API_KEY") or os.getenv("AEGIS_LLM_KEY"))}
@@ -188,11 +252,11 @@ class ModeIn(BaseModel):
 
 
 @app.post("/api/mode")
-def set_mode(body: ModeIn):
+def set_mode(body: ModeIn, who: dict = Depends(role("engineer"))):
     need_pin(body.pin, "change guard mode")
     if body.mode not in MODES:
         raise HTTPException(400, f"mode must be one of {MODES}")
-    S["guard"].set_mode(body.mode, by="engineer (dashboard)")
+    S["guard"].set_mode(body.mode, by=_by(who))
     return {"ok": True}
 
 
@@ -202,9 +266,9 @@ class GuardIn(BaseModel):
 
 
 @app.post("/api/guard")
-def set_guard(body: GuardIn):
+def set_guard(body: GuardIn, who: dict = Depends(role("engineer"))):
     need_pin(body.pin, "toggle guard")
-    S["guard"].set_enabled(body.enabled, by="engineer (dashboard)")
+    S["guard"].set_enabled(body.enabled, by=_by(who))
     return {"ok": True}
 
 
@@ -214,10 +278,10 @@ class PolicyIn(BaseModel):
 
 
 @app.post("/api/policy")
-def set_policy(body: PolicyIn):
+def set_policy(body: PolicyIn, who: dict = Depends(role("engineer"))):
     need_pin(body.pin, "edit safety rules")
     try:
-        S["guard"].set_policy(body.policy, by="engineer (dashboard)")
+        S["guard"].set_policy(body.policy, by=_by(who))
     except PolicyError as e:
         raise HTTPException(400, str(e))
     return {"ok": True}
@@ -229,38 +293,38 @@ class SettingsIn(BaseModel):
 
 
 @app.post("/api/settings")
-def settings(body: SettingsIn):
+def settings(body: SettingsIn, who: dict = Depends(role("engineer"))):
     need_pin(body.pin, "change AI autonomy")
     if body.autonomy not in ("propose", "direct"):
         raise HTTPException(400, "autonomy must be 'propose' or 'direct'")
     S["autonomy"] = body.autonomy
-    S["audit"].append("settings", {"autonomy": body.autonomy, "by": "engineer (dashboard)"})
+    S["audit"].append("settings", {"autonomy": body.autonomy, "by": _by(who)})
     return {"ok": True}
 
 
 @app.post("/api/proposals/{pid}/approve")
-async def approve(pid: int):
+async def approve(pid: int, who: dict = Depends(role("operator"))):
     try:
-        return await S["proposals"].approve(pid, by="operator (dashboard)")
+        return await S["proposals"].approve(pid, by=_by(who))
     except ValueError as e:
         raise HTTPException(409, str(e))
 
 
 @app.post("/api/proposals/{pid}/reject")
-def reject(pid: int):
+def reject(pid: int, who: dict = Depends(role("operator"))):
     try:
-        return S["proposals"].reject(pid, by="operator (dashboard)")
+        return S["proposals"].reject(pid, by=_by(who))
     except ValueError as e:
         raise HTTPException(409, str(e))
 
 
 @app.get("/api/audit")
-def audit(limit: int = 100):
+def audit(limit: int = 100, who: dict = Depends(role("viewer"))):
     return {"verify": S["audit"].verify(), "entries": S["audit"].recent(min(limit, 1000))}
 
 
 @app.get("/api/audit/export.csv")
-def audit_csv():
+def audit_csv(who: dict = Depends(role("viewer"))):
     return PlainTextResponse(S["audit"].export_csv(), media_type="text/csv",
                              headers={"Content-Disposition": "attachment; filename=aegis-audit.csv"})
 
@@ -273,18 +337,18 @@ def _report(minutes: float):
 
 
 @app.get("/api/report", response_class=HTMLResponse)
-def report_html(minutes: float = 60):
+def report_html(minutes: float = 60, who: dict = Depends(role("viewer"))):
     return HTMLResponse(_report(minutes)["html"])
 
 
 @app.get("/api/report.md")
-def report_md(minutes: float = 60):
+def report_md(minutes: float = 60, who: dict = Depends(role("viewer"))):
     return PlainTextResponse(_report(minutes)["markdown"], media_type="text/markdown",
                              headers={"Content-Disposition": "attachment; filename=aegis-incident-report.md"})
 
 
 @app.get("/api/learn")
-def learn(hours: float = 168, simulated: bool = False):
+def learn(hours: float = 168, simulated: bool = False, who: dict = Depends(role("viewer"))):
     if simulated:
         obs, label = simulated_week(start=time.time() - 7 * 86400), "SIMULATED week of operator activity (demo data)"
     else:
@@ -294,7 +358,7 @@ def learn(hours: float = 168, simulated: bool = False):
 
 
 @app.get("/api/calibrate")
-def calibrate_preview():
+def calibrate_preview(who: dict = Depends(role("engineer"))):
     """Fit the twin to the plant's recent history (doesn't change anything yet)."""
     hist = list(S["plant"].history)
     try:
@@ -325,7 +389,7 @@ class PinIn(BaseModel):
 
 
 @app.post("/api/calibrate/apply")
-def calibrate_apply(body: PinIn):
+def calibrate_apply(body: PinIn, who: dict = Depends(role("engineer"))):
     need_pin(body.pin, "apply twin calibration")
     r = S.get("calibration")
     if not r:
@@ -337,7 +401,7 @@ def calibrate_apply(body: PinIn):
     S["twin"].set_uncertainty(S["twin"].uncertainty)        # rebuild the ensemble around the new values
     S["integrity"].model.params.update(r["params"])
     S["audit"].append("twin_calibration", {"old": old, "new": r["params"], "before": r["before"],
-                                           "after": r["after"], "by": "engineer (dashboard)"})
+                                           "after": r["after"], "by": _by(who)})
     return {"ok": True, "params": r["params"]}
 
 
@@ -348,7 +412,7 @@ class WhatIf(BaseModel):
 
 
 @app.post("/api/whatif")
-def whatif(w: WhatIf):
+def whatif(w: WhatIf, who: dict = Depends(role("operator"))):
     if w.name not in HOLDING:
         raise HTTPException(400, "unknown setpoint")
     v = S["twin"].evaluate(S["plant"].snapshot(), w.name, w.value, max(1, min(12, w.hours)) * 60)
@@ -356,7 +420,7 @@ def whatif(w: WhatIf):
 
 
 @app.post("/api/scenario/{name}")
-def scenario(name: str):
+def scenario(name: str, who: dict = Depends(role("operator", demo_only=True))):
     if name not in SCENARIOS:
         raise HTTPException(400, f"scenario must be one of {list(SCENARIOS)}")
     S["plant"].set_scenario(name)
@@ -365,7 +429,7 @@ def scenario(name: str):
 
 
 @app.post("/api/reset")
-def reset():
+def reset(who: dict = Depends(role("operator", demo_only=True))):
     p, g = S["plant"], S["guard"]
     p.reset()
     g.log.clear(); g._changes.clear(); g._attempts.clear(); g.counts.clear()
@@ -376,9 +440,10 @@ def reset():
     S["accuracy"].pending.clear()
     g.commanded.clear(); g.sync_commanded(p.snapshot()); g.permits.clear()
     S["integrity"] = IntegrityMonitor(ProcessModel(S["twin"].model.params), alerter=S["alerter"], audit=S["audit"])
+    S["forewarn"] = ForecastWatch(S["alerter"], S["audit"])
     if S.get("patient"):
         S["patient"].cancel()
-    S["audit"].append("demo_reset", {"note": "plant + dashboard reset; audit history kept"})
+    S["audit"].append("demo_reset", {"note": "plant + dashboard reset; audit history kept", "by": _by(who)})
     return {"ok": True}
 
 
@@ -389,32 +454,32 @@ def _alog(name: str, result: str):
 
 
 @app.post("/api/attack/lye")
-async def attack_lye():
+async def attack_lye(who: dict = Depends(role("operator", demo_only=True))):
     return _alog("Oldsmar-style lye 11,100 ppm (FC 6)", await attacks.lye_attack(GUARD_PORT))
 
 
 @app.post("/api/attack/mask")
-async def attack_mask():
+async def attack_mask(who: dict = Depends(role("operator", demo_only=True))):
     return _alog("lye via Mask Write (FC 22)", await attacks.mask_attack(GUARD_PORT))
 
 
 @app.post("/api/attack/readwrite")
-async def attack_readwrite():
+async def attack_readwrite(who: dict = Depends(role("operator", demo_only=True))):
     return _alog("lye via Read/Write Multiple (FC 23)", await attacks.readwrite_attack(GUARD_PORT))
 
 
 @app.post("/api/attack/coil")
-async def attack_coil():
+async def attack_coil(who: dict = Depends(role("operator", demo_only=True))):
     return _alog("stop distribution pump (FC 5)", await attacks.coil_attack(GUARD_PORT))
 
 
 @app.post("/api/attack/recon")
-async def attack_recon():
+async def attack_recon(who: dict = Depends(role("operator", demo_only=True))):
     return _alog("recon + force listen-only (FC 43, FC 8)", await attacks.recon_attack(GUARD_PORT))
 
 
 @app.post("/api/attack/ramp")
-async def attack_ramp():
+async def attack_ramp(who: dict = Depends(role("operator", demo_only=True))):
     async def run():
         out = await attacks.ramp_attack(GUARD_PORT, lambda: S["plant"].setpoint("chlorine_dose"))
         _alog("stealth chlorine ramp", "; ".join(out))
@@ -423,13 +488,13 @@ async def attack_ramp():
 
 
 @app.post("/api/attack/flood")
-async def attack_flood():
+async def attack_flood(who: dict = Depends(role("operator", demo_only=True))):
     ok, blocked = await attacks.flood_attack(GUARD_PORT)
     return _alog("flood, rotating unit IDs", f"Flood: {ok} writes passed, {blocked} blocked after the per-minute limit")
 
 
 @app.post("/api/attack/patient")
-async def attack_patient():
+async def attack_patient(who: dict = Depends(role("operator", demo_only=True))):
     if S.get("patient") and not S["patient"].done():
         return {"result": "already running"}
 
@@ -446,12 +511,23 @@ class Compromise(BaseModel):
 
 
 @app.post("/api/attack/plc-compromise")
-def plc_compromise(body: Compromise):
+def plc_compromise(body: Compromise, who: dict = Depends(role("operator", demo_only=True))):
     """Simulator only: malware inside the PLC doses lye 200 ppm while the registers keep saying 100."""
     S["plant"].compromise_plc({"naoh_dose": 200}, freeze_sensors=body.freeze_sensors)
     what = "and replays frozen normal pH/chlorine readings" if body.freeze_sensors else "(sensors left alone)"
     return _alog("compromised PLC (Stuxnet-style)", f"PLC now doses lye 200 ppm while reporting 100 {what}. "
                  "No command passed through Aegis.")
+
+
+class Speed(BaseModel):
+    speed: float
+
+
+@app.post("/api/sim/speed")
+def sim_speed(body: Speed, who: dict = Depends(role("operator", demo_only=True))):
+    """Simulator only: fast-forward slow chemistry during a demo (1x-1200x)."""
+    S["plant"].speed = max(1.0, min(1200.0, body.speed))
+    return {"speed": S["plant"].speed}
 
 
 class Grab(BaseModel):
@@ -460,12 +536,12 @@ class Grab(BaseModel):
 
 
 @app.post("/api/grab")
-def grab(g: Grab):
-    return S["integrity"].grab_sample(S["plant"].snapshot(), g.ph, g.chlorine, by="operator (dashboard)")
+def grab(g: Grab, who: dict = Depends(role("operator"))):
+    return S["integrity"].grab_sample(S["plant"].snapshot(), g.ph, g.chlorine, by=_by(who))
 
 
 @app.post("/api/attack/plant-work-order")
-def plant_injection():
+def plant_injection(who: dict = Depends(role("operator", demo_only=True))):
     if INJECTION not in S["orders"]:
         S["orders"].append(INJECTION)
     return {"ok": True}
@@ -477,7 +553,7 @@ class SP(BaseModel):
 
 
 @app.post("/api/operator/setpoint")
-async def operator_setpoint(sp: SP):
+async def operator_setpoint(sp: SP, who: dict = Depends(role("operator"))):
     if sp.name not in HOLDING:
         raise HTTPException(400, "unknown setpoint")
     c = await modbus.Client("127.0.0.1", GUARD_PORT, unit=1).connect()
@@ -499,10 +575,9 @@ class PermitIn(BaseModel):
 
 
 @app.post("/api/permit")
-def permit(body: PermitIn):
-    need_pin(body.pin, "issue command permit")
+def permit(body: PermitIn, who: dict = Depends(role("operator"))):
     try:
-        return S["guard"].issue_permit(body.name, body.value, max(1, min(60, body.minutes)), by="operator (dashboard)")
+        return S["guard"].issue_permit(body.name, body.value, max(1, min(60, body.minutes)), by=_by(who))
     except ValueError as e:
         raise HTTPException(400, str(e))
 
@@ -512,7 +587,7 @@ class Msg(BaseModel):
 
 
 @app.post("/api/copilot")
-async def copilot(m: Msg):
+async def copilot(m: Msg, who: dict = Depends(role("operator"))):
     try:
         return await S["copilot"].chat(m.message)
     except Exception as e:

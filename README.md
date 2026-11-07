@@ -61,7 +61,7 @@ Every write is checked in this order; the first failure blocks it:
 ## Features
 
 - **Modbus TCP from scratch** (`aegis/modbus.py`): FC 1, 2, 3, 4, 5, 6, 15, 16, 22, 23; fuzz-tested parser; idle timeouts and connection caps; automatic upstream reconnect; fails safe (exception 0x0B) if the PLC is unreachable.
-- **Digital twin** (`aegis/process.py`, `aegis/twin.py`): carbonate chemistry (charge balance solved for pH), a mixed-tank clearwell model, chlorine demand and decay, and the HOCl/OCl⁻ split (how much chlorine actually disinfects). State is *estimated from sensors*, and every forecast is "with this command vs without it".
+- **Digital twin** (`aegis/process.py`, `aegis/twin.py`): carbonate chemistry (charge balance solved for pH, temperature-dependent constants), a baffled clearwell (stirred tanks in series), CO2 exchange with air, chlorine demand and decay, and the HOCl/OCl⁻ split (how much chlorine actually disinfects). State is *estimated from sensors*, and every forecast is "with this command vs without it".
 - **Twin accuracy measured live** against the simulator, which deliberately differs from the twin (3% stronger lye feed, 20% faster chlorine decay, drifting demand, sensor noise).
 - **AI copilot, propose → approve (default)**: the AI can call `simulate_change` (ask the twin) and `propose_setpoint`. Proposals are pre-checked; unsafe ones are BLOCKED and can't be approved; safe ones show their forecast and wait for a human; on approval the write is checked **again**.
 - **Operator permits** for critical commands (pump stops): a Modbus packet can claim to be the HMI; it can't create a permit.
@@ -74,6 +74,10 @@ Every write is checked in this order; the first failure blocks it:
 - **Robust twin**: every forecast runs across an uncertainty ensemble (lye feed ±10%, chlorine decay ±30%, demand ±25%) plus the long-run steady state; the worst case decides. Found necessary by our own evaluation (see below).
 - **Process integrity: is the PLC lying?** (`aegis/integrity.py`) A compromised PLC (Stuxnet-style) can change dosing itself and never send a command through Aegis. Aegis runs the chemistry alongside the plant using only setpoints *it approved*, and alerts when the water stops matching; it flags any setpoint changed behind its back; and it compares **lab grab samples** (the one reading that doesn't come through the PLC) with what the PLC reports.
 - **Twin calibration** (`aegis/calibrate.py`): fits lye feed strength and chlorine decay/demand from the plant's own history. Refuses to apply while integrity alarms are active or when a parameter jumps >25%, so an attack can't be "learned" as normal.
+- **Corrective override**: if the twin computes that a change *fixes* an unsafe trend, it may exceed the step/ramp limits (logged). A safety system must never block the emergency fix.
+- **Early warnings** (`aegis/forewarn.py`): the operator is texted when the twin's forecast crosses an alarm limit, hours before the alarm itself.
+- **Accounts and roles** (`aegis/auth.py`): viewer / operator / engineer, scrypt hashes, signed expiring sessions, CSRF protection, login lockout, every action attributed to a named user.
+- **Guided demo**: one button walks through the whole story with what to say at each step; fast-forwards slow chemistry.
 - **Resilience**: per-request errors fail closed without taking the server down; a supervisor restarts the gateway; `/health` endpoint; systemd unit with least privilege (`deploy/aegis.service`); soak-tested with 20 concurrent HMIs.
 
 ## Run it
@@ -83,10 +87,13 @@ Every write is checked in this order; the first failure blocks it:
 ```bash
 pip install -r requirements.txt
 cp .env.example .env          # add GROQ_API_KEY for the AI copilot (free at console.groq.com)
-python -m aegis.server        # open http://127.0.0.1:8000   (engineer PIN 2468)
-python -m pytest -q           # 81 tests
+python -m aegis.server        # open http://127.0.0.1:8000
+python -m pytest -q           # 111 tests
+python -m aegis.evaluate      # attack/operator evaluation (~10 min)
 python scripts/bench.py       # latency on your machine
 ```
+
+Sign in with the demo accounts **operator / operator** or **engineer / engineer** (engineer PIN **2468**), then press **▶ Guided demo**. For a real deployment set `AEGIS_DEMO=0`, create accounts with `python -m aegis.auth add <name> <role>`, and set `AEGIS_ENGINEER_PIN`, `AEGIS_SESSION_SECRET` and `AEGIS_AUDIT_KEY`.
 
 Attacks from a separate terminal (local simulator only):
 ```bash
@@ -118,22 +125,28 @@ Point the HMI and AI at the gateway instead of the PLC, and firewall the PLC so 
 | Guard checks: function, flood (label + IP), allowlist, range, step, ramp, interlock, permit, twin predict, unusual | ✅ built + tested |
 | All write function codes incl. FC 22/23 bypass attempts; coils | ✅ tested with our client and with pymodbus |
 | Gateway in front of a **third-party** Modbus server (pymodbus) with a pymodbus client | ✅ tested (`tests/test_interop.py`) |
-| Digital twin: chemistry, forecasts, live accuracy | ✅ tested against our simulator. ⚠️ **Not validated against a real plant**: the model is textbook chemistry with stated simplifications (one mixed tank, no CO2 exchange, 25 °C) |
+| Digital twin: chemistry, forecasts, live accuracy | ✅ tested against our simulator **and** a high-fidelity simulator with physics the twin gets wrong. ⚠️ **Not validated against a real plant** |
+| Integrity monitor (lying PLC), early warnings, calibration | ✅ tested on both simulators (0 false alarms in 40 × 10 h runs; hidden attack caught in 20/20) |
+| Dashboard accounts, roles, CSRF, lockout | ✅ tested |
 | Propose → approve AI flow with twin forecasts, re-check at apply time | ✅ tested with scripted fake LLMs |
 | AI copilot against a real model (Groq) | ⚠️ **not yet run with a real key** |
 | Twilio SMS/call | ⚠️ request format tested against a mock; **not yet sent to a real phone** |
 | OpenPLC / real hardware | ⚠️ **not tested** (the sandbox this was built in blocked OpenPLC's installer). pymodbus is the third-party stand-in |
 | Protocols other than Modbus TCP (DNP3, EtherNet/IP, S7, Modbus RTU serial) | ❌ not built |
-| Dashboard login / user accounts | ❌ engineer actions need the PIN; approving AI proposals doesn't |
+| HTTPS for the dashboard | ⚠️ set `AEGIS_HTTPS=1` behind a TLS reverse proxy; not built in |
 | TLS on Modbus (Modbus/TCP Security) | ❌ not built |
 
 ## Demo script (3 minutes)
 
-1. **Hook (20s):** "Your town's water is controlled by computers from the 90s that obey anyone who can reach them. Hackers already have. Now companies want to put AI on them."
-2. **Oldsmar (20s):** *Oldsmar: lye → 11,100*. BLOCKED, with the reason. Then *Sneaky FC 22 write*: same attack hidden in a rarely-used command, also blocked. "Filters that only check normal writes miss this."
-3. **The twin (50s):** in What-if, type lye 200 and press Predict: the orange line climbs past 8.5. "Every rule says 200 is fine: under the max, a legal step. The chemistry says it's caustic water in two hours." Press *Apply as operator*: blocked by **predict**. Then *Algae bloom*: pH starts climbing on its own; Predict lye 50, and the twin shows it bringing pH back. "It doesn't just block, it tells you what's safe."
-4. **AI (40s):** *Plant poisoned work order*, ask the copilot "Any open work orders I should handle?". The lye proposal is BLOCKED and can't be approved. Ask "Chlorine is low, what should I do?" during a *Storm*: it proposes a dose with the twin's forecast; approve it. If the model refuses the injection, say so: you can't count on the model refusing, which is why the guard exists.
-5. **Close (30s):** *Stop town pump*: blocked, needs a permit. Evidence tab: chain intact, latency, twin accuracy; open the incident report with ATT&CK mappings. "No new hardware, no PLC replacement. One box in front of what they already run."
+Sign in as **engineer**, type PIN **2468**, press **▶ Guided demo**. Each step shows what to say; press *Run step*, talk over the result, press *Next step*.
+
+1. **The plant (15s)**: "This is a small town's water plant. Its controller speaks Modbus, a protocol from 1979 with no passwords."
+2. **Without Aegis (25s)**: guard off, Oldsmar attack (lye 100 → 11,100). Chemistry is fast-forwarded until the pH alarm.
+3. **With Aegis (20s)**: same attack blocked with the reason and an operator alert; the same attack hidden in Mask Write (FC 22) also blocked.
+4. **Rules aren't enough (50s)**: algae bloom; a routine +50 lye change passes every static rule and the twin blocks it (pH 9.5 within an hour); early warning shows; cutting lye to 0 is accepted as a corrective override.
+5. **AI (30s)**: poisoned work order; the AI can only propose, and Aegis pre-checks the proposal. Needs `GROQ_API_KEY`; if the model refuses the injection, say so: you can't count on the model refusing, which is why the guard exists.
+6. **Lying controller (25s)**: malware inside the PLC doses lye secretly; Aegis notices the water no longer matches the chemistry of what it approved.
+7. **Evidence (15s)**: tamper-evident log, incident report with ATT&CK mapping. "No new hardware, no PLC replacement: one box in front of what small utilities already own."
 
 ## Q&A prep
 
@@ -141,6 +154,8 @@ Point the HMI and AI at the gateway instead of the PLC, and firewall the PLC so 
 - **"If the government couldn't fix this, how can you?"** The government's fix was a rule, and it was withdrawn. The technical part (check every command before the PLC) is understood; what's missing is something cheap and simple enough for a utility with 2–5 staff. Monitor mode plus learn-normal is for exactly that.
 - **"Is your chemistry real?"** It's the standard carbonate-system charge balance and a mixed-tank model, with simplifications listed above. Accuracy is measured against a simulator that deliberately differs from the model, not against itself. It hasn't been validated on a real plant.
 - **"What if the attacker bypasses the guard?"** In deployment the PLC is only reachable through the guard (network segmentation). If the attacker is *on* the guard box, all bets are off, which is why the audit log can be keyed and checkpointed off-box.
+- **"Your evaluation grades the twin against your own simulator."** Partly true, so we built a second simulator with physics the twin gets wrong (more baffles, faster degassing, cold water, a quantized lye pump, analyzer lag). The first version false-alarmed in 11 of 20 runs against it; we found why and fixed it (`docs/JUDGE_ROUNDS.md`, Round 2). Neither replaces a real plant.
+- **"What does the July 2026 attack wave have to do with this?"** FBI/EPA, 30 July 2026: attackers took over internet-facing water PLCs in at least seven states, causing loss of pressure and flooding. Their first recommendation: put PLCs behind a secure gateway. Aegis is that gateway, plus physics. Caveat: those were Rockwell MicroLogix PLCs, which speak EtherNet/IP as well as Modbus TCP; Aegis only parses Modbus today.
 - **"Can't an attacker pretend to be the operator?"** Yes: Modbus unit IDs are labels. That's why the rules apply to everyone, flood limits count per IP, and critical commands need a permit created on the dashboard, not a packet.
 
 ## Docs

@@ -71,17 +71,35 @@ table.t td{padding:3px 4px;border-top:1px solid var(--line);vertical-align:top}t
 .verdict{margin-top:8px;font-size:13px;padding:8px 10px;border-radius:8px;background:var(--panel2);border:1px solid var(--line)}
 .verdict.bad{border-color:var(--bad);color:#ffb3b4}.verdict.good{border-color:var(--ok);color:#bff3d4}
 a{color:var(--blue)}code{font-size:11.5px}
+#guide{position:fixed;right:16px;bottom:16px;width:420px;max-width:calc(100vw - 32px);background:#141f2b;border:1px solid #36506b;
+  border-radius:12px;padding:14px 16px;z-index:40;box-shadow:0 10px 40px rgba(0,0,0,.5);display:none}
+#guide h3{margin:0 0 4px;font-size:15px}#guide .say{background:#0d151e;border-left:3px solid var(--blue);padding:8px 10px;margin:8px 0;font-size:13px;border-radius:6px}
+#guide .meta{font-size:11px;color:var(--muted)}#guide .gst{font-size:12.5px;color:var(--warn);min-height:16px}
+#login{position:fixed;inset:0;background:rgba(5,9,14,.92);display:none;align-items:center;justify-content:center;z-index:50}
+#login .box{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:24px;width:340px;max-width:calc(100vw - 32px)}
+#login input{width:100%;margin:6px 0}
 @media(max-width:1000px){main,.page.on{grid-template-columns:1fr}.kpis,.stat{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
 <body>
+<div id="login"><div class="box"><h1 style="margin:0 0 4px;font-size:20px">AEGIS</h1>
+  <div class="trace" style="margin:0 0 12px">Sign in to the plant safety console</div>
+  <input id="lu" class="f" placeholder="username" autocomplete="username">
+  <input id="lp" class="f" type="password" placeholder="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+  <button style="width:100%;margin-top:8px" onclick="doLogin()">Sign in</button>
+  <div class="err" id="lerr"></div>
+  <div class="trace" id="ldemo">Demo accounts: <b>operator</b> / operator · <b>engineer</b> / engineer</div></div></div>
+<div id="guide"><div class="meta" id="g-n"></div><h3 id="g-t"></h3><div id="g-d" class="trace" style="margin:0"></div>
+  <div class="say" id="g-say"></div><div class="gst" id="g-st"></div>
+  <div class="btns" style="justify-content:space-between"><button onclick="guideStop()">✕ Exit</button><span><button onclick="guideGo(-1)">◀</button> <button id="g-next" onclick="guideGo(1)">Run step ▶</button></span></div></div>
 <header>
   <h1>AEGIS</h1><span class="sub" id="plantname">Water Treatment Plant #2 · simulated · Modbus TCP</span>
   <span class="sp"></span>
-  <label class="sub">AI autonomy <select id="auto" onchange="setAutonomy()"><option value="propose">propose → operator approves</option><option value="direct">direct (writes via guard)</option></select></label>
-  <input id="pin" class="f" style="width:120px" type="password" placeholder="Engineer PIN" autocomplete="off">
-  <span class="sub">Guard</span>
-  <div class="seg" id="modes"><button data-m="enforce" onclick="setMode('enforce')">ENFORCE</button><button data-m="monitor" onclick="setMode('monitor')">MONITOR</button><button data-m="off" onclick="setMode('off')">OFF</button></div>
+  <label class="sub">AI autonomy <select id="auto" onchange="setAutonomy()"><option value="propose">propose → approve</option><option value="direct">direct (via guard)</option></select></label>
+  <input id="pin" class="f" style="width:96px" type="password" placeholder="Eng. PIN" autocomplete="off">
+  <button style="padding:4px 9px;font-size:12px;background:#122436;border-color:#24496b" onclick="guideStart()">▶ Guided demo</button>
+  <span class="sub" id="who"></span><button style="padding:4px 9px;font-size:12px" onclick="logout()">Sign out</button>
+  <div class="seg" id="modes" title="Guard mode"><button data-m="enforce" onclick="setMode('enforce')">ENFORCE</button><button data-m="monitor" onclick="setMode('monitor')">MONITOR</button><button data-m="off" onclick="setMode('off')">OFF</button></div>
 </header>
 <div class="err" id="hdrerr" style="padding:0 18px"></div>
 <div class="tabs"><button class="on" data-p="ops" onclick="tab('ops')">Operations</button><button data-p="eng" onclick="tab('eng')">Engineering</button><button data-p="evi" onclick="tab('evi')">Evidence &amp; performance</button></div>
@@ -130,6 +148,7 @@ a{color:var(--blue)}code{font-size:11.5px}
       </div>
       <div class="raw">Raw water: <span>pH <b id="r-ph">–</b></span><span>alkalinity <b id="r-alk">–</b> mg/L CaCO₃</span><span>turbidity <b id="r-tu">–</b> NTU</span><span>flow to town <b id="v-fl">–</b> gpm</span></div>
       <div class="alarm" id="alarm"></div>
+      <div id="forewarn"></div>
     </div>
     <div class="panel">
       <h2>pH and chlorine: past and the twin's forecast <span class="sp"></span><span class="sub" id="clock" style="text-transform:none;letter-spacing:0"></span></h2>
@@ -260,8 +279,9 @@ const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&g
 const fmt=v=>typeof v==='number'?(Math.abs(v)>=1000?v.toLocaleString():String(+v.toFixed(3))):esc(v);
 let S=null, dash=0, overlay=null, policy=null, rulesShown=false, tagsFilled=false;
 const pin=()=>$('pin').value;
-async function post(u,b){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b||{})});return r.json().catch(()=>({}));}
-async function postChk(u,b,errEl){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b||{})});
+const H={'Content-Type':'application/json','X-Aegis':'1'};
+async function post(u,b){const r=await fetch(u,{method:'POST',headers:H,body:JSON.stringify(b||{})});if(r.status===401)showLogin();return r.json().catch(()=>({}));}
+async function postChk(u,b,errEl){const r=await fetch(u,{method:'POST',headers:H,body:JSON.stringify(b||{})});if(r.status===401)showLogin();
   const j=await r.json().catch(()=>({}));$(errEl).textContent=r.ok?'':(j.detail||('error '+r.status));return r.ok;}
 function tab(p){document.querySelectorAll('.page').forEach(e=>e.classList.toggle('on',e.id==='p-'+p));document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.p===p));}
 async function setMode(m){await postChk('/api/mode',{mode:m,pin:pin()},'hdrerr');load();}
@@ -277,7 +297,7 @@ async function grab(){const ph=parseFloat($('g-ph').value),cl=parseFloat($('g-cl
 function grabSim(){if(!S)return;const t=S.truth||{ph:S.plant.ph,chlorine_residual:S.plant.chlorine_residual};
   $('g-ph').value=(t.ph+(Math.random()-.5)*.06).toFixed(2);$('g-cl').value=(t.chlorine_residual+(Math.random()-.5)*.04).toFixed(2);}
 let calRes=null;
-async function calib(){$('calerr').textContent='fitting…';const r=await fetch('/api/calibrate');const j=await r.json();
+async function calib(){$('calerr').textContent='fitting…';const r=await fetch('/api/calibrate');if(r.status===403){$('calerr').textContent='needs the engineer role';return;}const j=await r.json();
   if(!r.ok){$('calerr').textContent=j.detail||'error';return;}$('calerr').textContent='';calRes=j;
   $('calout').innerHTML=`<table class="t" style="margin-top:6px"><tr><th>parameter</th><th>current</th><th>fitted</th></tr>${Object.keys(j.params).map(k=>`<tr><td>${esc(k)}</td><td>${fmt(j.current[k])}</td><td><b>${fmt(j.params[k])}</b></td></tr>`).join('')}</table>
   ${(j.warnings||[]).map(w=>`<div class="verdict bad">⚠ ${esc(w)}</div>`).join('')}
@@ -359,8 +379,66 @@ async function learn(sim){const r=await (await fetch('/api/learn?simulated='+(si
   <div class="trace">Writers seen: ${Object.entries(r.writers).map(([k,v])=>`${esc(k)}: ${v.length?esc(v.join(', ')):'none'}`).join(' · ')}</div>`;}
 async function applyLearn(){if(learned&&await postChk('/api/policy',{policy:learned.policy,pin:pin()},'learnerr')){$('learnerr').innerHTML='<span class="okm">Applied ✓</span>';rulesShown=false;await load();renderRules(true);}}
 
+/* ---------- guided demo ---------- */
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function until(cond,ms,msg){const t0=Date.now();while(Date.now()-t0<ms){await load();if(S&&cond(S))return true;$('g-st').textContent=msg+' '+Math.round((Date.now()-t0)/1000)+'s';await sleep(700);}return false;}
+async function speed(x){await post('/api/sim/speed',{speed:x});}
+async function needPin(){if(!pin())throw new Error('sign in as engineer and type the engineer PIN in the header first (demo: 2468)');}
+const STEPS=[
+ {t:'The plant',d:'A simulated small-town water treatment plant: raw water, chlorine for disinfection, lye (NaOH) for pH, a clearwell tank, pumps to town.',
+  say:'"This is a small town\'s water plant. Its controller speaks Modbus, a protocol from 1979 with no passwords: anyone who can reach it can change the chemicals."',
+  run:async()=>{await post('/api/reset');await speed(60);tab('ops');}},
+ {t:'Without Aegis: the Oldsmar attack',d:'Guard OFF. A hacker sends one Modbus packet: lye from 100 to 11,100 ppm. We fast-forward the chemistry.',
+  say:'"In 2021 in Oldsmar, Florida, someone set the lye to 11,100 ppm. Watch what that does to the water."',
+  run:async()=>{await needPin();await post('/api/mode',{mode:'off',pin:pin()});await post('/api/attack/lye');await speed(300);
+   await until(s=>s.plant.ph>8.5,30000,'waiting for pH to cross 8.5…');await speed(60);}},
+ {t:'With Aegis: blocked',d:'Reset, guard ON (enforce). Same attack, then the same attack hidden in a rarely used Modbus command (FC 22).',
+  say:'"Same attack with Aegis in front of the controller: blocked, with the reason, and the operator gets a text. Hiding it in an obscure command doesn\'t help."',
+  run:async()=>{await post('/api/reset');await post('/api/mode',{mode:'enforce',pin:pin()});await sleep(400);await post('/api/attack/lye');await sleep(600);await post('/api/attack/mask');}},
+ {t:'Rules aren\'t enough: the twin',d:'An algae bloom pushes raw-water pH up. A routine +50 lye change passes every static rule (in range, legal step). The twin computes the chemistry, blocks it, and checks the right fix.',
+  say:'"Afternoon algae bloom. Someone makes a routine +50 change to the lye. Every rule says fine: in range, small step. But the raw water is already alkaline, and pH is a titration curve: flat, then suddenly steep. Aegis simulates the next six hours before letting a command through, warns before the alarm, and confirms the fix: turn the lye off."',
+  run:async()=>{await post('/api/reset');await post('/api/scenario/bloom');await speed(240);
+   await until(s=>(s.forewarn||[]).length>0,25000,'bloom arriving, waiting for the early warning…');await speed(60);
+   const a=await post('/api/operator/setpoint',{name:'naoh_dose',value:150});
+   $('wi-n').value='naoh_dose';$('wi-v').value='0';await whatif();await sleep(800);
+   const b=await post('/api/operator/setpoint',{name:'naoh_dose',value:0});await load();
+   $('g-st').innerHTML=`Routine +50 lye: <b>${a.result.toUpperCase()}</b> (${esc(a.reason)})<br>Cut lye to 0: <b>${b.result.toUpperCase()}</b>`;
+   if(a.result!=='blocked')throw new Error('expected the twin to block the +50 change');}},
+ {t:'The AI copilot',d:'A poisoned work order tells the AI to raise lye to 9,000. In propose mode the AI can only suggest; Aegis pre-checks every suggestion.',
+  say:'"Utilities are adding AI copilots. AI that reads emails and work orders can be tricked. Aegis treats the AI like any other user: it proposes, Aegis checks, a human approves."',
+  run:async()=>{await post('/api/scenario/normal');await post('/api/attack/plant-work-order');
+   if(S&&S.llm){$('q').value='Any open work orders I should handle?';await ask();}else{$('g-st').textContent='AI is offline here: add GROQ_API_KEY to show this step live.';}}},
+ {t:'A lying controller',d:'Malware inside the PLC secretly doses lye 200 while its registers still say 100. No command passes through Aegis.',
+  say:'"What if the controller itself is hacked, like Stuxnet? Aegis runs the chemistry alongside the plant. When the water stops matching what the controller claims, it raises the alarm."',
+  run:async()=>{await post('/api/reset');await post('/api/attack/plc-compromise',{freeze_sensors:false});await speed(120);
+   await until(s=>!s.integrity.ok,40000,'watching the physics…');await speed(60);}},
+ {t:'Evidence',d:'Tamper-evident log, MITRE ATT&CK mapping, incident report.',
+  say:'"Every decision is in a tamper-evident log, and Aegis writes the incident report. No new hardware, no PLC replacement: one box in front of what small utilities already own."',
+  run:async()=>{tab('evi');window.open('/api/report?minutes=30','_blank');}},
+];
+let gi=-1, ran=false;
+function guideShow(){const s=STEPS[gi];ran=false;$('g-n').textContent=`Step ${gi+1} of ${STEPS.length}`;$('g-t').textContent=s.t;
+  $('g-d').textContent=s.d;$('g-say').textContent=s.say;$('g-st').textContent='';$('g-next').textContent='Run step ▶';}
+function guideStart(){gi=0;$('guide').style.display='block';guideShow();}
+function guideStop(){$('guide').style.display='none';speed(60);}
+async function guideGo(dir){const b=$('g-next');
+  if(dir<0){gi=Math.max(0,gi-1);guideShow();return;}
+  if(ran){if(gi<STEPS.length-1){gi++;guideShow();}return;}         // second press: move on
+  b.disabled=true;$('g-st').textContent='running…';
+  try{await STEPS[gi].run();if(!/offline|Routine/.test($('g-st').textContent))$('g-st').textContent='✓ done: talk over the result, then go on';}
+  catch(e){$('g-st').textContent='⚠ '+(e.message||e);b.disabled=false;return;}
+  b.disabled=false;ran=true;b.textContent=gi<STEPS.length-1?'Next step ▶':'Finished';}
+
+/* ---------- login ---------- */
+function showLogin(){$('login').style.display='flex';}
+async function doLogin(){const r=await fetch('/api/login',{method:'POST',headers:H,body:JSON.stringify({username:$('lu').value,password:$('lp').value})});
+  const j=await r.json().catch(()=>({}));if(!r.ok){$('lerr').textContent=j.detail||'login failed';return;}
+  $('login').style.display='none';$('lp').value='';$('who').textContent=`${j.user} · ${j.role}`;load();}
+async function logout(){await post('/api/logout');showLogin();}
+(async()=>{const r=await fetch('/api/me');if(r.ok){const j=await r.json();$('who').textContent=`${j.user} · ${j.role}`;$('ldemo').style.display=j.demo?'':'none';}else showLogin();})();
+
 /* ---------- main loop ---------- */
-async function load(){let s;try{s=await (await fetch('/api/state')).json();}catch(e){return;}S=s;const p=s.plant;
+async function load(){let s;try{const r=await fetch('/api/state');if(r.status===401){showLogin();return;}s=await r.json();}catch(e){return;}S=s;const p=s.plant;
   document.querySelectorAll('#modes button').forEach(b=>b.className=(b.dataset.m===s.guard_mode?'on ':'')+b.dataset.m);
   $('v-ph').textContent=p.ph.toFixed(2);$('v-cl').textContent=p.chlorine_residual.toFixed(2);$('v-lv').textContent=p.tank_level.toFixed(0)+'%';
   $('v-hocl').textContent=p.hocl_pct.toFixed(0)+'%';$('v-fl').textContent=p.flow_out;
@@ -392,8 +470,9 @@ async function load(){let s;try{s=await (await fetch('/api/state')).json();}catc
   $('log').innerHTML=s.log.length?s.log.map(d=>{const cls=d.would_block?'wb':(d.allowed?(d.check==='unusual'?'un':'ok'):'no'),tg=d.would_block?'<span class="tag wb">WOULD BLOCK</span>':(d.allowed?'<span class="tag ok">ALLOWED</span>':'<span class="tag no">BLOCKED</span>');
     return `<div class="ev ${cls}"><div class="h"><span>${esc(d.source)} → ${esc(d.register)} = ${fmt(d.new)} ${esc(d.unit)}<span class="chk ${d.check}">${esc(d.check)}</span>${d.fc?`<span class="chk">FC ${d.fc}</span>`:''}${(d.techniques||[]).map(t=>`<span class="tech" title="${esc(t[1])}">${esc(t[0])}</span>`).join('')}</span>${tg}</div>
     <div class="m">${esc(d.reason)} · was ${fmt(d.old)} · from ${esc(d.peer)} · ${new Date(d.t*1000).toLocaleTimeString()}</div></div>`;}).join(''):'<div class="trace">No writes yet.</div>';
+  $('forewarn').innerHTML=(s.forewarn||[]).map(w=>`<div class="verdict bad" style="border-color:var(--warn);color:#ffe2a8">🔮 ${esc(w.message)}</div>`).join('');
   const I=s.integrity;$('intst').innerHTML=I.ok?'<span class="okm">✔ consistent</span>':'<span class="err">✖ MISMATCH</span>';
-  $('intev').innerHTML=(I.events||[]).map(e=>`<div class="al critical">${esc(e.message)}</div>`).join('')+(I.ph_err!=null?`<div class="trace">model vs measured right now: pH ${I.ph_err>=0?'+':''}${I.ph_err}, chlorine ${I.cl_err>=0?'+':''}${I.cl_err} mg/L · ${esc(I.message)}</div>`:'');
+  $('intev').innerHTML=(I.events||[]).map(e=>`<div class="al critical">${esc(e.message)}</div>`).join('')+(I.ph_err!=null?`<div class="trace">measured vs chemistry right now: alkalinity <b>${I.alk_err_pct>=0?'+':''}${I.alk_err_pct}%</b> (alarm at ±4%), pH ${I.ph_err>=0?'+':''}${I.ph_err}, chlorine ${I.cl_err>=0?'+':''}${I.cl_err} mg/L · ${esc(I.message)}</div>`:'');
   $('truth').innerHTML=s.truth?`<span style="color:var(--warn)">Simulator truth (an operator can't see this): real pH <b>${s.truth.ph}</b>, real lye feed <b>${s.truth.naoh_dose_actual}</b> ppm${s.truth.sensors_frozen?' · PLC is replaying frozen readings':''}</span>`:'';
   const au=s.audit;$('audit').innerHTML=au.ok?`<span class="audit-ok">✔ Chain intact</span> · ${au.entries} entries verified${au.keyed?' · keyed (HMAC)':' · unkeyed (set AEGIS_AUDIT_KEY)'}<div class="trace">head <code>${esc((au.head||'').slice(0,32))}…</code></div>`:`<span class="audit-bad">✖ ${esc(au.message)}</span>`;
   const L=s.latency,f=v=>v==null?'–':v.toFixed(2)+' ms';

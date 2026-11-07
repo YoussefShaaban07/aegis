@@ -10,9 +10,16 @@ independent checks, from weakest to strongest assumption:
 
 2. Physics shadow. A copy of the process model runs open-loop from a trusted
    anchor, driven by the setpoints Aegis approved and the raw-water sensors.
-   If measured pH/chlorine drift away from what the chemistry allows (beyond
-   model error), the dosing isn't what the PLC claims. Catches attackers who
-   hide the setpoint but leave the real sensors alone.
+   If the water drifts away from what the chemistry allows (beyond model
+   error), the dosing isn't what the PLC claims. Catches attackers who hide the
+   setpoint but leave the real sensors alone.
+
+   The comparison is done in ALKALINITY, not pH: measured pH is converted to
+   the alkalinity it implies. On the steep part of the titration curve (e.g.
+   an algae bloom) a 3% model error is a 0.4 pH error but still only ~3% of
+   alkalinity, while a hidden lye attack moves alkalinity by 10%+. Measured:
+   worst normal-operation error 1.9% (standard sim) / 2.3% (high-fidelity sim
+   with physics the twin lacks); hidden 100->200 ppm attack: 5.5% after 90 min.
 
 3. Lab grab samples. Operators already take grab samples for compliance. Type
    the lab value in; if the PLC-reported reading disagrees, the sensor path is
@@ -26,16 +33,16 @@ from __future__ import annotations
 
 from collections import deque
 
-from .process import ProcessModel, ProcessState, Raw
+from .process import ProcessModel, ProcessState, Raw, alk_from_ph, raw_from
 
 SETPOINTS = ("intake_pump", "distribution_pump", "chlorine_dose", "naoh_dose", "distribution_rate")
 
 
 class IntegrityMonitor:
-    def __init__(self, model: ProcessModel | None, ph_tol: float = 0.2, cl_tol: float = 0.25, persist: int = 3,
+    def __init__(self, model: ProcessModel | None, alk_tol: float = 0.04, cl_tol: float = 0.3, persist: int = 3,
                  reanchor_s: float = 3600, alerter=None, audit=None, sp_tol: float = 1e-6):
         self.model = model
-        self.ph_tol, self.cl_tol, self.persist, self.reanchor_s = ph_tol, cl_tol, persist, reanchor_s
+        self.alk_tol, self.cl_tol, self.persist, self.reanchor_s = alk_tol, cl_tol, persist, reanchor_s
         self.alerter, self.audit = alerter, audit
         self.sp_tol = sp_tol
         self.shadow: ProcessState | None = None
@@ -59,8 +66,23 @@ class IntegrityMonitor:
             self.alerter.raise_alert(f"integrity:{key}", severity, message)
 
     def _anchor(self, state: dict, t: float):
-        raw = Raw(state["raw_ph"], state["raw_alkalinity"], state["raw_turbidity"])
-        self.shadow = self.model.estimate(state, raw)
+        """(Re-)anchor the shadow to the measurements.
+
+        First time: estimate from sensors (all baffled cells equal). Afterwards: keep the
+        shadow's internal cell profile (it knows a recent dose change is still travelling
+        through the baffles) and only shift it so the outlet matches what's measured.
+        """
+        raw = raw_from(state)
+        if self.shadow is None:
+            self.shadow = self.model.estimate(state, raw)
+        else:
+            sh = self.shadow
+            target = alk_from_ph(state["ph"], sh.ct, *self.model.pk(raw.temp_c))
+            d_alk = target - sh.alk
+            d_cl = state["chlorine_residual"] - sh.chlorine
+            sh.cells = [(a + d_alk, c, max(0.0, cl + d_cl)) for a, c, cl in (sh.cells or [(sh.alk, sh.ct, sh.chlorine)])]
+            sh.alk, sh.ct, sh.chlorine = sh.cells[-1]
+            sh.cell_ph = []
         self.anchor_t = t
         self.strikes = 0
 
@@ -89,36 +111,44 @@ class IntegrityMonitor:
         if self.shadow is None:
             self._anchor(state, t)
             self.last_t = t
-            self.status = {"ok": True, "message": "anchored", "ph_err": 0.0, "cl_err": 0.0}
+            self.status = {"ok": True, "message": "anchored", "ph_err": 0.0, "cl_err": 0.0, "alk_err_pct": 0.0}
             return self.status
         dt = max(0.0, t - self.last_t)
         self.last_t = t
         sp = dict(commanded or {})
         for k in SETPOINTS:                 # use approved setpoints; fall back to reported ones
             sp.setdefault(k, state.get(k))
-        raw = Raw(state["raw_ph"], state["raw_alkalinity"], state["raw_turbidity"])
+        raw = raw_from(state)
         n = max(1, int(dt // 60))
         for _ in range(n):
             self.model.step(self.shadow, raw, sp, dt / n)
         self.shadow.tank_level = state.get("tank_level", self.shadow.tank_level)   # level is not chemistry
         ph_pred, cl_pred = self.model.ph(self.shadow), self.shadow.chlorine
+        implied_alk = alk_from_ph(state["ph"], self.shadow.ct, *self.model.pk(raw.temp_c))
+        e_alk = (implied_alk - self.shadow.alk) / max(self.shadow.alk, 1e-4)
         e_ph, e_cl = state["ph"] - ph_pred, state["chlorine_residual"] - cl_pred
-        bad = abs(e_ph) > self.ph_tol or abs(e_cl) > self.cl_tol
+        bad = abs(e_alk) > self.alk_tol or abs(e_cl) > self.cl_tol
         self.strikes = self.strikes + 1 if bad else 0
+        nums = {"ph_err": round(e_ph, 3), "cl_err": round(e_cl, 3), "alk_err_pct": round(100 * e_alk, 1)}
         if self.strikes >= self.persist:
-            what = (f"pH is {state['ph']:.2f} but the chemistry predicts {ph_pred:.2f}" if abs(e_ph) > self.ph_tol else
-                    f"chlorine is {state['chlorine_residual']:.2f} mg/L but the chemistry predicts {cl_pred:.2f}")
+            if abs(e_alk) > self.alk_tol:
+                what = (f"pH is {state['ph']:.2f} but the chemistry predicts {ph_pred:.2f} "
+                        f"(alkalinity {100 * e_alk:+.0f}% vs what the approved dosing gives)")
+            else:
+                what = f"chlorine is {state['chlorine_residual']:.2f} mg/L but the chemistry predicts {cl_pred:.2f}"
             self._event(f"physics:{int(self.anchor_t)}", "critical",
                         f"Process doesn't match the approved setpoints: {what}. The real dosing may differ from "
                         "what the PLC reports (or an instrument has failed). Take a grab sample.",
                         {"ph_measured": state["ph"], "ph_predicted": round(ph_pred, 3),
-                         "cl_measured": state["chlorine_residual"], "cl_predicted": round(cl_pred, 3)})
-            self.status = {"ok": False, "message": what, "ph_err": round(e_ph, 3), "cl_err": round(e_cl, 3)}
+                         "cl_measured": state["chlorine_residual"], "cl_predicted": round(cl_pred, 3),
+                         "alk_err_pct": round(100 * e_alk, 1)})
+            self.status = {"ok": False, "message": what, **nums}
             return self.status
         self.status = {"ok": not bad, "message": "process consistent with approved setpoints" if not bad else
-                       "deviation (watching)", "ph_err": round(e_ph, 3), "cl_err": round(e_cl, 3)}
+                       "deviation (watching)", **nums}
         # Model error accumulates open-loop: re-anchor while things look consistent.
-        if not bad and t - self.anchor_t > self.reanchor_s and abs(e_ph) < self.ph_tol / 2 and abs(e_cl) < self.cl_tol / 2:
+        if not bad and t - self.anchor_t > self.reanchor_s and abs(e_alk) < self.alk_tol / 2 \
+                and abs(e_cl) < self.cl_tol / 2:
             self._anchor(state, t)
         return self.status
 

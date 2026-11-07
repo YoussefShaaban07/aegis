@@ -80,7 +80,7 @@ def test_algae_bloom_lye_increase_blocked_decrease_allowed():
 def test_storm_chlorine_increase_is_corrective():
     plant = Plant(noise=False)
     plant.set_scenario("storm")
-    for _ in range(60):
+    for _ in range(90):
         plant.step(1.0)
     assert plant.chlorine < 0.75                    # demand jumped, residual sagging
     g = Guard(None, plant.snapshot, twin=Twin())
@@ -152,3 +152,30 @@ def test_patient_attacker_over_modbus():
         assert plant.setpoint("naoh_dose") == 150 and g.log[0].check == "predict"
         plc.close(); gsrv.close()
     asyncio.run(run())
+
+
+def test_corrective_change_may_exceed_step_limit_but_others_may_not():
+    """Bloom: cutting lye 100 -> 0 is a 100 ppm step (limit 50) but fixes the trend: allowed.
+    The same big step on a normal day isn't corrective: still blocked by the step rule."""
+    plant = Plant(noise=False)
+    plant.set_scenario("bloom")
+    for _ in range(40):
+        plant.step(1.0)
+    g = Guard(None, plant.snapshot, twin=Twin())
+    d = g.check("naoh_dose", 0, plant.snapshot(), "Operator HMI", "h:1")
+    assert d.allowed and "CORRECTIVE OVERRIDE of the step limit" in d.reason
+    normal = Plant(noise=False)
+    g2 = Guard(None, normal.snapshot, twin=Twin())
+    d2 = g2.check("naoh_dose", 0, normal.snapshot(), "Operator HMI", "h:1")
+    assert not d2.allowed and d2.check == "step"
+
+
+def test_permit_not_burned_by_rejected_write():
+    plant = Plant(noise=False)
+    g = Guard(None, plant.snapshot, twin=Twin())
+    g.policy["limits"]["distribution_pump"]["permit_values"] = [0]
+    plant.state.tank_level = 93                      # interlock will reject stopping distribution
+    g.issue_permit("distribution_pump", 0)
+    assert not g.check("distribution_pump", 0, plant.snapshot(), "Operator HMI", "h:1").allowed
+    plant.state.tank_level = 60
+    assert g.check("distribution_pump", 0, plant.snapshot(), "Operator HMI", "h:1").allowed   # permit still there

@@ -25,7 +25,7 @@ from dataclasses import dataclass, field
 
 from . import modbus
 from .config import Tags, load_process
-from .process import ProcessModel, ProcessState, Raw, hocl_fraction
+from .process import HiFiModel, ProcessModel, ProcessState, Raw, hocl_fraction
 
 TAGS = Tags.load()
 HOLDING = {n: t.address for n, t in TAGS.holding.items()}   # writable tags (name -> address)
@@ -49,11 +49,13 @@ def from_raw(name: str, raw: int) -> float:
     return TAGS.all[name].from_raw(raw)
 
 
-def _true_params() -> dict:
+def _true_params(fidelity: str = "standard") -> dict:
     p = load_process()
     # the real plant is never exactly the model
     p.update(naoh_feed_strength=p["naoh_feed_strength"] * 1.03,
              chlorine_decay_per_hr=p["chlorine_decay_per_hr"] * 1.2)
+    if fidelity == "high":          # structure the twin has wrong, not just parameters
+        p.update(baffling_cells=p.get("baffling_cells", 1) + 1, kla_per_hr=0.25)
     return p
 
 
@@ -64,13 +66,15 @@ class Plant:
     noise: bool = True
     coils: list[int] = field(default_factory=lambda: [0] * 16)
     hr: list[int] = field(default_factory=lambda: [0] * 16)
-    history: deque = field(default_factory=lambda: deque(maxlen=900))
+    history: deque = field(default_factory=lambda: deque(maxlen=2400))
     scenario: str = "normal"
     sim_time: float = 0.0
+    fidelity: str = "standard"          # "high": physics the twin doesn't model (see process.HiFiModel)
     _last: float = field(default_factory=time.monotonic)
 
     def __post_init__(self):
-        self.model = ProcessModel(_true_params())
+        self.model = HiFiModel(_true_params("high")) if self.fidelity == "high" else ProcessModel(_true_params())
+        self._lag = None                # analyzer readings (high fidelity: first-order lag)
         self.rng = random.Random(self.seed)
         self.raw = Raw(**SCENARIOS["normal"].__dict__)
         self._raw_target = Raw(**self.raw.__dict__)
@@ -121,6 +125,8 @@ class Plant:
     def set_scenario(self, name: str, immediate: bool = False):
         self.scenario = name
         self._raw_target = Raw(**SCENARIOS[name].__dict__)
+        if self.fidelity == "high":
+            self._raw_target.temp_c = 15.0           # colder water: different chemistry constants
         if immediate:
             self.raw = Raw(**self._raw_target.__dict__)
 
@@ -150,7 +156,7 @@ class Plant:
         self.sim_time += dt
         # raw water drifts toward the scenario over ~20 simulated minutes
         k = 1 - pow(2.718281828, -dt / 1200)
-        for f in ("ph", "alkalinity", "turbidity"):
+        for f in ("ph", "alkalinity", "turbidity", "temp_c"):
             cur, tgt = getattr(self.raw, f), getattr(self._raw_target, f)
             setattr(self.raw, f, cur + (tgt - cur) * k)
         if self.noise:   # chlorine demand wanders (organic load changes)
@@ -160,6 +166,11 @@ class Plant:
         sub = max(1, int(dt // 30))
         for _ in range(sub):
             self.model.step(self.state, self.raw, self.physical_setpoints(), dt / sub, demand)
+        if self.fidelity == "high":     # pH analyzer ~2 min lag, chlorine analyzer ~3 min
+            if self._lag is None:
+                self._lag = [self.ph, self.chlorine]
+            self._lag[0] += (self.ph - self._lag[0]) * (1 - pow(2.718281828, -dt / 120))
+            self._lag[1] += (self.chlorine - self._lag[1]) * (1 - pow(2.718281828, -dt / 180))
         self.history.append({"t": time.time(), "sim_t": self.sim_time, **self.snapshot(values_only=True)})
 
     def _noise(self, sd: float) -> float:
@@ -178,15 +189,17 @@ class Plant:
     def sensors(self) -> dict:
         """What the instruments report through the PLC (with a little noise)."""
         fz = self.compromise["frozen"] if (self.compromise and self.compromise.get("freeze")) else None
-        ph = fz["ph"] if fz else self.ph
-        cl = fz["chlorine_residual"] if fz else self.chlorine
+        lag = self._lag if (self.fidelity == "high" and self._lag) else (self.ph, self.chlorine)
+        ph = fz["ph"] if fz else lag[0]
+        cl = fz["chlorine_residual"] if fz else lag[1]
         return {"tank_level": round(self.tank_level + self._noise(0.05), 1),
                 "chlorine_residual": round(max(0.0, cl + self._noise(0.01)), 2),
                 "ph": round(ph + self._noise(0.01), 2),
                 "flow_out": round(self.flow_out),
                 "raw_ph": round(self.raw.ph + self._noise(0.01), 2),
                 "raw_alkalinity": round(self.raw.alkalinity),
-                "raw_turbidity": round(self.raw.turbidity, 1)}
+                "raw_turbidity": round(self.raw.turbidity, 1),
+                "water_temp": round(self.raw.temp_c, 1)}
 
     def input_registers(self) -> list[int]:
         s = self.sensors()
