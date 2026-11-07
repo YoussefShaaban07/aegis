@@ -80,7 +80,7 @@ def test_ai_copilot_bound_by_same_rules():
         assert plant.setpoint("chlorine_dose") == 1.8
         with pytest.raises(modbus.ModbusError):
             await ai.write(HOLDING["chlorine_dose"], to_raw("chlorine_dose", 3.9))  # in range, too big a jump
-        assert guard.log[0].source == "AI copilot" and "max step" in guard.log[0].reason
+        assert guard.log[0].source == "AI copilot" and guard.log[0].check == "step"
         plc.close(); gsrv.close()
     asyncio.run(run())
 

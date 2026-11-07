@@ -42,6 +42,20 @@ button.purple{background:#2a1838;border-color:#55306f;color:#e2c6ff}
 .switch .t{width:44px;height:24px;border-radius:99px;background:#33404d;position:relative;transition:.2s}
 .switch .t::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:.2s}
 .switch.on .t{background:var(--ok)}.switch.on .t::after{left:23px}
+.hdr-in{font:inherit;background:#0d151e;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:6px 8px;width:120px}
+select{font:inherit;background:#0d151e;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:6px 8px}
+.err{color:var(--bad);font-size:12px;min-height:16px}
+.al{padding:8px 10px;border-radius:7px;background:#0d151e;border-left:4px solid var(--warn);font-size:13px;margin-bottom:6px}
+.al.critical{border-color:var(--bad)}.al .d{color:var(--muted);font-size:12px}
+.prop{padding:8px 10px;border-radius:7px;background:#0d151e;border:1px solid var(--line);margin-bottom:6px;font-size:13px}
+.prop .act{display:flex;gap:6px;margin-top:6px}.prop button{padding:4px 10px;font-size:12px}
+.st{font-size:11px;font-weight:700;padding:1px 6px;border-radius:4px;text-transform:uppercase}
+.st.pending{background:rgba(245,182,66,.18);color:var(--warn)}.st.blocked,.st.failed,.st.rejected{background:rgba(255,77,79,.2);color:var(--bad)}.st.approved{background:rgba(46,204,113,.15);color:var(--ok)}
+table.rules{width:100%;border-collapse:collapse;font-size:12px}table.rules th{color:var(--muted);text-align:left;font-weight:600;padding:4px}
+table.rules td{padding:3px 4px;border-top:1px solid var(--line)}table.rules input{width:70px;font:inherit;background:#0d151e;color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:4px}
+.chk{font-size:10px;padding:1px 5px;border-radius:4px;background:#1c2a38;color:var(--muted);margin-left:6px;text-transform:uppercase}
+.audit-ok{color:var(--ok);font-weight:700}.audit-bad{color:var(--bad);font-weight:700}
+a{color:var(--blue)}
 @media(max-width:1000px){main{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
@@ -49,9 +63,12 @@ button.purple{background:#2a1838;border-color:#55306f;color:#e2c6ff}
 <header>
   <h1>AEGIS</h1><span class="sub">Hattiesburg Water Treatment Plant #2 · simulated · Modbus TCP</span>
   <span class="sp"></span>
+  <label class="sub">AI autonomy <select id="auto" onchange="setAutonomy()"><option value="propose">propose → operator approves</option><option value="direct">direct (writes via guard)</option></select></label>
+  <input id="pin" class="hdr-in" type="password" placeholder="Engineer PIN" autocomplete="off">
   <label class="switch" id="gsw" onclick="toggleGuard()"><span class="t"></span><b>Safety guard</b></label>
   <span class="chip on" id="gchip">GUARD ON</span>
 </header>
+<div class="err" id="hdrerr" style="padding:0 20px"></div>
 <main>
   <section>
     <div class="panel">
@@ -104,12 +121,28 @@ button.purple{background:#2a1838;border-color:#55306f;color:#e2c6ff}
       <h2>pH trend (last ~2 min)</h2>
       <canvas id="chart" width="900" height="180"></canvas>
     </div>
+    <div class="panel" style="margin-top:14px">
+      <h2>Operator alerts · <span id="alcfg"></span></h2>
+      <div id="alerts" class="log" style="max-height:220px"><div class="trace">No alerts.</div></div>
+    </div>
+    <div class="panel" style="margin-top:14px">
+      <h2>Safety rules (engineer) <button style="float:right;padding:3px 8px;font-size:11px" onclick="renderRules(true)">Reload</button></h2>
+      <div id="rules"></div>
+      <div class="btns" style="margin-top:8px"><button onclick="saveRules()">Save rules (needs PIN)</button><span class="err" id="ruleserr"></span></div>
+    </div>
+    <div class="panel" style="margin-top:14px">
+      <h2>Tamper-evident audit log</h2>
+      <div id="audit">…</div>
+      <div class="trace"><a href="/api/audit/export.csv">Export CSV</a> · every decision, alert, rule change and approval is hash-chained</div>
+    </div>
   </section>
   <section>
     <div class="panel">
       <h2>Demo controls</h2>
       <div class="btns">
         <button class="red" onclick="post('/api/attack/lye').then(r=>flash(r.result))">💀 Hacker: set lye to 11,100 ppm</button>
+        <button class="red" onclick="post('/api/attack/ramp').then(r=>flash(r.result))">🐍 Stealth: many small chlorine steps</button>
+        <button class="red" onclick="post('/api/attack/flood').then(r=>flash(r.result))">🌊 Flood: 30 writes/sec</button>
         <button class="purple" onclick="post('/api/attack/plant-work-order')">🧪 Plant poisoned work order</button>
         <button onclick="post('/api/reset')">↺ Reset plant</button>
       </div>
@@ -120,6 +153,8 @@ button.purple{background:#2a1838;border-color:#55306f;color:#e2c6ff}
       <div class="chat"><input id="q" placeholder="e.g. Any open work orders I should handle?" onkeydown="if(event.key==='Enter')ask()"><button onclick="ask()">Ask</button></div>
       <div class="reply" id="reply">Ask about the plant in plain English.</div>
       <div class="trace" id="trace"></div>
+      <h2 style="margin-top:14px">AI proposals awaiting the operator</h2>
+      <div id="props"><div class="trace">None.</div></div>
       <h2 style="margin-top:14px">Maintenance work orders (read by the AI)</h2>
       <div id="orders"></div>
     </div>
@@ -135,7 +170,22 @@ const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&g
 let guardOn=true, dash=0;
 async function post(u,b){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:b?JSON.stringify(b):'{}'});return r.json();}
 function flash(t){$('flash').textContent=t;}
-async function toggleGuard(){await post('/api/guard',{enabled:!guardOn});load();}
+let policy=null, rulesShown=false;
+const pin=()=>$('pin').value;
+async function postChk(u,b,errEl){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b||{})});
+  const j=await r.json().catch(()=>({}));$(errEl).textContent=r.ok?'':(j.detail||('error '+r.status));return r.ok;}
+async function toggleGuard(){await postChk('/api/guard',{enabled:!guardOn,pin:pin()},'hdrerr');load();}
+async function setAutonomy(){if(!await postChk('/api/settings',{autonomy:$('auto').value,pin:pin()},'hdrerr'))load();}
+async function decide(id,a){await post(`/api/proposals/${id}/${a}`);load();}
+const RF=['min','max','max_step','max_change_per_min'];
+function renderRules(force){if(!policy||(rulesShown&&!force))return;rulesShown=true;
+  const rows=Object.entries(policy.limits).map(([k,l])=>`<tr><td>${esc(k)}</td>${RF.map(f=>`<td><input data-k="${esc(k)}" data-f="${f}" value="${l[f]??''}"></td>`).join('')}</tr>`).join('');
+  $('rules').innerHTML=`<table class="rules"><tr><th>setpoint</th><th>min</th><th>max</th><th>max / command</th><th>max / minute</th></tr>${rows}</table>
+  <div class="trace">Max writes per minute per source: <input id="wpm" style="width:60px" value="${policy.max_writes_per_min_per_source}"></div>`;}
+async function saveRules(){const p=JSON.parse(JSON.stringify(policy));
+  document.querySelectorAll('#rules input[data-k]').forEach(i=>{const v=i.value.trim();p.limits[i.dataset.k][i.dataset.f]=v===''?null:Number(v);});
+  p.max_writes_per_min_per_source=parseInt($('wpm').value,10);
+  if(await postChk('/api/policy',{policy:p,pin:pin()},'ruleserr')){$('ruleserr').textContent='Saved ✓';rulesShown=false;await load();renderRules(true);}}
 async function ask(){const q=$('q').value.trim();if(!q)return;$('reply').textContent='Thinking…';$('trace').innerHTML='';
   try{const r=await post('/api/copilot',{message:q});$('reply').textContent=r.reply||r.detail||'';
   $('trace').innerHTML=(r.trace||[]).map(t=>`→ <b>${esc(t.tool)}</b> ${esc(JSON.stringify(t.args))} ⇒ ${esc(t.result.result||'ok')}`).join('<br>');}catch(e){$('reply').textContent='Error: '+e;}}
@@ -159,8 +209,14 @@ async function load(){let s;try{s=await (await fetch('/api/state')).json();}catc
   dash=(dash+4)%18;['pipe1','pipe2','pipe3'].forEach(i=>$(i).setAttribute('stroke-dashoffset',-dash));
   const al=$('alarm');if(p.alarms.length){al.style.display='block';al.textContent='⚠ ALARM: '+p.alarms.join(' · ')+(bad?' — caustic water heading to town':'');}else al.style.display='none';
   chart(s.history);
+  policy=s.policy;renderRules(false);
+  if(document.activeElement!==$('auto'))$('auto').value=s.autonomy;
+  $('alcfg').textContent=s.alerts_configured?'SMS + phone call enabled':'SMS not configured (dashboard only)';
+  $('alerts').innerHTML=s.alerts.length?s.alerts.map(a=>`<div class="al ${a.severity}"><b>${a.severity.toUpperCase()}</b> ${esc(a.message)}<div class="d">${new Date(a.t*1000).toLocaleTimeString()} · ${esc(a.delivery)}</div></div>`).join(''):'<div class="trace">No alerts.</div>';
+  $('props').innerHTML=s.proposals.length?s.proposals.map(p=>`<div class="prop"><span class="st ${p.status}">${p.status}</span> <b>${esc(p.label)}</b>: ${esc(p.old)} → ${esc(p.value)} ${esc(p.unit)}${p.reason?` · “${esc(p.reason)}”`:''}<div class="d trace">${esc(p.guard)}</div>${p.status==='pending'?`<div class="act"><button onclick="decide(${p.id},'approve')">Approve</button><button onclick="decide(${p.id},'reject')">Reject</button></div>`:''}</div>`).join(''):'<div class="trace">None.</div>';
+  const au=s.audit;$('audit').innerHTML=au.ok?`<span class="audit-ok">✔ Chain intact</span> · ${au.entries} entries verified`:`<span class="audit-bad">✖ ${esc(au.message)}</span>`;
   $('orders').innerHTML=s.work_orders.map(w=>`<div class="wo ${w.includes('AI COPILOT')?'evil':''}">${esc(w)}</div>`).join('');
-  $('log').innerHTML=s.log.length?s.log.map(d=>`<div class="ev ${d.allowed?'ok':'no'}"><div class="h"><span>${esc(d.source)} → ${esc(d.register)} = ${esc(d.new.toLocaleString())} ${esc(d.unit)}</span><span class="tag ${d.allowed?'ok':'no'}">${d.allowed?'ALLOWED':'BLOCKED'}</span></div><div class="m">${esc(d.reason)} · was ${esc(d.old)} · from ${esc(d.peer)} · ${new Date(d.t*1000).toLocaleTimeString()}</div></div>`).join(''):'<div class="trace">No writes yet.</div>';}
+  $('log').innerHTML=s.log.length?s.log.map(d=>`<div class="ev ${d.allowed?'ok':'no'}"><div class="h"><span>${esc(d.source)} → ${esc(d.register)} = ${esc(d.new.toLocaleString())} ${esc(d.unit)}<span class="chk">${esc(d.check)}</span></span><span class="tag ${d.allowed?'ok':'no'}">${d.allowed?'ALLOWED':'BLOCKED'}</span></div><div class="m">${esc(d.reason)} · was ${esc(d.old)} · from ${esc(d.peer)} · ${new Date(d.t*1000).toLocaleTimeString()}</div></div>`).join(''):'<div class="trace">No writes yet.</div>';}
 load();setInterval(load,500);
 </script>
 </body>

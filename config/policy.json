@@ -1,0 +1,59 @@
+{
+  "_doc": "Safety envelope enforced by the guard. min/max: absolute limits. max_step: largest change in one command. max_change_per_min: largest net change within any 60 s window (stops slow-ramp attacks). Edit via the dashboard (engineer PIN) or here.",
+  "max_writes_per_min_per_source": 20,
+  "limits": {
+    "chlorine_dose": {
+      "min": 0.2,
+      "max": 4,
+      "max_step": 0.5,
+      "max_change_per_min": 0.6,
+      "reason": "EPA max residual disinfectant level is 4.0 mg/L"
+    },
+    "naoh_dose": {
+      "min": 0,
+      "max": 300,
+      "max_step": 50,
+      "max_change_per_min": 75,
+      "reason": "lye overdose pushes pH above the EPA 6.5-8.5 range"
+    },
+    "distribution_rate": {
+      "min": 100,
+      "max": 900,
+      "max_step": 200,
+      "max_change_per_min": 250,
+      "reason": "sudden flow changes cause pressure surges (water hammer)"
+    },
+    "intake_pump": {
+      "min": 0,
+      "max": 1,
+      "reason": "on/off",
+      "max_step": null,
+      "max_change_per_min": null
+    },
+    "distribution_pump": {
+      "min": 0,
+      "max": 1,
+      "reason": "on/off",
+      "max_step": null,
+      "max_change_per_min": null
+    }
+  },
+  "interlocks": [
+    {
+      "register": "distribution_pump",
+      "value": 0,
+      "when": "tank_level",
+      "op": ">",
+      "threshold": 90,
+      "message": "can't stop distribution while clearwell is above 90% (overflow risk)"
+    },
+    {
+      "register": "intake_pump",
+      "value": 0,
+      "when": "tank_level",
+      "op": "<",
+      "threshold": 15,
+      "message": "can't stop intake while clearwell is below 15% (town runs dry)"
+    }
+  ]
+}

@@ -4,6 +4,7 @@ import asyncio
 import json
 
 import httpx
+import pytest
 
 from aegis import modbus
 from aegis.attacks import INJECTION
@@ -56,3 +57,95 @@ def test_copilot_offline_without_key(monkeypatch):
     monkeypatch.delenv("AEGIS_LLM_KEY", raising=False)
     out = asyncio.run(Copilot(Plant(), 1, []).chat("hi"))
     assert "offline" in out["reply"]
+
+
+# ---------------- propose -> approve ----------------
+from aegis.audit import AuditLog
+from aegis.proposals import Proposals
+
+
+def scripted_llm(calls_seq):
+    """Fake LLM: returns the given tool calls in order, then a final message echoing the last tool result."""
+    state = {"n": 0}
+
+    def handler(request):
+        i = state["n"]; state["n"] += 1
+        if i < len(calls_seq):
+            name, args = calls_seq[i]
+            return httpx.Response(200, json={"choices": [{"message": {"role": "assistant", "content": None,
+                "tool_calls": [{"id": f"c{i}", "type": "function",
+                                "function": {"name": name, "arguments": json.dumps(args)}}]}}]})
+        last = json.loads(json.loads(request.content)["messages"][-1]["content"])
+        return httpx.Response(200, json={"choices": [{"message": {"role": "assistant", "content": json.dumps(last)}}]})
+    return httpx.MockTransport(handler)
+
+
+async def _rig():
+    plant = Plant()
+    plc = await modbus.serve(plant.handle, "127.0.0.1", 0)
+    up = await modbus.Client("127.0.0.1", plc.sockets[0].getsockname()[1]).connect()
+    audit = AuditLog(":memory:")
+    guard = Guard(up, plant.snapshot, audit=audit)
+    gsrv = await modbus.serve(guard.handle, "127.0.0.1", 0)
+    port = gsrv.sockets[0].getsockname()[1]
+    props = Proposals(guard, port, audit=audit)
+    return plant, guard, props, port, plc, gsrv, audit
+
+
+def test_propose_mode_hijack_cannot_write(monkeypatch):
+    monkeypatch.setenv("GROQ_API_KEY", "test")
+
+    async def run():
+        plant, guard, props, port, plc, gsrv, audit = await _rig()
+        cp = Copilot(plant, port, [INJECTION], proposals=props, mode_getter=lambda: "propose")
+        assert "set_setpoint" not in [t["function"]["name"] for t in cp.tools()]
+        cp.transport = scripted_llm([("read_work_orders", {}),
+                                     ("propose_setpoint", {"name": "naoh_dose", "value": 9000})])
+        out = await cp.chat("any work orders?")
+        assert "BLOCKED" in out["reply"] and props.items[0]["status"] == "blocked"
+        with pytest.raises(ValueError):
+            await props.approve(props.items[0]["id"])          # can't approve a blocked proposal
+        assert plant.setpoint("naoh_dose") == 100
+        plc.close(); gsrv.close()
+    asyncio.run(run())
+
+
+def test_safe_proposal_needs_approval(monkeypatch):
+    monkeypatch.setenv("GROQ_API_KEY", "test")
+
+    async def run():
+        plant, guard, props, port, plc, gsrv, audit = await _rig()
+        cp = Copilot(plant, port, [], proposals=props, mode_getter=lambda: "propose")
+        cp.transport = scripted_llm([("propose_setpoint", {"name": "chlorine_dose", "value": 1.7,
+                                                           "reason": "residual trending low"})])
+        await cp.chat("chlorine looks low")
+        p = props.items[0]
+        assert p["status"] == "pending" and plant.setpoint("chlorine_dose") == 1.5   # nothing applied yet
+        await props.approve(p["id"], by="operator")
+        assert p["status"] == "approved" and plant.setpoint("chlorine_dose") == 1.7
+        assert guard.log[0].source == "Operator HMI"
+        assert audit.verify()["ok"]
+        plc.close(); gsrv.close()
+    asyncio.run(run())
+
+
+def test_approval_rechecked_at_apply_time(monkeypatch):
+    async def run():
+        plant, guard, props, port, plc, gsrv, audit = await _rig()
+        p = await props.propose("chlorine_dose", 1.9, "test")
+        assert p["status"] == "pending"
+        plant.hr[2] = 120   # plant changed meanwhile: 1.2 -> 1.9 is now a 0.7 jump (> 0.5 step)
+        await props.approve(p["id"])
+        assert p["status"] == "failed" and plant.setpoint("chlorine_dose") == 1.2
+        plc.close(); gsrv.close()
+    asyncio.run(run())
+
+
+def test_reject():
+    async def run():
+        plant, guard, props, port, plc, gsrv, audit = await _rig()
+        p = await props.propose("naoh_dose", 120)
+        props.reject(p["id"])
+        assert p["status"] == "rejected" and plant.setpoint("naoh_dose") == 100
+        plc.close(); gsrv.close()
+    asyncio.run(run())

@@ -14,25 +14,14 @@ from collections import deque
 from dataclasses import dataclass, field
 
 from . import modbus
+from .config import Tags
 
-# ---- register map (what an HMI / attacker sees on the wire) ----
-HOLDING = {  # writable setpoints / commands
-    "intake_pump": 0,          # 0/1
-    "distribution_pump": 1,    # 0/1
-    "chlorine_dose": 2,        # mg/L x100
-    "naoh_dose": 3,            # ppm
-    "distribution_rate": 4,    # gallons per minute
-}
-INPUT = {  # read-only sensors
-    "tank_level": 0,           # % x10
-    "chlorine_residual": 1,    # mg/L x100
-    "ph": 2,                   # x100
-    "flow_out": 3,             # gpm
-    "alarms": 4,               # bitfield
-}
-SCALE = {"chlorine_dose": 100, "chlorine_residual": 100, "ph": 100, "tank_level": 10}
-UNITS = {"chlorine_dose": "mg/L", "naoh_dose": "ppm", "distribution_rate": "gpm",
-         "tank_level": "%", "chlorine_residual": "mg/L", "ph": "pH", "flow_out": "gpm"}
+# ---- register map (what an HMI / attacker sees on the wire), from config/tags.json ----
+TAGS = Tags.load()
+HOLDING = {n: t.address for n, t in TAGS.holding.items()}   # writable setpoints / commands
+INPUT = {n: t.address for n, t in TAGS.input.items()}       # read-only sensors
+SCALE = {n: t.scale for n, t in {**TAGS.holding, **TAGS.input}.items() if t.scale != 1}
+UNITS = {n: t.unit for n, t in {**TAGS.holding, **TAGS.input}.items()}
 ALARMS = ["pH HIGH", "pH LOW", "CHLORINE HIGH", "CHLORINE LOW", "TANK HIGH", "TANK LOW"]
 
 NORMAL = {"intake_pump": 1, "distribution_pump": 1, "chlorine_dose": 1.5,
