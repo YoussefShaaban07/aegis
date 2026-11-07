@@ -5,78 +5,89 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Aegis · Water Plant Control</title>
 <style>
-:root{--bg:#0b1118;--panel:#111a24;--panel2:#0d151e;--line:#1f2c3a;--ink:#dce6f0;--muted:#7f93a8;--blue:#3fa7ff;
---ok:#2ecc71;--warn:#f5b642;--bad:#ff4d4f;--lye:#c78bff;--cl:#7ee0c3;--orange:#ff9f43}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 Inter,system-ui,-apple-system,Segoe UI,sans-serif}
-header{display:flex;align-items:center;flex-wrap:wrap;gap:12px;padding:10px 18px;border-bottom:1px solid var(--line)}
-header h1{margin:0;font-size:18px;letter-spacing:.5px}header .sub{color:var(--muted);font-size:13px}
+/* Styled after ISA-101 "high-performance HMI" practice: grey, quiet, and colour ONLY for abnormal
+   conditions, so the one thing that is wrong is the thing the eye goes to. */
+:root{--bg:#c8cbcd;--panel:#dddfe0;--panel2:#eaebec;--line:#a9aeb2;--ink:#16191c;--muted:#4f565c;--proc:#6b7379;
+--blue:#1d5a91;--ok:#2f5d3a;--warn:#b07800;--bad:#c4161c;--lye:#4f565c;--cl:#4f565c;--orange:#1d5a91;
+--mono:ui-monospace,"Cascadia Mono","Segoe UI Mono",Consolas,Menlo,monospace}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 "Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif}
+header{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:8px 16px;background:#b9bdc0;border-bottom:1px solid var(--line)}
+header h1{margin:0;font-size:17px;font-weight:700;letter-spacing:.02em}header .sub{color:var(--muted);font-size:13px}
 .sp{flex:1}
-.seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
-.seg button{border:0;border-radius:0;padding:6px 12px;background:#0d151e;color:var(--muted)}
-.seg button.on.enforce{background:rgba(46,204,113,.18);color:var(--ok)}.seg button.on.monitor{background:rgba(245,182,66,.2);color:var(--warn)}
-.seg button.on.off{background:rgba(255,77,79,.22);color:var(--bad)}
-main{display:grid;grid-template-columns:1.3fr 1fr;gap:14px;padding:14px}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px}
-.panel h2{margin:0 0 10px;font-size:12px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);display:flex;align-items:center;gap:8px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:3px;overflow:hidden;background:var(--panel2)}
+.seg button{border:0;border-right:1px solid var(--line);border-radius:0;padding:5px 12px;background:transparent;color:var(--muted);font-weight:600}
+.seg button:last-child{border-right:0}
+.seg button.on.enforce{background:var(--ink);color:#fff}.seg button.on.monitor{background:var(--warn);color:#fff}
+.seg button.on.off{background:var(--bad);color:#fff}
+main{display:grid;grid-template-columns:1.35fr 1fr;gap:12px;padding:12px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:3px;padding:12px 14px;margin-bottom:12px}
+.panel h2{margin:0 0 10px;font-size:14px;font-weight:600;color:var(--ink);display:flex;align-items:center;gap:8px}
 .panel h2 .sp{flex:1}
 svg text{fill:var(--ink);font-family:inherit}
 .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
-.kpi{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
-.kpi .l{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
-.kpi .v{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}.kpi .r{font-size:11px;color:var(--muted)}
-.kpi.bad{border-color:var(--bad);box-shadow:0 0 0 1px var(--bad) inset}.kpi.bad .v{color:var(--bad)}
-.kpi.warn{border-color:var(--warn)}.kpi.warn .v{color:var(--warn)}
-.raw{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--muted);margin-top:8px}.raw b{color:var(--ink)}
-canvas{width:100%;display:block}
-.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:11.5px;color:var(--muted);margin-top:6px}
-.legend i{display:inline-block;width:18px;height:3px;vertical-align:middle;margin-right:4px;border-radius:2px}
-.alarm{display:none;margin-top:10px;padding:10px 12px;border-radius:8px;background:rgba(255,77,79,.15);border:1px solid var(--bad);color:#ffb3b4;font-weight:700;animation:pulse 1s infinite}
-@keyframes pulse{50%{opacity:.6}}
+.kpi{background:var(--panel2);border:1px solid var(--line);border-radius:2px;padding:8px 10px}
+.kpi .l{font-size:12px;color:var(--muted)}
+.kpi .v{font:600 24px/1.2 var(--mono);font-variant-numeric:tabular-nums}.kpi .r{font-size:11.5px;color:var(--muted)}
+.kpi.bad{background:var(--bad);border-color:var(--bad)}.kpi.bad .v,.kpi.bad .l,.kpi.bad .r{color:#fff}
+.kpi.warn{background:#f2d27a;border-color:var(--warn)}
+.raw{display:flex;flex-wrap:wrap;gap:16px;font-size:12.5px;color:var(--muted);margin-top:8px}.raw b{color:var(--ink);font-family:var(--mono);font-weight:600}
+canvas{width:100%;display:block;background:var(--panel2);border:1px solid var(--line)}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--muted);margin-top:6px}
+.legend i{display:inline-block;width:18px;height:3px;vertical-align:middle;margin-right:4px}
+.alarm{display:none;margin-top:10px;padding:9px 12px;border-radius:2px;background:var(--bad);color:#fff;font-weight:700}
 .btns{display:flex;flex-wrap:wrap;gap:6px}
-.grp{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin:10px 0 5px}
-button{font:inherit;font-weight:600;border-radius:8px;border:1px solid var(--line);background:#16212d;color:var(--ink);padding:7px 11px;cursor:pointer;font-size:13px}
-button:hover{border-color:#36506b}button.red{background:#3a1416;border-color:#6b2226;color:#ffb3b4}
-button.purple{background:#2a1838;border-color:#55306f;color:#e2c6ff}button.wx{background:#122436;border-color:#24496b;color:#a9d4ff}
-button.wx.on{outline:2px solid var(--blue)}
-.log{max-height:340px;overflow:auto;display:flex;flex-direction:column;gap:6px}
-.ev{padding:7px 10px;border-radius:7px;border-left:4px solid;background:var(--panel2);font-size:13px}
-.ev.ok{border-color:var(--ok)}.ev.no{border-color:var(--bad);background:rgba(255,77,79,.08)}.ev.wb{border-color:var(--warn);background:rgba(245,182,66,.07)}
+.grp{font-size:12px;font-weight:600;color:var(--muted);margin:12px 0 5px}
+button{font:inherit;font-weight:600;border-radius:3px;border:1px solid #8e9499;background:#f3f4f4;color:var(--ink);padding:5px 10px;cursor:pointer;font-size:13px}
+button:hover{background:#fff;border-color:#6b7379}
+button.red{border-left:3px solid var(--bad)}button.purple{border-left:3px solid var(--blue)}button.wx{}
+button.wx.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.log{max-height:340px;overflow:auto;display:flex;flex-direction:column;gap:4px}
+.ev{padding:6px 9px;border-left:3px solid var(--line);background:var(--panel2);font-size:13px}
+.ev.ok{border-color:#9aa0a5}.ev.no{border-color:var(--bad);background:#f6e3e3}.ev.wb{border-color:var(--warn);background:#f7efd9}
 .ev.un{border-color:var(--warn)}
-.ev .h{display:flex;justify-content:space-between;gap:8px;font-weight:700}.ev .m{color:var(--muted);font-size:12px}
-.tag{font-size:11px;padding:1px 6px;border-radius:4px;font-weight:700;white-space:nowrap}.tag.ok{background:rgba(46,204,113,.15);color:var(--ok)}
-.tag.no{background:rgba(255,77,79,.2);color:var(--bad)}.tag.wb{background:rgba(245,182,66,.2);color:var(--warn)}
-.chk{font-size:10px;padding:1px 5px;border-radius:4px;background:#1c2a38;color:var(--muted);margin-left:6px;text-transform:uppercase}
-.chk.predict{background:rgba(255,159,67,.2);color:var(--orange)}
-.tech{font-size:10px;padding:1px 5px;border-radius:4px;background:#22182e;color:#d8b9ff;margin-left:4px}
-.chat{display:flex;gap:8px}.chat input{flex:1;font:inherit;background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
-.reply{margin-top:10px;white-space:pre-wrap;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px;min-height:44px}
-.trace{margin-top:6px;font-size:12px;color:var(--muted)}.trace b{color:var(--ink)}
-.wo{font-size:12px;color:var(--muted);margin:4px 0;padding:6px 8px;border-radius:6px;background:var(--panel2)}
-.wo.evil{color:#e2c6ff;border:1px dashed #55306f}
-input.f,select{font:inherit;background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:6px 8px}
-.err{color:var(--bad);font-size:12px;min-height:16px}.okm{color:var(--ok);font-size:12px}
-.al{padding:7px 10px;border-radius:7px;background:var(--panel2);border-left:4px solid var(--warn);font-size:13px;margin-bottom:6px}
-.al.critical{border-color:var(--bad)}.al .d{color:var(--muted);font-size:12px}
-.prop{padding:8px 10px;border-radius:7px;background:var(--panel2);border:1px solid var(--line);margin-bottom:6px;font-size:13px}
-.prop .act{display:flex;gap:6px;margin-top:6px}.prop button{padding:4px 10px;font-size:12px}
-.st{font-size:11px;font-weight:700;padding:1px 6px;border-radius:4px;text-transform:uppercase}
-.st.pending{background:rgba(245,182,66,.18);color:var(--warn)}.st.blocked,.st.failed,.st.rejected{background:rgba(255,77,79,.2);color:var(--bad)}.st.approved{background:rgba(46,204,113,.15);color:var(--ok)}
-table.t{width:100%;border-collapse:collapse;font-size:12px}table.t th{color:var(--muted);text-align:left;font-weight:600;padding:4px}
-table.t td{padding:3px 4px;border-top:1px solid var(--line);vertical-align:top}table.t input{width:64px;font:inherit;background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:3px 4px}
-.tabs{display:flex;gap:4px;margin:0 14px}.tabs button{border-radius:8px 8px 0 0;border-bottom:0;background:#0d151e;color:var(--muted)}
-.tabs button.on{background:var(--panel);color:var(--ink)}
+.ev .h{display:flex;justify-content:space-between;gap:8px;font-weight:600}.ev .m{color:var(--muted);font-size:12px}
+.tag{font-size:11px;padding:1px 6px;border-radius:2px;font-weight:700;white-space:nowrap}.tag.ok{background:#c9cdd0;color:var(--muted)}
+.tag.no{background:var(--bad);color:#fff}.tag.wb{background:var(--warn);color:#fff}
+.chk{font-size:10.5px;padding:0 5px;border:1px solid var(--line);border-radius:2px;background:transparent;color:var(--muted);margin-left:6px;font-weight:600}
+.chk.predict{border-color:var(--blue);color:var(--blue)}
+.tech{font-size:10.5px;padding:0 5px;border:1px solid var(--line);border-radius:2px;color:var(--muted);margin-left:4px;font-family:var(--mono)}
+.chat{display:flex;gap:8px}.chat input{flex:1;font:inherit;background:#fff;color:var(--ink);border:1px solid #8e9499;border-radius:3px;padding:7px 9px}
+.reply{margin-top:10px;white-space:pre-wrap;background:var(--panel2);border:1px solid var(--line);border-radius:2px;padding:10px;min-height:44px}
+.trace{margin-top:6px;font-size:12.5px;color:var(--muted)}.trace b{color:var(--ink)}
+.wo{font-size:12.5px;color:var(--muted);margin:4px 0;padding:6px 8px;background:var(--panel2);border:1px solid var(--line)}
+.wo.evil{border:1px dashed var(--bad);color:var(--ink)}
+input.f,select{font:inherit;background:#fff;color:var(--ink);border:1px solid #8e9499;border-radius:3px;padding:5px 7px}
+.err{color:var(--bad);font-size:12.5px;min-height:16px}.okm{color:var(--ok);font-size:12.5px;font-weight:600}
+.al{padding:6px 9px;background:var(--panel2);border-left:3px solid var(--warn);font-size:13px;margin-bottom:4px}
+.al.critical{border-color:var(--bad)}.al.info{border-color:var(--line)}.al .d{color:var(--muted);font-size:12px}
+.prop{padding:8px 10px;background:var(--panel2);border:1px solid var(--line);margin-bottom:6px;font-size:13px}
+.prop .act{display:flex;gap:6px;margin-top:6px}.prop button{padding:3px 9px;font-size:12px}
+.st{font-size:11px;font-weight:700;padding:1px 6px;border-radius:2px;text-transform:uppercase}
+.st.pending{background:var(--warn);color:#fff}.st.blocked,.st.failed,.st.rejected{background:var(--bad);color:#fff}.st.approved{background:#c9cdd0;color:var(--ink)}
+table.t{width:100%;border-collapse:collapse;font-size:12.5px}table.t th{color:var(--muted);text-align:left;font-weight:600;padding:4px}
+table.t td{padding:3px 4px;border-top:1px solid var(--line);vertical-align:top;font-variant-numeric:tabular-nums}
+table.t input{width:64px;font:inherit;background:#fff;color:var(--ink);border:1px solid #8e9499;border-radius:2px;padding:2px 4px}
+.tabs{display:flex;gap:0;margin:10px 12px 0;border-bottom:1px solid var(--line)}
+.tabs button{border-radius:0;border:1px solid transparent;border-bottom:0;background:transparent;color:var(--muted);padding:6px 14px}
+.tabs button.on{background:var(--panel);color:var(--ink);border-color:var(--line)}
 .page{display:none}.page.on{display:grid}
 .stat{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .audit-ok{color:var(--ok);font-weight:700}.audit-bad{color:var(--bad);font-weight:700}
-.verdict{margin-top:8px;font-size:13px;padding:8px 10px;border-radius:8px;background:var(--panel2);border:1px solid var(--line)}
-.verdict.bad{border-color:var(--bad);color:#ffb3b4}.verdict.good{border-color:var(--ok);color:#bff3d4}
-a{color:var(--blue)}code{font-size:11.5px}
-#guide{position:fixed;right:16px;bottom:16px;width:420px;max-width:calc(100vw - 32px);background:#141f2b;border:1px solid #36506b;
-  border-radius:12px;padding:14px 16px;z-index:40;box-shadow:0 10px 40px rgba(0,0,0,.5);display:none}
-#guide h3{margin:0 0 4px;font-size:15px}#guide .say{background:#0d151e;border-left:3px solid var(--blue);padding:8px 10px;margin:8px 0;font-size:13px;border-radius:6px}
-#guide .meta{font-size:11px;color:var(--muted)}#guide .gst{font-size:12.5px;color:var(--warn);min-height:16px}
-#login{position:fixed;inset:0;background:rgba(5,9,14,.92);display:none;align-items:center;justify-content:center;z-index:50}
-#login .box{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:24px;width:340px;max-width:calc(100vw - 32px)}
+.verdict{margin-top:8px;font-size:13px;padding:7px 10px;background:var(--panel2);border:1px solid var(--line);border-left-width:3px}
+.verdict.bad{border-left-color:var(--bad)}.verdict.good{border-left-color:#7d858b}.verdict.warn{border-left-color:var(--warn)}
+a{color:var(--blue)}code{font:11.5px var(--mono)}
+details.demo{background:var(--panel);border:1px solid var(--line);border-radius:3px;margin-bottom:12px}
+details.demo>summary{cursor:pointer;padding:10px 14px;font-weight:600;list-style:none;display:flex;gap:8px;align-items:center}
+details.demo>summary::-webkit-details-marker{display:none}
+details.demo>summary:before{content:"+";font-family:var(--mono);width:12px}details.demo[open]>summary:before{content:"\2212"}
+details.demo>summary .trace{margin:0;font-weight:400}
+details.demo>.in{padding:0 14px 12px}
+#guide{position:fixed;right:16px;bottom:16px;width:420px;max-width:calc(100vw - 32px);background:var(--panel2);border:1px solid #6b7379;
+  border-radius:3px;padding:12px 14px;z-index:40;box-shadow:0 6px 24px rgba(0,0,0,.25);display:none}
+#guide h3{margin:0 0 4px;font-size:15px}#guide .say{background:#fff;border-left:3px solid var(--blue);padding:8px 10px;margin:8px 0;font-size:13px}
+#guide .meta{font-size:11.5px;color:var(--muted)}#guide .gst{font-size:12.5px;color:var(--warn);min-height:16px}
+#login{position:fixed;inset:0;background:var(--bg);display:none;align-items:center;justify-content:center;z-index:50}
+#login .box{background:var(--panel);border:1px solid var(--line);border-radius:3px;padding:24px;width:360px;max-width:calc(100vw - 32px)}
 #login input{width:100%;margin:6px 0}
 @media(max-width:1000px){main,.page.on{grid-template-columns:1fr}.kpis,.stat{grid-template-columns:repeat(2,1fr)}}
 </style>
@@ -91,19 +102,19 @@ a{color:var(--blue)}code{font-size:11.5px}
   <div class="trace" id="ldemo">Demo login: username <b>engineer</b>, password <b>engineer</b> (or operator / operator). The PIN 2468 is asked for later, not here.</div></div></div>
 <div id="guide"><div class="meta" id="g-n"></div><h3 id="g-t"></h3><div id="g-d" class="trace" style="margin:0"></div>
   <div class="say" id="g-say"></div><div class="gst" id="g-st"></div>
-  <div class="btns" style="justify-content:space-between"><button onclick="guideStop()">✕ Exit</button><span><button onclick="guideGo(-1)">◀</button> <button id="g-next" onclick="guideGo(1)">Run step ▶</button></span></div></div>
+  <div class="btns" style="justify-content:space-between"><button onclick="guideStop()">Exit</button><span><button onclick="guideGo(-1)">Back</button> <button id="g-next" onclick="guideGo(1)">Run step</button></span></div></div>
 <header>
-  <h1>AEGIS</h1><span class="sub" id="plantname">Water Treatment Plant #2 · simulated · Modbus TCP</span>
+  <h1>AEGIS</h1><span class="sub" id="plantname">Water Treatment Plant #2 · simulated · Modbus TCP + EtherNet/IP</span>
   <span class="sp"></span>
   <label class="sub">AI autonomy <select id="auto" onchange="setAutonomy()"><option value="propose">propose → approve</option><option value="direct">direct (via guard)</option></select></label>
   <input id="pin" class="f" style="width:96px" type="password" placeholder="Eng. PIN" autocomplete="off">
-  <button style="padding:4px 9px;font-size:12px;background:#122436;border-color:#24496b" onclick="guideStart()">▶ Guided demo</button>
-  <a href="/operator" class="sub" style="color:var(--blue)" title="phone-sized view for the on-call operator">📱 Operator view</a>
+  <button onclick="guideStart()">Guided demo</button>
+  <a href="/operator" class="sub" style="color:var(--blue)" title="phone-sized view for the on-call operator">Operator view</a>
   <span class="sub" id="who"></span><button style="padding:4px 9px;font-size:12px" onclick="logout()">Sign out</button>
   <div class="seg" id="modes" title="Guard mode"><button data-m="enforce" onclick="setMode('enforce')">ENFORCE</button><button data-m="monitor" onclick="setMode('monitor')">MONITOR</button><button data-m="off" onclick="setMode('off')">OFF</button></div>
 </header>
-<div id="simbanner" style="display:none;background:#2a2410;color:#ffe2a8;border-bottom:1px solid #5a4a14;padding:5px 18px;font-size:12.5px">
-  SIMULATED PLANT · demo controls and demo accounts are on (AEGIS_DEMO=1). Attacks and weather on this page are simulated; the Modbus traffic is real.</div>
+<div id="simbanner" style="display:none;background:#e3e4e5;color:#4f565c;border-bottom:1px solid #a9aeb2;padding:4px 16px;font-size:12.5px">
+  SIMULATED PLANT · demo controls and demo accounts are on (AEGIS_DEMO=1). Attacks and weather on this page are simulated; the protocol traffic is real.</div>
 <div class="err" id="hdrerr" style="padding:0 18px"></div>
 <div class="tabs"><button class="on" data-p="ops" onclick="tab('ops')">Operations</button><button data-p="eng" onclick="tab('eng')">Engineering</button><button data-p="evi" onclick="tab('evi')">Evidence &amp; performance</button></div>
 
@@ -113,35 +124,35 @@ a{color:var(--blue)}code{font-size:11.5px}
     <div class="panel">
       <h2>Process <span class="sp"></span><span id="scen" class="chk"></span></h2>
       <svg viewBox="0 0 760 250" width="100%">
-        <defs><linearGradient id="wg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#3fa7ff"/><stop offset="1" stop-color="#1c5fa0"/></linearGradient></defs>
-        <text x="10" y="40" font-size="12" fill="#7f93a8">RAW WATER</text>
-        <path id="river" d="M0 60 Q40 50 80 60 T160 60" stroke="#2b7fd1" stroke-width="10" fill="none" opacity=".6"/>
-        <circle id="p1" cx="120" cy="150" r="22" fill="#16212d" stroke="#3fa7ff" stroke-width="3"/>
-        <text x="120" y="155" text-anchor="middle" font-size="11">P-1</text>
-        <text x="120" y="192" text-anchor="middle" font-size="11" fill="#7f93a8">Intake</text>
-        <line x1="120" y1="65" x2="120" y2="128" stroke="#2b7fd1" stroke-width="6"/>
-        <line id="pipe1" x1="142" y1="150" x2="410" y2="150" stroke="#2b7fd1" stroke-width="6" stroke-dasharray="10 8"/>
-        <rect x="200" y="20" width="70" height="70" rx="8" fill="#0d151e" stroke="#7ee0c3" stroke-width="2"/>
-        <text x="235" y="45" text-anchor="middle" font-size="11" fill="#7ee0c3">CHLORINE</text>
-        <text id="clsp" x="235" y="68" text-anchor="middle" font-size="16" font-weight="700">1.5</text>
-        <text x="235" y="83" text-anchor="middle" font-size="10" fill="#7f93a8">mg/L dose</text>
-        <line x1="235" y1="90" x2="235" y2="146" stroke="#7ee0c3" stroke-width="3" stroke-dasharray="4 4"/>
-        <rect id="lyebox" x="300" y="20" width="80" height="70" rx="8" fill="#0d151e" stroke="#c78bff" stroke-width="2"/>
-        <text x="340" y="45" text-anchor="middle" font-size="11" fill="#c78bff">LYE (NaOH)</text>
-        <text id="lyesp" x="340" y="68" text-anchor="middle" font-size="16" font-weight="700">100</text>
-        <text x="340" y="83" text-anchor="middle" font-size="10" fill="#7f93a8">ppm feed</text>
-        <line x1="340" y1="90" x2="340" y2="146" stroke="#c78bff" stroke-width="3" stroke-dasharray="4 4"/>
-        <rect x="410" y="60" width="130" height="170" rx="6" fill="#0d151e" stroke="#3a4f63" stroke-width="2"/>
+        <defs><linearGradient id="wg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#8b949b"/><stop offset="1" stop-color="#6b7379"/></linearGradient></defs>
+        <text x="10" y="40" font-size="12" fill="#4f565c">Raw water</text>
+        <path id="river" d="M0 60 Q40 50 80 60 T160 60" stroke="#6b7379" stroke-width="8" fill="none"/>
+        <circle id="p1" cx="120" cy="150" r="22" fill="#4f565c" stroke="#16191c" stroke-width="2"/>
+        <text id="p1t" x="120" y="155" text-anchor="middle" font-size="11" fill="#fff">P-1</text>
+        <text x="120" y="192" text-anchor="middle" font-size="11" fill="#4f565c">Intake</text>
+        <line x1="120" y1="65" x2="120" y2="128" stroke="#6b7379" stroke-width="5"/>
+        <line id="pipe1" x1="142" y1="150" x2="410" y2="150" stroke="#6b7379" stroke-width="5" stroke-dasharray="10 8"/>
+        <rect x="200" y="20" width="70" height="70" rx="2" fill="#eaebec" stroke="#6b7379" stroke-width="1.5"/>
+        <text x="235" y="45" text-anchor="middle" font-size="11" fill="#4f565c">Chlorine</text>
+        <text id="clsp" x="235" y="68" text-anchor="middle" font-size="16" font-weight="600" font-family="ui-monospace,Consolas,monospace">1.5</text>
+        <text x="235" y="83" text-anchor="middle" font-size="10" fill="#4f565c">mg/L dose</text>
+        <line x1="235" y1="90" x2="235" y2="146" stroke="#6b7379" stroke-width="2" stroke-dasharray="4 4"/>
+        <rect id="lyebox" x="300" y="20" width="80" height="70" rx="2" fill="#eaebec" stroke="#6b7379" stroke-width="1.5"/>
+        <text x="340" y="45" text-anchor="middle" font-size="11" fill="#4f565c" id="lyel">Lye (NaOH)</text>
+        <text id="lyesp" x="340" y="68" text-anchor="middle" font-size="16" font-weight="600" font-family="ui-monospace,Consolas,monospace">100</text>
+        <text id="lyeu" x="340" y="83" text-anchor="middle" font-size="10" fill="#4f565c">ppm feed</text>
+        <line x1="340" y1="90" x2="340" y2="146" stroke="#6b7379" stroke-width="2" stroke-dasharray="4 4"/>
+        <rect x="410" y="60" width="130" height="170" rx="1" fill="#eaebec" stroke="#4f565c" stroke-width="1.5"/>
         <rect id="water" x="412" y="150" width="126" height="78" fill="url(#wg)"/>
-        <text x="475" y="52" text-anchor="middle" font-size="11" fill="#7f93a8">CLEARWELL</text>
-        <text id="lvl" x="475" y="140" text-anchor="middle" font-size="18" font-weight="700">60%</text>
-        <line id="pipe2" x1="540" y1="200" x2="618" y2="200" stroke="#2b7fd1" stroke-width="6" stroke-dasharray="10 8"/>
-        <circle id="p2" cx="640" cy="200" r="22" fill="#16212d" stroke="#3fa7ff" stroke-width="3"/>
-        <text x="640" y="205" text-anchor="middle" font-size="11">P-2</text>
-        <line id="pipe3" x1="662" y1="200" x2="740" y2="200" stroke="#2b7fd1" stroke-width="6" stroke-dasharray="10 8"/>
-        <text x="700" y="150" text-anchor="middle" font-size="22">🏘️</text>
-        <text x="700" y="175" text-anchor="middle" font-size="11" fill="#7f93a8">TOWN</text>
-        <text id="flow" x="640" y="242" text-anchor="middle" font-size="11" fill="#7f93a8">500 gpm</text>
+        <text x="475" y="52" text-anchor="middle" font-size="12" fill="#4f565c">Clearwell</text>
+        <text id="lvl" x="475" y="140" text-anchor="middle" font-size="18" font-weight="600" font-family="ui-monospace,Consolas,monospace">60%</text>
+        <line id="pipe2" x1="540" y1="200" x2="618" y2="200" stroke="#6b7379" stroke-width="5" stroke-dasharray="10 8"/>
+        <circle id="p2" cx="640" cy="200" r="22" fill="#4f565c" stroke="#16191c" stroke-width="2"/>
+        <text id="p2t" x="640" y="205" text-anchor="middle" font-size="11" fill="#fff">P-2</text>
+        <line id="pipe3" x1="662" y1="200" x2="740" y2="200" stroke="#6b7379" stroke-width="5" stroke-dasharray="10 8"/>
+        <path d="M684 158 L700 144 L716 158 L716 176 L684 176 Z" fill="none" stroke="#4f565c" stroke-width="1.5"/>
+        <text x="700" y="194" text-anchor="middle" font-size="12" fill="#4f565c">Town</text>
+        <text id="flow" x="640" y="242" text-anchor="middle" font-size="11" fill="#4f565c">500 gpm</text>
       </svg>
       <div class="kpis">
         <div class="kpi" id="k-ph"><div class="l">Finished water pH</div><div class="v" id="v-ph">–</div><div class="r">safe 6.5 – 8.5</div></div>
@@ -156,8 +167,8 @@ a{color:var(--blue)}code{font-size:11.5px}
     <div class="panel">
       <h2>pH and chlorine: past and the twin's forecast <span class="sp"></span><span class="sub" id="clock" style="text-transform:none;letter-spacing:0"></span></h2>
       <canvas id="chart" width="1000" height="260" style="height:230px"></canvas>
-      <div class="legend"><span><i style="background:#3fa7ff"></i>pH (measured)</span><span><i style="background:#3fa7ff;opacity:.5"></i>pH forecast, no changes</span>
-        <span><i style="background:#7ee0c3"></i>chlorine mg/L (right axis)</span><span><i style="background:#ff9f43"></i>forecast IF the change is made</span></div>
+      <div class="legend"><span><i style="background:#16191c"></i>pH (measured)</span><span><i style="background:#16191c;opacity:.45"></i>pH forecast, no changes</span>
+        <span><i style="background:#7d858b"></i>chlorine mg/L (right axis)</span><span><i style="background:#1d5a91"></i>forecast IF the change is made</span><span>shaded band: safe pH 6.5 – 8.5</span></div>
       <div class="grp">What-if: ask the digital twin before you touch anything</div>
       <div class="btns" style="align-items:center"><select id="wi-n"></select><input id="wi-v" class="f" style="width:90px" type="number" step="any" placeholder="value">
         <button onclick="whatif()">Predict</button><button onclick="opSet()">Apply as operator</button></div>
@@ -168,7 +179,7 @@ a{color:var(--blue)}code{font-size:11.5px}
       <div class="trace" style="margin-top:0">Aegis runs the chemistry alongside the plant using only the setpoints it approved. If the water stops matching, the dosing isn't what the PLC claims. A lab grab sample is the one reading that doesn't come through the PLC.</div>
       <div class="btns" style="margin-top:8px;align-items:center">Lab grab sample: pH <input id="g-ph" class="f" style="width:70px" type="number" step="0.01">
         chlorine <input id="g-cl" class="f" style="width:70px" type="number" step="0.01"> mg/L <button onclick="grab()">Compare with PLC</button>
-        <button onclick="grabSim()" title="demo: fill in what a lab would measure (simulator ground truth)">🧪 Take sample (sim)</button></div>
+        <button onclick="grabSim()" title="demo: fill in what a lab would measure (simulator ground truth)">Take sample (sim)</button></div>
       <div id="grabout"></div>
       <div id="intev" class="log" style="max-height:160px;margin-top:8px"></div>
     </div>
@@ -181,33 +192,6 @@ a{color:var(--blue)}code{font-size:11.5px}
   </section>
   <section>
     <div class="panel">
-      <h2>Demo controls <span class="sp"></span><button onclick="post('/api/reset').then(()=>{overlay=null;load()})" style="font-size:11px;padding:3px 8px">↺ Reset plant</button></h2>
-      <div class="grp">Weather (raw water)</div>
-      <div class="btns"><button class="wx" data-s="normal" onclick="scen('normal')">☀️ Normal</button><button class="wx" data-s="storm" onclick="scen('storm')">⛈️ Storm runoff</button><button class="wx" data-s="bloom" onclick="scen('bloom')">🦠 Algae bloom</button></div>
-      <div class="grp">Attacks (real Modbus traffic from 127.0.0.66)</div>
-      <div class="btns">
-        <button class="red" onclick="atk('lye')" title="FC 6">💀 Oldsmar: lye → 11,100</button>
-        <button class="red" onclick="atk('mask')" title="Mask Write, FC 22">🎭 Sneaky FC 22 write</button>
-        <button class="red" onclick="atk('readwrite')" title="FC 23">🎭 Sneaky FC 23 write</button>
-        <button class="red" onclick="atk('coil')" title="FC 5">⛔ Stop town pump</button>
-        <button class="red" onclick="atk('cip-lye')" title="EtherNet/IP PCCC typed write, the protocol FactoryTalk uses">💀 Lye → 11,100 over EtherNet/IP</button>
-        <button class="red" onclick="atk('cip-program')" title="PCCC change mode">⏹ PLC → PROGRAM mode (EtherNet/IP)</button>
-        <button class="red" onclick="atk('recon')" title="FC 43 + FC 8">🔍 Recon + listen-only</button>
-        <button class="red" onclick="atk('ramp')">🐍 Stealth chlorine ramp</button>
-        <button class="red" onclick="atk('flood')">🌊 Flood, rotating IDs</button>
-        <button class="red" onclick="atk('patient')" title="+50 lye every 61 s; each step passes every static rule">⏳ Patient attacker</button>
-      </div>
-      <div class="grp">Inside the PLC (bypasses Aegis entirely)</div>
-      <div class="btns">
-        <button class="red" onclick="comp(false)" title="malware in the PLC doses lye 200 while the registers still say 100">🦠 Compromised PLC: hidden dosing</button>
-        <button class="red" onclick="comp(true)" title="same, plus it replays frozen normal readings (Stuxnet)">🎭 + replays fake readings</button>
-      </div>
-      <div id="truth" class="trace"></div>
-      <div class="grp">AI</div>
-      <div class="btns"><button class="purple" onclick="post('/api/attack/plant-work-order').then(load)">🧪 Plant poisoned work order</button></div>
-      <div id="alog" class="trace"></div>
-    </div>
-    <div class="panel">
       <h2>AI operator copilot <span class="sp"></span><span id="llm" style="text-transform:none;letter-spacing:0"></span></h2>
       <div class="chat"><input id="q" placeholder="e.g. Chlorine is dropping. What should I do?" onkeydown="if(event.key==='Enter')ask()"><button onclick="ask()">Ask</button></div>
       <div class="reply" id="reply">Ask about the plant in plain English.</div>
@@ -218,9 +202,36 @@ a{color:var(--blue)}code{font-size:11.5px}
       <div id="orders"></div>
     </div>
     <div class="panel">
-      <h2>Guard decisions · every Modbus write <span class="sp"></span><span id="counts" style="text-transform:none;letter-spacing:0"></span></h2>
+      <h2>Guard decisions · every write to the PLC <span class="sp"></span><span id="counts" style="text-transform:none;letter-spacing:0"></span></h2>
       <div class="log" id="log"><div class="trace">No writes yet.</div></div>
     </div>
+      <details class="demo" id="democonsole"><summary>Demo console <span class="trace">simulator only: weather and attacks</span></summary><div class="in">
+      <div class="btns"><button onclick="post('/api/reset').then(()=>{overlay=null;load()})">Reset plant</button></div>
+      <div class="grp">Weather (raw water)</div>
+      <div class="btns"><button class="wx" data-s="normal" onclick="scen('normal')">Normal</button><button class="wx" data-s="storm" onclick="scen('storm')">Storm runoff</button><button class="wx" data-s="bloom" onclick="scen('bloom')">Algae bloom</button></div>
+      <div class="grp">Attacks (real protocol traffic from 127.0.0.66)</div>
+      <div class="btns">
+        <button class="red" onclick="atk('lye')" title="FC 6">Oldsmar: lye → 11,100</button>
+        <button class="red" onclick="atk('mask')" title="Mask Write, FC 22">Sneaky FC 22 write</button>
+        <button class="red" onclick="atk('readwrite')" title="FC 23">Sneaky FC 23 write</button>
+        <button class="red" onclick="atk('coil')" title="FC 5">Stop town pump</button>
+        <button class="red" onclick="atk('cip-lye')" title="EtherNet/IP PCCC typed write, the protocol FactoryTalk uses">Lye → 11,100 over EtherNet/IP</button>
+        <button class="red" onclick="atk('cip-program')" title="PCCC change mode">PLC → PROGRAM mode (EtherNet/IP)</button>
+        <button class="red" onclick="atk('recon')" title="FC 43 + FC 8">Recon + listen-only</button>
+        <button class="red" onclick="atk('ramp')">Stealth chlorine ramp</button>
+        <button class="red" onclick="atk('flood')">Flood, rotating IDs</button>
+        <button class="red" onclick="atk('patient')" title="+50 lye every 61 s; each step passes every static rule">Patient attacker</button>
+      </div>
+      <div class="grp">Inside the PLC (bypasses Aegis entirely)</div>
+      <div class="btns">
+        <button class="red" onclick="comp(false)" title="malware in the PLC doses lye 200 while the registers still say 100">Compromised PLC: hidden dosing</button>
+        <button class="red" onclick="comp(true)" title="same, plus it replays frozen normal readings (Stuxnet)">+ replays fake readings</button>
+      </div>
+      <div id="truth" class="trace"></div>
+      <div class="grp">AI</div>
+      <div class="btns"><button class="purple" onclick="post('/api/attack/plant-work-order').then(load)">Plant poisoned work order</button></div>
+      <div id="alog" class="trace"></div>
+    </div></details>
   </section>
 </main>
 
@@ -300,26 +311,26 @@ async function scen(n){await post('/api/scenario/'+n);load();}
 async function comp(freeze){const r=await post('/api/attack/plc-compromise',{freeze_sensors:freeze});$('alog').textContent=r.result||'';load();}
 async function grab(){const ph=parseFloat($('g-ph').value),cl=parseFloat($('g-cl').value);
   const r=await post('/api/grab',{ph:isNaN(ph)?null:ph,chlorine:isNaN(cl)?null:cl});
-  $('grabout').innerHTML=`<div class="verdict ${r.ok?'good':'bad'}">${r.ok?'✔ Lab and PLC agree.':'✖ Lab and PLC DISAGREE: '+esc(r.notes.join('; '))+'. The PLC is not telling the truth.'}</div>`;load();}
+  $('grabout').innerHTML=`<div class="verdict ${r.ok?'good':'bad'}">${r.ok?'Lab and PLC agree.':'Lab and PLC DISAGREE: '+esc(r.notes.join('; '))+'. The PLC is not telling the truth.'}</div>`;load();}
 function grabSim(){if(!S)return;const t=S.truth||{ph:S.plant.ph,chlorine_residual:S.plant.chlorine_residual};
   $('g-ph').value=(t.ph+(Math.random()-.5)*.06).toFixed(2);$('g-cl').value=(t.chlorine_residual+(Math.random()-.5)*.04).toFixed(2);}
 let calRes=null;
 async function calib(){$('calerr').textContent='fitting…';const r=await fetch('/api/calibrate');if(r.status===403){$('calerr').textContent='needs the engineer role';return;}const j=await r.json();
   if(!r.ok){$('calerr').textContent=j.detail||'error';return;}$('calerr').textContent='';calRes=j;
   $('calout').innerHTML=`<table class="t" style="margin-top:6px"><tr><th>parameter</th><th>current</th><th>fitted</th></tr>${Object.keys(j.params).map(k=>`<tr><td>${esc(k)}</td><td>${fmt(j.current[k])}</td><td><b>${fmt(j.params[k])}</b></td></tr>`).join('')}</table>
-  ${(j.warnings||[]).map(w=>`<div class="verdict bad">⚠ ${esc(w)}</div>`).join('')}
+  ${(j.warnings||[]).map(w=>`<div class="verdict bad">${esc(w)}</div>`).join('')}
   <div class="trace">${j.rows} history rows, ${j.after.windows} windows · 60-min forecast error: pH ${j.before.ph_mae} → <b>${j.after.ph_mae}</b>, chlorine ${j.before.cl_mae} → <b>${j.after.cl_mae}</b> mg/L</div>
   <div class="btns" style="margin-top:6px;align-items:center"><button onclick="calApply()">Apply (needs PIN)</button><span class="err" id="calap"></span></div>`;}
-async function calApply(){if(await postChk('/api/calibrate/apply',{pin:pin()},'calap'))$('calap').innerHTML='<span class="okm">Applied ✓ (audited)</span>';}
+async function calApply(){if(await postChk('/api/calibrate/apply',{pin:pin()},'calap'))$('calap').innerHTML='<span class="okm">Applied (audited)</span>';}
 
 /* ---------- what-if ---------- */
 async function whatif(){const n=$('wi-n').value,v=parseFloat($('wi-v').value);if(isNaN(v))return;
   const r=await post('/api/whatif',{name:n,value:v,hours:((S&&S.policy.prediction||{}).horizon_min||360)/60});
   if(r.forecast)overlay={pts:r.forecast.with,label:`${n} = ${v}`,until:Date.now()+30000};
-  $('wi-out').innerHTML=`<div class="verdict ${r.allowed?'good':'bad'}">${r.allowed?'✔ Twin: safe.':'✖ Twin: unsafe.'} ${esc(r.reason)}</div>`;}
+  $('wi-out').innerHTML=`<div class="verdict ${r.allowed?'good':'bad'}">${r.allowed?'Twin: safe.':'Twin: UNSAFE.'} ${esc(r.reason)}</div>`;}
 async function opSet(){const n=$('wi-n').value,v=parseFloat($('wi-v').value);if(isNaN(v))return;
   const r=await post('/api/operator/setpoint',{name:n,value:v});
-  $('wi-out').innerHTML=`<div class="verdict ${r.result==='accepted'?'good':'bad'}">${r.result==='accepted'?'✔ Accepted by the PLC.':'✖ Blocked by the guard.'} ${esc(r.reason)}</div>`
+  $('wi-out').innerHTML=`<div class="verdict ${r.result==='accepted'?'good':'bad'}">${r.result==='accepted'?'Accepted by the PLC.':'BLOCKED by the guard.'} ${esc(r.reason)}</div>`
     +(r.result!=='accepted'&&/permit/.test(r.reason||'')?`<div class="btns" style="margin-top:6px"><button onclick="permitRetry()">Issue a 10-min permit (PIN) and apply</button></div>`:'');load();}
 async function permitRetry(){const n=$('wi-n').value,v=parseFloat($('wi-v').value);
   if(!await postChk('/api/permit',{name:n,value:v,minutes:10,pin:pin()},'hdrerr'))return;await opSet();}
@@ -328,35 +339,35 @@ async function permitRetry(){const n=$('wi-n').value,v=parseFloat($('wi-v').valu
 function chart(){const c=$('chart'),x=c.getContext('2d'),W=c.width,H=c.height,L=44,R=W-44,T=10,B=H-24;x.clearRect(0,0,W,H);
   if(!S)return;const now=S.sim_t/60, t0=now-100, t1=now+360;
   const X=m=>L+(m-t0)/(t1-t0)*(R-L), Y=v=>B-(Math.min(10.5,Math.max(5.5,v))-5.5)/5*(B-T), Yc=v=>B-Math.min(5,Math.max(0,v))/5*(B-T);
-  x.fillStyle='rgba(46,204,113,.07)';x.fillRect(L,Y(8.5),R-L,Y(6.5)-Y(8.5));
-  x.strokeStyle='rgba(255,77,79,.6)';x.setLineDash([6,6]);[8.5,6.5].forEach(v=>{x.beginPath();x.moveTo(L,Y(v));x.lineTo(R,Y(v));x.stroke();});x.setLineDash([]);
-  x.fillStyle='#7f93a8';x.font='13px system-ui';
+  x.fillStyle='rgba(22,25,28,.05)';x.fillRect(L,Y(8.5),R-L,Y(6.5)-Y(8.5));
+  x.strokeStyle='rgba(22,25,28,.45)';x.setLineDash([6,6]);[8.5,6.5].forEach(v=>{x.beginPath();x.moveTo(L,Y(v));x.lineTo(R,Y(v));x.stroke();});x.setLineDash([]);
+  x.fillStyle='#4f565c';x.font='13px Segoe UI,system-ui';
   for(let v=6;v<=10;v++)x.fillText(v,L-22,Y(v)+4);for(let v=0;v<=4;v++)x.fillText(v,R+8,Yc(v)+4);
   x.fillText('pH',8,T+10);x.fillText('Cl',R+20,T+10);
   for(let k=-1;k<=6;k++){const m=now+k*60;x.fillText(k===0?'':(k>0?'+':'')+k+'h',X(m)-10,H-6);}
-  x.strokeStyle='#36506b';x.beginPath();x.moveTo(X(now),T);x.lineTo(X(now),B);x.stroke();x.fillText('now',X(now)+4,T+12);
+  x.strokeStyle='#6b7379';x.beginPath();x.moveTo(X(now),T);x.lineTo(X(now),B);x.stroke();x.fillText('now',X(now)+4,T+12);
   const line=(pts,fx,fy,col,w,dashA)=>{if(pts.length<2)return;x.strokeStyle=col;x.lineWidth=w;x.setLineDash(dashA||[]);x.beginPath();
     pts.forEach((p,i)=>{const a=fx(p),b=fy(p);i?x.lineTo(a,b):x.moveTo(a,b);});x.stroke();x.setLineDash([]);x.lineWidth=1;};
   const h=S.history.filter(p=>p.sim_t/60>=t0);
-  line(h,p=>X(p.sim_t/60),p=>Yc(p.chlorine_residual),'#7ee0c3',2);
-  line(h,p=>X(p.sim_t/60),p=>Y(p.ph),'#3fa7ff',3);
-  if(S.forecast){line(S.forecast,p=>X(now+p.min),p=>Y(p.ph),'rgba(63,167,255,.55)',2,[8,6]);
-    line(S.forecast,p=>X(now+p.min),p=>Yc(p.chlorine_residual),'rgba(126,224,195,.5)',1.5,[8,6]);}
+  line(h,p=>X(p.sim_t/60),p=>Yc(p.chlorine_residual),'#7d858b',2);
+  line(h,p=>X(p.sim_t/60),p=>Y(p.ph),'#16191c',2.5);
+  if(S.forecast){line(S.forecast,p=>X(now+p.min),p=>Y(p.ph),'rgba(22,25,28,.45)',2,[8,6]);
+    line(S.forecast,p=>X(now+p.min),p=>Yc(p.chlorine_residual),'rgba(125,133,139,.6)',1.5,[8,6]);}
   if(overlay&&Date.now()<overlay.until){const pts=overlay.pts;
-    line(pts,p=>X(now+p.min),p=>Y(p.ph),'#ff9f43',3,[4,4]);x.fillStyle='#ff9f43';
+    line(pts,p=>X(now+p.min),p=>Y(p.ph),'#1d5a91',3,[4,4]);x.fillStyle='#1d5a91';
     const last=pts[pts.length-1];if(last)x.fillText(`${overlay.label}: pH ${last.ph.toFixed(2)} at +${(last.min/60).toFixed(0)}h`,Math.max(L,X(now+last.min)-280),Math.max(T+14,Y(last.ph)-8));}
 }
 function spark(fc){if(!fc)return'';const w=150,h=34,pts=fc.with,pw=fc.without,n=Math.max(pts.length-1,1);
   const y=v=>h-(Math.min(10,Math.max(6,v))-6)/4*h, p=a=>a.map((q,i)=>`${(i/n*w).toFixed(1)},${y(q.ph).toFixed(1)}`).join(' ');
-  return `<svg width="${w}" height="${h}" style="vertical-align:middle;background:#0b1118;border-radius:4px"><rect x="0" y="${y(8.5)}" width="${w}" height="${y(6.5)-y(8.5)}" fill="rgba(46,204,113,.12)"/>
-  <polyline points="${p(pw)}" fill="none" stroke="#3fa7ff" stroke-width="1.5" stroke-dasharray="3 3"/><polyline points="${p(pts)}" fill="none" stroke="#ff9f43" stroke-width="2"/></svg>
-  <span class="trace">pH next ${pts[pts.length-1].min/60} h: <span style="color:#ff9f43">with</span> ${pts[pts.length-1].ph.toFixed(2)} vs without ${pw[pw.length-1].ph.toFixed(2)}</span>`;}
+  return `<svg width="${w}" height="${h}" style="vertical-align:middle;background:#eaebec;border:1px solid #a9aeb2"><rect x="0" y="${y(8.5)}" width="${w}" height="${y(6.5)-y(8.5)}" fill="rgba(22,25,28,.06)"/>
+  <polyline points="${p(pw)}" fill="none" stroke="#16191c" stroke-width="1.5" stroke-dasharray="3 3"/><polyline points="${p(pts)}" fill="none" stroke="#1d5a91" stroke-width="2"/></svg>
+  <span class="trace">pH next ${pts[pts.length-1].min/60} h: <span style="color:#1d5a91">with</span> ${pts[pts.length-1].ph.toFixed(2)} vs without ${pw[pw.length-1].ph.toFixed(2)}</span>`;}
 
 /* ---------- copilot ---------- */
 async function ask(){const q=$('q').value.trim();if(!q)return;$('reply').textContent='Thinking…';$('trace').innerHTML='';
   try{const r=await post('/api/copilot',{message:q});$('reply').textContent=r.reply||r.detail||'';
   const rc=r.reply_check;$('reply').style.borderColor=rc&&!rc.ok?'var(--bad)':'';
-  if(rc&&!rc.ok)$('reply').insertAdjacentHTML('beforeend',`<div class="verdict bad" style="margin-top:8px">⚠ Aegis reply check: don't act on this answer.<br>${rc.flags.map(esc).join('<br>')}</div>`);
+  if(rc&&!rc.ok)$('reply').insertAdjacentHTML('beforeend',`<div class="verdict bad" style="margin-top:8px">Aegis reply check: don't act on this answer.<br>${rc.flags.map(esc).join('<br>')}</div>`);
   $('trace').innerHTML=(r.trace||[]).map(t=>`→ <b>${esc(t.tool)}</b> ${esc(JSON.stringify(t.args))} ⇒ ${esc(t.result.twin_verdict||t.result.result||t.result.error||'ok')}`).join('<br>');load();}catch(e){$('reply').textContent='Error: '+e;}}
 
 /* ---------- rules ---------- */
@@ -378,7 +389,7 @@ async function saveRules(){const p=JSON.parse(JSON.stringify(policy));
     if(a===''&&b==='')delete p.limits[k].normal;else p.limits[k].normal=[Number(a),Number(b)];});
   p.max_writes_per_min_per_source=parseInt($('wpm').value,10);
   p.prediction={enabled:$('pen').checked,horizon_min:Number($('phz').value),limits:{ph:[Number($('pph0').value),Number($('pph1').value)],chlorine_residual:[Number($('pcl0').value),Number($('pcl1').value)]}};
-  if(await postChk('/api/policy',{policy:p,pin:pin()},'ruleserr')){$('ruleserr').innerHTML='<span class="okm">Saved ✓ (logged in the audit chain)</span>';rulesShown=false;await load();renderRules(true);}}
+  if(await postChk('/api/policy',{policy:p,pin:pin()},'ruleserr')){$('ruleserr').innerHTML='<span class="okm">Saved (logged in the audit chain)</span>';rulesShown=false;await load();renderRules(true);}}
 let learned=null;
 async function learn(sim){const r=await (await fetch('/api/learn?simulated='+(sim?'true':'false'))).json();learned=r;
   $('learn').innerHTML=`<div class="trace">Based on <b>${r.based_on.writes}</b> writes over <b>${r.based_on.hours} h</b> · ${esc(r.source)}</div>
@@ -386,7 +397,7 @@ async function learn(sim){const r=await (await fetch('/api/learn?simulated='+(si
   <div class="btns" style="margin-top:8px;align-items:center"><button onclick="applyLearn()">Apply suggestions (needs PIN)</button><span class="err" id="learnerr"></span></div>`:'<div class="trace">No changes suggested.</div>'}
   ${r.notes.map(n=>`<div class="trace">· ${esc(n)}</div>`).join('')}
   <div class="trace">Writers seen: ${Object.entries(r.writers).map(([k,v])=>`${esc(k)}: ${v.length?esc(v.join(', ')):'none'}`).join(' · ')}</div>`;}
-async function applyLearn(){if(learned&&await postChk('/api/policy',{policy:learned.policy,pin:pin()},'learnerr')){$('learnerr').innerHTML='<span class="okm">Applied ✓</span>';rulesShown=false;await load();renderRules(true);}}
+async function applyLearn(){if(learned&&await postChk('/api/policy',{policy:learned.policy,pin:pin()},'learnerr')){$('learnerr').innerHTML='<span class="okm">Applied</span>';rulesShown=false;await load();renderRules(true);}}
 
 /* ---------- guided demo ---------- */
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -434,8 +445,8 @@ async function guideGo(dir){const b=$('g-next');
   if(dir<0){gi=Math.max(0,gi-1);guideShow();return;}
   if(ran){if(gi<STEPS.length-1){gi++;guideShow();}return;}         // second press: move on
   b.disabled=true;$('g-st').textContent='running…';
-  try{await STEPS[gi].run();if(!/offline|Routine/.test($('g-st').textContent))$('g-st').textContent='✓ done: talk over the result, then go on';}
-  catch(e){$('g-st').textContent='⚠ '+(e.message||e);b.disabled=false;return;}
+  try{await STEPS[gi].run();if(!/offline|Routine/.test($('g-st').textContent))$('g-st').textContent='Done: talk over the result, then go on';}
+  catch(e){$('g-st').textContent='Error: '+(e.message||e);b.disabled=false;return;}
   b.disabled=false;ran=true;b.textContent=gi<STEPS.length-1?'Next step ▶':'Finished';}
 
 /* ---------- login ---------- */
@@ -455,14 +466,14 @@ async function load(){let s;try{const r=await fetch('/api/state');if(r.status===
   $('k-ph').classList.toggle('bad',p.ph>8.5||p.ph<6.5);$('k-cl').classList.toggle('bad',p.chlorine_residual>4||p.chlorine_residual<.2);
   $('k-lv').classList.toggle('bad',p.tank_level>95||p.tank_level<10);$('k-hocl').classList.toggle('warn',p.hocl_pct<20);
   $('clsp').textContent=p.chlorine_dose.toFixed(1);$('lyesp').textContent=p.naoh_dose.toLocaleString();
-  $('lyebox').setAttribute('stroke',p.naoh_dose>250?'#ff4d4f':'#c78bff');$('lyesp').setAttribute('fill',p.naoh_dose>250?'#ff4d4f':'#dce6f0');
+  $('lyebox').setAttribute('fill',p.naoh_dose>250?'#c4161c':'#eaebec');$('lyesp').setAttribute('fill',p.naoh_dose>250?'#fff':'#16191c');['lyel','lyeu'].forEach(i=>$(i).setAttribute('fill',p.naoh_dose>250?'#fff':'#4f565c'));
   const h=166*p.tank_level/100;$('water').setAttribute('y',228-h);$('water').setAttribute('height',h);$('lvl').textContent=p.tank_level.toFixed(0)+'%';
-  const bad=p.ph>8.5;$('water').setAttribute('fill',bad?'#a24bd1':'url(#wg)');
-  $('river').setAttribute('stroke',p.scenario==='bloom'?'#4caf50':p.scenario==='storm'?'#8d6e4a':'#2b7fd1');
-  $('p1').setAttribute('stroke',p.intake_pump?'#2ecc71':'#555');$('p2').setAttribute('stroke',p.distribution_pump?'#2ecc71':'#555');$('flow').textContent=p.flow_out+' gpm';
+  const bad=p.ph>8.5;$('water').setAttribute('fill',bad?'#c4161c':'url(#wg)');
+  $('river').setAttribute('stroke','#6b7379');
+  /* ISA-101: running = filled dark, stopped = hollow */[['p1','p1t',p.intake_pump],['p2','p2t',p.distribution_pump]].forEach(([c,t,on])=>{$(c).setAttribute('fill',on?'#4f565c':'#eaebec');$(t).setAttribute('fill',on?'#fff':'#16191c');});$('flow').textContent=p.flow_out+' gpm';
   dash=(dash+4)%18;['pipe1','pipe2','pipe3'].forEach(i=>$(i).setAttribute('stroke-dashoffset',-dash));
   $('scen').textContent='raw water: '+p.scenario;document.querySelectorAll('.wx').forEach(b=>b.classList.toggle('on',b.dataset.s===p.scenario));
-  const al=$('alarm');if(p.alarms.length){al.style.display='block';al.textContent='⚠ ALARM: '+p.alarms.join(' · ')+(bad?': caustic water heading to town':'')+(p.chlorine_residual<.2?': water no longer disinfected':'');}else al.style.display='none';
+  const al=$('alarm');if(p.alarms.length){al.style.display='block';al.textContent='ALARM: '+p.alarms.join(' · ')+(bad?': caustic water heading to town':'')+(p.chlorine_residual<.2?': water no longer disinfected':'');}else al.style.display='none';
   const hh=Math.floor(s.sim_t/3600),mm=Math.floor(s.sim_t/60)%60;$('clock').textContent=`sim time ${hh}h ${String(mm).padStart(2,'0')}m · ${s.speed}× real time`;
   if(!tagsFilled){$('wi-n').innerHTML=Object.entries(s.tags).map(([k,t])=>`<option value="${k}">${esc(t.label)} (${esc(t.unit)})</option>`).join('');$('wi-n').value='naoh_dose';tagsFilled=true;}
   const lg=s.log[0];if(lg&&lg.forecast&&lg.check==='predict'&&(!overlay||overlay.t!==lg.t))overlay={pts:lg.forecast.with,label:`blocked ${lg.register}=${lg.new}`,until:Date.now()+30000,t:lg.t};
@@ -473,23 +484,23 @@ async function load(){let s;try{const r=await fetch('/api/state');if(r.status===
   $('alcfg').textContent=s.alerts_configured?'SMS + phone call enabled':'SMS not configured (dashboard only)';
   $('incidents').innerHTML=(s.incidents||[]).map(i=>`<div class="verdict ${i.severity==='critical'&&!i.acked_by?'bad':''}" style="margin:0 0 8px">
     <b>Incident #${i.id}</b> · ${esc(i.severity)} · ${i.count} event${i.count>1?'s':''} grouped (one text sent${i.level?`, escalated to contact ${i.level+1}`:''})<br>${esc(i.title)}
-    <div style="margin-top:6px">${i.acked_by?`<span class="okm">✔ acknowledged by ${esc(i.acked_by)}</span>`:`<button onclick="post('/api/incidents/${i.id}/ack').then(load)">Acknowledge</button> <span class="trace">unacknowledged critical incidents escalate to the next contact every 10 min</span>`}</div></div>`).join('');
+    <div style="margin-top:6px">${i.acked_by?`<span class="okm">Acknowledged by ${esc(i.acked_by)}</span>`:`<button onclick="post('/api/incidents/${i.id}/ack').then(load)">Acknowledge</button> <span class="trace">unacknowledged critical incidents escalate to the next contact every 10 min</span>`}</div></div>`).join('');
   $('holds').innerHTML=(s.holds||[]).map(h=>`<div class="verdict bad" style="margin:0 0 8px"><b>SAFE-HOLD</b> ${esc(h.register)} held at ${fmt(h.value)} (${esc(h.reason)}; ${h.remaining_min} min left). Modbus writes that move it are refused unless the twin calls them corrective.
     <div style="margin-top:6px"><button onclick="post('/api/hold/release',{name:'${h.register}'}).then(load)">Release hold</button> <span class="trace">needs an operator login; logged</span></div></div>`).join('')
     +(s.safe_hold&&s.safe_hold.standing_down?'<div class="verdict" style="margin:0 0 8px">Safe-hold is standing down: the integrity monitor doesn\'t trust the sensors right now.</div>':'');
   $('alerts').innerHTML=s.alerts.length?s.alerts.map(a=>`<div class="al ${a.severity}"><b>${a.severity.toUpperCase()}</b> ${esc(a.message)}<div class="d">${new Date(a.t*1000).toLocaleTimeString()} · ${esc(a.delivery)}</div></div>`).join(''):'<div class="trace">No alerts.</div>';
-  $('alog').innerHTML=s.attack_log.slice(0,4).map(a=>`<div>${new Date(a.t*1000).toLocaleTimeString()} <b>${esc(a.attack)}</b>: ${esc(a.result)}</div>`).join('')+(s.patient_running?'<div style="color:var(--warn)">⏳ patient attacker is waiting out the ramp window…</div>':'');
+  $('alog').innerHTML=s.attack_log.slice(0,4).map(a=>`<div>${new Date(a.t*1000).toLocaleTimeString()} <b>${esc(a.attack)}</b>: ${esc(a.result)}</div>`).join('')+(s.patient_running?'<div style="color:var(--warn)">Patient attacker is waiting out the ramp window…</div>':'');
   $('props').innerHTML=s.proposals.length?s.proposals.map(p=>`<div class="prop"><span class="st ${p.status}">${p.status}</span> <b>${esc(p.label)}</b>: ${fmt(p.old)} → ${fmt(p.value)} ${esc(p.unit)}${p.reason?` · “${esc(p.reason)}”`:''}<div class="trace">${esc(p.guard)}</div>${spark(p.forecast)}${p.status==='pending'?`<div class="act"><button onclick="decide(${p.id},'approve')">Approve</button><button onclick="decide(${p.id},'reject')">Reject</button></div>`:''}</div>`).join(''):'<div class="trace">None.</div>';
   $('orders').innerHTML=s.work_orders.map(w=>`<div class="wo ${w.includes('AI COPILOT')?'evil':''}">${esc(w)}</div>`).join('');
   const c=s.counts;$('counts').textContent=`allowed ${c.allowed||0} · blocked ${c.blocked||0}`+(c.would_block?` · would-block ${c.would_block}`:'');
   $('log').innerHTML=s.log.length?s.log.map(d=>{const cls=d.would_block?'wb':(d.allowed?((d.check==='unusual'||d.check==='advice')?'un':'ok'):'no'),tg=d.would_block?'<span class="tag wb">WOULD BLOCK</span>':(d.allowed?'<span class="tag ok">ALLOWED</span>':'<span class="tag no">BLOCKED</span>');
     return `<div class="ev ${cls}"><div class="h"><span>${esc(d.source)} → ${esc(d.register)} = ${fmt(d.new)} ${esc(d.unit)}<span class="chk ${d.check}">${esc(d.check)}</span>${d.fc?`<span class="chk">FC ${d.fc}</span>`:''}${(d.techniques||[]).map(t=>`<span class="tech" title="${esc(t[1])}">${esc(t[0])}</span>`).join('')}</span>${tg}</div>
     <div class="m">${esc(d.reason)} · was ${fmt(d.old)} · from ${esc(d.peer)} · ${new Date(d.t*1000).toLocaleTimeString()}</div></div>`;}).join(''):'<div class="trace">No writes yet.</div>';
-  $('forewarn').innerHTML=(s.forewarn||[]).map(w=>`<div class="verdict bad" style="border-color:var(--warn);color:#ffe2a8">🔮 ${esc(w.message)}</div>`).join('');
-  const I=s.integrity;$('intst').innerHTML=I.ok?'<span class="okm">✔ consistent</span>':'<span class="err">✖ MISMATCH</span>';
+  $('forewarn').innerHTML=(s.forewarn||[]).map(w=>`<div class="verdict warn"><b>Forecast</b> ${esc(w.message)}</div>`).join('');
+  const I=s.integrity;$('intst').innerHTML=I.ok?'<span class="okm">Consistent</span>':'<span class="err"><b>MISMATCH</b></span>';
   $('intev').innerHTML=(I.events||[]).map(e=>`<div class="al critical">${esc(e.message)}</div>`).join('')+(I.ph_err!=null?`<div class="trace">measured vs chemistry right now: alkalinity <b>${I.alk_err_pct>=0?'+':''}${I.alk_err_pct}%</b> (alarm at ±4%), pH ${I.ph_err>=0?'+':''}${I.ph_err}, chlorine ${I.cl_err>=0?'+':''}${I.cl_err} mg/L · ${esc(I.message)}</div>`:'');
   $('truth').innerHTML=s.truth?`<span style="color:var(--warn)">Simulator truth (an operator can't see this): real pH <b>${s.truth.ph}</b>, real lye feed <b>${s.truth.naoh_dose_actual}</b> ppm${s.truth.sensors_frozen?' · PLC is replaying frozen readings':''}</span>`:'';
-  const au=s.audit;$('audit').innerHTML=au.ok?`<span class="audit-ok">✔ Chain intact</span> · ${au.entries} entries verified${au.keyed?' · keyed (HMAC)':' · unkeyed (set AEGIS_AUDIT_KEY)'}<div class="trace">head <code>${esc((au.head||'').slice(0,32))}…</code></div>${s.policy_sig?`<div class="trace">Safety policy file: ${s.policy_sig.ok?'✔':'<span class="err">✖</span>'} ${esc(s.policy_sig.message)}</div>`:''}`:`<span class="audit-bad">✖ ${esc(au.message)}</span>`;
+  const au=s.audit;$('audit').innerHTML=au.ok?`<span class="audit-ok">Chain intact</span> · ${au.entries} entries verified${au.keyed?' · keyed (HMAC)':' · unkeyed (set AEGIS_AUDIT_KEY)'}<div class="trace">head <code>${esc((au.head||'').slice(0,32))}…</code></div>${s.policy_sig?`<div class="trace">Safety policy file: ${s.policy_sig.ok?'<span class="okm">OK</span>':'<span class="err"><b>FAILED</b></span>'} ${esc(s.policy_sig.message)}</div>`:''}`:`<span class="audit-bad">${esc(au.message)}</span>`;
   const L=s.latency,f=v=>v==null?'–':v.toFixed(2)+' ms';
   $('lat').innerHTML=[['decide p50',f(L.check_p50_ms)],['decide p99',f(L.check_p99_ms)],['total p50',f(L.total_p50_ms)],['total p99',f(L.total_p99_ms)]].map(([l,v])=>`<div class="kpi"><div class="l">${l}</div><div class="v" style="font-size:18px">${v}</div><div class="r">${L.n} writes</div></div>`).join('');
   const A=s.accuracy.by_horizon_min;
