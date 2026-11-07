@@ -148,7 +148,11 @@ async def lifespan(app: FastAPI):
              accuracy=Accuracy(), forecast=None, attack_log=deque(maxlen=30), patient=None,
              integrity=IntegrityMonitor(ProcessModel(twin.model.params), alerter=alerter, audit=audit),
              forewarn=ForecastWatch(alerter, audit))
-    S["copilot"] = Copilot(plant, GUARD_PORT, orders, proposals=props, mode_getter=lambda: S["autonomy"], twin=twin)
+    S["copilot"] = Copilot(plant, GUARD_PORT, orders, proposals=props, mode_getter=lambda: S["autonomy"], twin=twin,
+                           context=lambda: {"guard_log": [d.as_dict() for d in list(S["guard"].log)[:30]],
+                                            "integrity": {**S["integrity"].status,
+                                                          "events": list(S["integrity"].events)[:5]},
+                                            "forewarn": list(S["forewarn"].active.values())})
     audit.append("startup", {"guard_port": GUARD_PORT, "plc_port": PLC_PORT, "plant": PLANT_NAME})
 
     async def tick():
@@ -167,8 +171,9 @@ async def lifespan(app: FastAPI):
                     snap = plant.snapshot()
                     S["forecast"] = twin.forecast(snap, None, 360, every_min=10)
                     S["forewarn"].update(S["forecast"], snap)
-                if n % 25 == 0:      # every 5 s: new accuracy sample
+                if n % 25 == 0:      # every 5 s: new accuracy sample, escalate unacknowledged incidents
                     S["accuracy"].predict(twin, plant)
+                    alerter.tick()
                 S["accuracy"].score(plant)
                 if n % 5 == 0:       # every simulated minute: is the process what the PLC claims?
                     S["integrity"].update(plant.snapshot(), plant.sim_time, guard.commanded)
@@ -236,6 +241,8 @@ def state(who: dict = Depends(role("viewer"))):
             "guard_mode": g.mode, "guard_enabled": g.enabled,
             "log": log, "work_orders": S["orders"], "policy": g.policy,
             "alerts": list(S["alerter"].recent)[:20], "alerts_configured": S["alerter"].configured(),
+            "incidents": [i for i in S["alerter"].incidents if i["closed"] is None][:5],
+            "notifications_sent": len(S["alerter"].notifications),
             "proposals": S["proposals"].items[:15], "autonomy": S["autonomy"], "audit": S["verify"],
             "latency": g.latency(), "counts": dict(g.counts), "accuracy": S["accuracy"].summary(),
             "integrity": {**S["integrity"].status, "events": list(S["integrity"].events)[:10]},
@@ -316,6 +323,14 @@ def reject(pid: int, who: dict = Depends(role("operator"))):
         return S["proposals"].reject(pid, by=_by(who))
     except ValueError as e:
         raise HTTPException(409, str(e))
+
+
+@app.post("/api/incidents/{iid}/ack")
+def ack_incident(iid: int, who: dict = Depends(role("operator"))):
+    try:
+        return S["alerter"].ack(iid, by=_by(who))
+    except ValueError as e:
+        raise HTTPException(404, str(e))
 
 
 @app.get("/api/audit")
@@ -432,8 +447,8 @@ def scenario(name: str, who: dict = Depends(role("operator", demo_only=True))):
 def reset(who: dict = Depends(role("operator", demo_only=True))):
     p, g = S["plant"], S["guard"]
     p.reset()
-    g.log.clear(); g._changes.clear(); g._attempts.clear(); g.counts.clear()
-    S["alerter"].recent.clear(); S["alerter"]._last.clear()
+    g.log.clear(); g._changes.clear(); g._attempts.clear(); g._dirs.clear(); g.counts.clear()
+    S["alerter"].recent.clear(); S["alerter"]._last.clear(); S["alerter"].incidents.clear()
     S["proposals"].items.clear()
     S["orders"][:] = BASE_ORDERS
     S["attack_log"].clear()

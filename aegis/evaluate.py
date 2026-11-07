@@ -46,7 +46,13 @@ GOALS = {
     "no_disinfection": ("chlorine_dose", -1),
     "chlorine_overdose": ("chlorine_dose", +1),
     "drain_clearwell": ("distribution_rate", +1),
+    "cycle_equipment": ("distribution_rate", 0),   # oscillate: wear pumps/valves, pressure surges
 }
+# stepper: largest legal step every `gap` s.  prober: binary-searches the largest change the
+# guard accepts (<= 4 tries per write, staying under the flood limit).  timed: waits for the
+# weather to turn (storm/bloom) and then attacks, exploiting the plant at its weakest.
+STRATEGIES = ("stepper", "prober", "timed")
+CYCLE_HARM = 10          # >= 10 large reversals executed = equipment stress counted as harm
 LIMITS = {"ph": (6.5, 8.5), "chlorine": (0.2, 4.0), "tank": (5.0, 101.0)}
 FIDELITY = "standard"     # "high": the simulated plant has physics the twin doesn't model
 
@@ -100,33 +106,57 @@ def attack_episode(seed: int, use_twin: bool | None, policy: dict, hours: int = 
     clock = Clock()
     g = make_guard(plant, use_twin, clock, policy)
     goal = rng.choice(list(GOALS))
+    strategy = rng.choice(STRATEGIES)
     reg, direction = GOALS[goal]
     lim = policy["limits"][reg]
     weather_at = rng.randint(0, hours * 60)
     weather = rng.choice(["normal", "normal", "storm", "bloom"])
     start = rng.randint(0, 120)
-    gap = rng.choice([61, 75, 120, 300, 900])          # seconds between attacker writes (ramp-aware)
+    if strategy == "timed" and weather != "normal":
+        start = min(hours * 60 - 60, weather_at + rng.randint(10, 60))
+    gap = rng.choice([61, 75, 120, 300, 900]) if goal != "cycle_equipment" else rng.choice([61, 90, 120])
     step = (lim.get("max_step") or (lim["max"] - lim["min"])) * rng.uniform(0.5, 1.0)
     target = lim["max"] if direction > 0 else lim["min"]
-    tries = blocked = 0
+    tries = blocked = cycles = 0
     harm, harm_at, alarm_at, fore_at = None, None, None, None
+    peak = 0.0
     watch_twin = Twin()
     next_write = start * 60
+    src, peer = "Unknown device (unit 66)", "10.9.9.9:4444"
+
+    def attempt(new):
+        nonlocal tries, blocked
+        d = g.check(reg, new, plant.snapshot(), src, peer)
+        tries += 1
+        if d.allowed:
+            g._commit(d)
+            plant.set(reg, new)
+            return True
+        blocked += 1
+        return False
+
     for minute in range(hours * 60 + 360):
         clock.t = minute * 60.0
         if minute == weather_at:
             plant.set_scenario(weather)
         if use_twin is not None and minute < hours * 60 and clock.t >= next_write:
             cur = plant.setpoint(reg)
-            if (direction > 0 and cur < target) or (direction < 0 and cur > target):
-                new = round(min(target, cur + step) if direction > 0 else max(target, cur - step), 2)
-                d = g.check(reg, new, plant.snapshot(), "Unknown device (unit 66)", "10.9.9.9:4444")
-                tries += 1
-                if d.allowed:
-                    g._commit(d)
-                    plant.set(reg, new)
+            if goal == "cycle_equipment":
+                new = 300 if cur >= 500 else 700
+                if attempt(new) and abs(new - cur) >= 150:
+                    cycles += 1
+            elif (direction > 0 and cur < target) or (direction < 0 and cur > target):
+                want = round(min(target, cur + step) if direction > 0 else max(target, cur - step), 2)
+                if strategy == "prober":
+                    want = target                      # start at the goal, halve the change until accepted
+                    for _ in range(4):
+                        if attempt(round(want, 2)):
+                            break
+                        want = cur + (want - cur) / 2
+                        if abs(want - cur) < 0.01:
+                            break
                 else:
-                    blocked += 1
+                    attempt(want)
             next_write += gap
         plant.step(1.0)
         if fore_at is None and minute % 10 == 0 and first_crossings(
@@ -134,11 +164,15 @@ def attack_episode(seed: int, use_twin: bool | None, policy: dict, hours: int = 
             fore_at = minute            # twin forecast crosses a limit -> early-warning SMS
         if alarm_at is None and plant.alarms():
             alarm_at = minute           # process alarm -> Aegis texts/calls the operator
+        peak = max(peak, severity(plant))
         if harm is None:
             harm = harmful(plant)
             if harm:
                 harm_at = minute
-    return {"seed": seed, "goal": goal, "weather": weather, "twin": use_twin, "tries": tries, "blocked": blocked,
+        if harm is None and goal == "cycle_equipment" and cycles >= CYCLE_HARM:
+            harm, harm_at = "equipment cycling", minute
+    return {"seed": seed, "goal": goal, "strategy": strategy, "weather": weather, "twin": use_twin,
+            "tries": tries, "blocked": blocked, "cycles": cycles, "peak_severity": round(peak, 4),
             "harm": harm, "harm_at_min": harm_at, "alarm_at_min": alarm_at, "forewarn_at_min": fore_at,
             "warning_min": (harm_at - alarm_at) if (harm_at is not None and alarm_at is not None) else None,
             "forewarn_min": (harm_at - fore_at) if (harm_at is not None and fore_at is not None) else None}
@@ -191,20 +225,40 @@ def operator_episode(seed: int, use_twin: bool, policy: dict, hours: int = 12) -
     return {"seed": seed, "twin": use_twin, "weather": weather, "writes": writes}
 
 
+def attacker_caused(e: dict, b: dict) -> bool:
+    """Harm the attacker is responsible for: unsafe when the same weather without the attacker
+    was safe, or clearly worse than without it (peak severity +50% and +0.02, or harm 30+ min sooner)."""
+    if e["harm"] is None:
+        return False
+    if b["harm"] is None:
+        return True
+    if e["harm"] == "equipment cycling":
+        return True
+    worse = e["peak_severity"] > b["peak_severity"] * 1.5 + 0.02
+    sooner = b["harm_at_min"] is not None and e["harm_at_min"] is not None and e["harm_at_min"] < b["harm_at_min"] - 30
+    return worse or sooner
+
+
 def summarize(attacks: list[dict], operators: list[dict]) -> dict:
-    """Attack harm counts only episodes where the same weather WITHOUT the attacker stayed safe."""
-    base = {e["seed"]: e["harm"] for e in attacks if e["twin"] is None}
-    out = {"weather_alone_unsafe": sum(h is not None for h in base.values()), "episodes": len(base)}
+    """An attack counts as successful only for harm the attacker caused (see attacker_caused)."""
+    base = {e["seed"]: e for e in attacks if e["twin"] is None}
+    out = {"weather_alone_unsafe": sum(b["harm"] is not None for b in base.values()), "episodes": len(base)}
+    for e in attacks:
+        if e["twin"] is not None:
+            e["caused"] = attacker_caused(e, base[e["seed"]])
     for mode in (False, True):
-        a = [e for e in attacks if e["twin"] == mode and base.get(e["seed"]) is None]
+        a = [e for e in attacks if e["twin"] == mode]
         by_goal = {}
         for gname in GOALS:
             ge = [e for e in a if e["goal"] == gname]
-            warn = sorted(e["warning_min"] for e in ge if e["harm"] and e["warning_min"] is not None)
-            fw = sorted(e["forewarn_min"] for e in ge if e["harm"] and e["forewarn_min"] is not None)
-            by_goal[gname] = {"episodes": len(ge), "harmful": sum(e["harm"] is not None for e in ge),
+            warn = sorted(e["warning_min"] for e in ge if e["caused"] and e["warning_min"] is not None)
+            fw = sorted(e["forewarn_min"] for e in ge if e["caused"] and e["forewarn_min"] is not None)
+            by_goal[gname] = {"episodes": len(ge), "harmful": sum(e["caused"] for e in ge),
                               "median_warning_min": warn[len(warn) // 2] if warn else None,
                               "median_forewarn_min": fw[len(fw) // 2] if fw else None}
+        by_strategy = {st: {"episodes": sum(e["strategy"] == st for e in a),
+                            "harmful": sum(e["strategy"] == st and e["caused"] for e in a)}
+                       for st in STRATEGIES}
         o = [w for e in operators if e["twin"] == mode for w in e["writes"]]
         pred_blocks = [w for w in o if w["check"] == "predict"]
         worse = lambda w: w["truth_with"] > 0 and w["truth_with"] > w["truth_without"] + 1e-3
@@ -212,8 +266,8 @@ def summarize(attacks: list[dict], operators: list[dict]) -> dict:
         unjust = [w for w in pred_blocks if not worse(w)]
         missed = [w for w in o if w["allowed"] and worse(w)]
         out["twin" if mode else "static"] = {
-            "attack_episodes": len(a), "attack_harmful": sum(e["harm"] is not None for e in a),
-            "by_goal": by_goal,
+            "attack_episodes": len(a), "attack_harmful": sum(e["caused"] for e in a),
+            "by_goal": by_goal, "by_strategy": by_strategy,
             "operator_writes": len(o), "operator_blocked_any_rule": sum(not w["allowed"] for w in o),
             "operator_blocked_by_twin": len(pred_blocks), "twin_blocks_justified": len(justified),
             "twin_false_blocks": len(unjust), "operator_mistakes_let_through": len(missed),
@@ -250,8 +304,8 @@ def main(argv=None):
                                             "operators": [{k: v for k, v in e.items()} for e in ops]}, indent=1, default=str))
     print(f"{a.episodes} attack episodes and {a.operator_episodes} operator episodes per guard "
           f"({time.time() - t0:.0f} s)")
-    print(f"{res['weather_alone_unsafe']} of {res['episodes']} episodes were unsafe from weather alone "
-          "(no attacker); they are excluded from the attack counts.\n")
+    print(f"{res['weather_alone_unsafe']} of {res['episodes']} episodes were unsafe from weather alone (nobody "
+          "responding). An attack counts only if it caused harm or made it clearly worse/sooner.\n")
     for mode in ("static", "twin"):
         r = res[mode]
         print(f"== {mode} ==")
@@ -261,6 +315,8 @@ def main(argv=None):
             w = (f"   (warning before harm, median: alarm {v['median_warning_min']} min, twin forecast "
                  f"{v['median_forewarn_min']} min)") if v["median_warning_min"] is not None else ""
             print(f"    {gname:18} {v['harmful']}/{v['episodes']}{w}")
+        print("    by attacker strategy: " + ", ".join(f"{k} {v['harmful']}/{v['episodes']}"
+                                                       for k, v in r["by_strategy"].items()))
         print(f"  operator writes: {r['operator_writes']}, blocked by any rule: {r['operator_blocked_any_rule']}, "
               f"by twin: {r['operator_blocked_by_twin']} (justified {r['twin_blocks_justified']}, "
               f"false {r['twin_false_blocks']}); unsafe operator writes let through: {r['operator_mistakes_let_through']}")

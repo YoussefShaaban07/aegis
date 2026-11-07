@@ -1,0 +1,16 @@
+Address,Name,Description,Units
+00001,P101_RUN_CMD,Low Service Pump 1 Run Command,
+00002,P201_RUN_CMD,High Service Pump 1 Run Command,
+40001,CL2_DOSE_SP,Chlorine (hypo) dose setpoint x100,mg/L
+40002,CAUSTIC_FEED_SP,Caustic (NaOH) feed setpoint,ppm
+40003,HS_RATE_SP,High service flow rate setpoint,gpm
+30001,CW_LVL,Clearwell Level,% x10
+30002,CL2_RES,Free Cl2 residual analyzer,mg/L
+30003,FIN_PH,Finished water pH,
+30004,HS_FLOW,High service flow (distribution),gpm
+30005,RAW_PH,Raw water pH,
+30006,RAW_ALK,Raw alkalinity (lab entry),mg/L
+30007,RAW_TURB,Raw water turbidity,NTU 0.1
+30008,ALM_WORD,Alarm word,
+30009,RAW_TEMP,Raw water temperature,degC x10
+30010,FILT1_HL,Filter 1 headloss,ft

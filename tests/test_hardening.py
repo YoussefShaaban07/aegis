@@ -225,3 +225,60 @@ def test_read_plc_state_from_real_modbus():
         assert not d.allowed
         plc.close()
     asyncio.run(run())
+
+
+def test_cycling_attack_blocked():
+    """Oscillate the distribution rate 300 <-> 500 every 2 minutes: every single write is legal."""
+    plant, clk = Plant(), Clock()
+    g = guard_for(plant, clock=clk)
+    results = []
+    for i in range(8):
+        clk.t += 120
+        results.append(apply(g, plant, "distribution_rate", 300 if i % 2 == 0 else 500))
+    assert all(r.allowed for r in results[:5])
+    assert any(r.check == "cycling" for r in results[5:])
+    assert "T0879" in [t[0] for t in next(r for r in results if r.check == "cycling").techniques]
+
+
+
+# ---------------- alert fatigue: incidents, escalation, ack ----------------
+class _Clk:
+    def __init__(self):
+        self.t = 1000.0
+
+    def __call__(self):
+        return self.t
+
+
+def test_flood_of_alerts_becomes_one_text(monkeypatch):
+    monkeypatch.setenv("ALERT_TO", "+15550001,+15550002")
+    clk = _Clk()
+    al = Alerter(None, throttle_s=0, clock=clk)
+    for i in range(30):
+        clk.t += 4
+        al.raise_alert(f"blocked:{i}", "warning", f"blocked write {i}")
+    assert len(al.notifications) == 1 and al.incidents[0]["count"] == 30
+    al.raise_alert("blocked:x", "critical", "lye 11100 blocked")            # upgrade -> one more text
+    assert len(al.notifications) == 2 and al.incidents[0]["severity"] == "critical"
+
+
+def test_unacknowledged_critical_escalates_then_ack_stops_it(monkeypatch):
+    monkeypatch.setenv("ALERT_TO", "+15550001,+15550002,+15550003")
+    clk = _Clk()
+    al = Alerter(None, throttle_s=0, clock=clk, escalate_s=600)
+    al.raise_alert("k", "critical", "pH heading to 9.5")
+    clk.t += 599; al.tick()
+    assert len(al.notifications) == 1
+    clk.t += 2; al.tick()
+    assert al.notifications[-1]["to"] == "+15550002" and "ESCALATION" in al.notifications[-1]["text"]
+    al.ack(al.incidents[0]["id"], by="alice (operator)")
+    clk.t += 3600; al.tick()
+    assert len(al.notifications) == 2                                     # no third call after the ack
+    assert al.incidents[0]["closed"] is not None
+
+
+def test_separate_incidents_after_quiet_period():
+    clk = _Clk()
+    al = Alerter(None, throttle_s=0, clock=clk)
+    al.raise_alert("a", "warning", "one"); clk.t += 2000; al.tick(); al.raise_alert("b", "warning", "two")
+    assert len(al.incidents) == 2 and len(al.notifications) == 2

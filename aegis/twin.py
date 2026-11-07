@@ -106,11 +106,19 @@ class Twin:
 
     @staticmethod
     def _violation(traj: list[dict], limits: dict) -> tuple[float, str | None, float | None, float | None]:
-        """Largest excursion outside the bands, normalised by band width.
-        A band may carry its own horizon: [low, high, horizon_min] (used for tank level,
-        which this plant can't hold steady forever, so only the near future counts)."""
+        """Badness of a trajectory: worst excursion outside the bands plus how long it lasts.
+
+        Score = peak excursion + mean excursion over the forecast points (both normalised by
+        band width), so a change that makes a failure arrive sooner or last longer scores
+        worse even if the eventual peak is the same. A band may carry its own horizon:
+        [low, high, horizon_min] (used for tank level, which this plant can't hold steady
+        forever by design, so only the near future counts).
+        """
         worst, var, val, when = 0.0, None, None, None
+        area, npts = 0.0, 0
         for pt in traj:
+            finite = pt["min"] != float("inf")
+            npts += finite
             for k, band in limits.items():
                 lo, hi = band[0], band[1]
                 if len(band) > 2 and pt["min"] > band[2]:
@@ -119,9 +127,11 @@ class Twin:
                 if v is None:
                     continue
                 ex = max(lo - v, v - hi, 0.0) / (hi - lo)
+                if finite:
+                    area += ex
                 if ex > worst + 1e-9:
                     worst, var, val, when = ex, k, v, pt["min"]
-        return worst, var, val, when
+        return worst + area / max(1, npts), var, val, when
 
     @staticmethod
     def _first_cross(traj: list[dict], var: str, limits: dict) -> float | None:

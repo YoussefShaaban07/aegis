@@ -78,6 +78,10 @@ async def integrity_loop(guard, twin, poll_s: float = 10.0, printer=print, histo
                 fh.flush()
             guard.sync_commanded(st)
             mon.update(st, time.time(), guard.commanded)
+            if history_path and guard.seen:            # discovery for `python -m aegis.onboard`
+                import json
+                from pathlib import Path
+                Path(history_path).with_name("discovery.json").write_text(json.dumps(guard.seen, indent=1))
             if twin and twin.available(st):
                 for w in watch.update(twin.forecast(st, None, 180, every_min=5), st).values():
                     if w.get("printed") is None:

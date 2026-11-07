@@ -77,6 +77,11 @@ Every write is checked in this order; the first failure blocks it:
 - **Corrective override**: if the twin computes that a change *fixes* an unsafe trend, it may exceed the step/ramp limits (logged). A safety system must never block the emergency fix.
 - **Early warnings** (`aegis/forewarn.py`): the operator is texted when the twin's forecast crosses an alarm limit, hours before the alarm itself.
 - **Accounts and roles** (`aegis/auth.py`): viewer / operator / engineer, scrypt hashes, signed expiring sessions, CSRF protection, login lockout, every action attributed to a named user.
+- **Red-team the AI** (`python -m aegis.redteam`): 8 prompt-injection attacks + a benign control against the real copilot; measures how often the model tries something unsafe and how often anything reaches the PLC (with a maximally gullible model: 7/8 tried, 0 reached).
+- **Cycling protection**: rapid back-and-forth changes (wear out pumps/valves, pressure surges) are blocked after 4 reversals in 10 min.
+- **Read-flood protection**: per-IP read rate limit and a 100 ms coalescing cache, so heavy polling can't knock a small PLC over.
+- **Onboarding** (`python -m aegis.onboard --export plc_tags.csv`): drafts the register map from the PLC's own tag export plus values observed on the wire; flags anything uncertain.
+- **Incidents, not alert storms**: related alerts become one incident and one text; unacknowledged critical incidents escalate down a contact list.
 - **Guided demo**: one button walks through the whole story with what to say at each step; fast-forwards slow chemistry.
 - **Resilience**: per-request errors fail closed without taking the server down; a supervisor restarts the gateway; `/health` endpoint; systemd unit with least privilege (`deploy/aegis.service`); soak-tested with 20 concurrent HMIs.
 
@@ -90,6 +95,7 @@ cp .env.example .env          # add GROQ_API_KEY for the AI copilot (free at con
 python -m aegis.server        # open http://127.0.0.1:8000
 python -m pytest -q           # 111 tests
 python -m aegis.evaluate      # attack/operator evaluation (~10 min)
+python -m aegis.redteam       # prompt-injection red team against the real copilot (needs GROQ_API_KEY)
 python scripts/bench.py       # latency on your machine
 ```
 
@@ -106,7 +112,12 @@ python -m aegis.attacks lye | mask | readwrite | coil | recon | flood
 python -m aegis.gateway --plc-host 192.168.1.50 --plc-port 502 --listen-port 5502 --mode monitor
 ```
 
-Point the HMI and AI at the gateway instead of the PLC, and firewall the PLC so only the gateway can reach it. Edit `config/tags.json` to match the PLC's register map, `config/process.json` for the plant, and `config/policy.json` for the rules. Start in `--mode monitor`, then use the learn tool: `python -m aegis.learn --hours 168`.
+Point the HMI and AI at the gateway instead of the PLC, and firewall the PLC so only the gateway can reach it. Onboarding, in order:
+
+1. Run in `--mode monitor` for a few days: nothing is blocked; Aegis records what's normal (`data/history.csv`, `data/discovery.json`).
+2. `python -m aegis.onboard --export plc_tags.csv`: draft `config/tags.json` from the PLC's tag export and what was seen on the wire. Review it.
+3. `python -m aegis.learn --hours 168`: suggested rules from observed traffic. `python -m aegis.calibrate --history data/history.csv`: fit the twin to this plant.
+4. Switch to `--mode enforce`.
 
 ## Measured numbers (this repo, not marketing)
 

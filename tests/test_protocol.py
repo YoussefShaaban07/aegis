@@ -242,3 +242,52 @@ def test_flood_from_trusted_host_with_rotating_ids_still_caught():
         await c.write(NAOH, 105)
         await c.close(); close(plc, gsrv)
     asyncio.run(run())
+
+
+def test_read_flood_throttled_and_logged_once():
+    async def run():
+        plant, guard, plc, gsrv, gport, _ = await rig()
+        c = modbus.Client("127.0.0.1", gport, local_ip="127.0.0.66")
+        busy = ok = 0
+        for _ in range(120):                      # ~120 reads as fast as possible from one IP
+            try:
+                await c.read_input(0, 8); ok += 1
+            except modbus.ModbusError as e:
+                assert e.code == modbus.DEVICE_BUSY; busy += 1
+        assert ok >= 50 and busy > 0 and guard.read_stats["throttled"] == busy
+        assert sum(d.check == "read_flood" for d in guard.log) <= 3          # not one log line per read
+        await c.close(); close(plc, gsrv)
+    asyncio.run(run())
+
+
+def test_read_coalescing_spares_the_plc():
+    """20 HMIs polling the same registers: the PLC sees a fraction of the reads."""
+    async def run():
+        plant, guard, plc, gsrv, gport, _ = await rig()
+        guard.policy["max_reads_per_sec_per_ip"] = None
+        calls = {"n": 0}
+        orig = plant.handle
+
+        async def counting(req, peer):
+            calls["n"] += 1
+            return await orig(req, peer)
+        plant.handle = counting                    # count what actually reaches the PLC
+        plc.close()
+        plc2 = await modbus.serve(plant.handle, "127.0.0.1", 0)
+        guard.upstream = modbus.Client("127.0.0.1", plc2.sockets[0].getsockname()[1])
+
+        async def hmi():
+            c = await modbus.Client("127.0.0.1", gport).connect()
+            for _ in range(10):
+                await c.read_input(0, 8)
+                await asyncio.sleep(0.01)
+            await c.close()
+        await asyncio.gather(*(hmi() for _ in range(20)))
+        assert guard.read_stats["served"] == 200
+        assert calls["n"] < 100, calls             # most answered from the 100 ms cache
+        # a write invalidates the cache: the next read sees the new value
+        c = await modbus.Client("127.0.0.1", gport).connect()
+        await c.write(NAOH, 105)
+        assert (await c.read_holding(NAOH, 1)) == [105]
+        await c.close(); plc2.close(); gsrv.close()
+    asyncio.run(run())

@@ -149,3 +149,17 @@ def test_reject():
         assert p["status"] == "rejected" and plant.setpoint("naoh_dose") == 100
         plc.close(); gsrv.close()
     asyncio.run(run())
+
+
+def test_copilot_explains_blocks_and_integrity(monkeypatch):
+    monkeypatch.setenv("GROQ_API_KEY", "test")
+    ctx = {"guard_log": [{"source": "Unknown device (unit 66)", "register": "naoh_dose", "new": 11100, "unit": "ppm",
+                          "allowed": False, "check": "range", "reason": "outside safe range", "would_block": False}],
+           "integrity": {"ok": False, "message": "pH is 7.9 but chemistry predicts 7.4"}, "forewarn": []}
+    cp = Copilot(Plant(), 1, [], context=lambda: ctx)
+    cp.transport = scripted_llm([("get_guard_log", {"limit": 5}), ("get_integrity", {})])
+    out = asyncio.run(cp.chat("why was that blocked, and can I trust the PLC?"))
+    tools = [t["tool"] for t in out["trace"]]
+    assert tools == ["get_guard_log", "get_integrity"]
+    assert out["trace"][0]["result"]["decisions"][0]["check"] == "range"
+    assert out["trace"][1]["result"]["integrity"]["ok"] is False

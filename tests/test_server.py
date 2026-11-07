@@ -182,3 +182,15 @@ def test_actions_attributed_to_named_user(client):
     client.post("/api/mode", json={"mode": "monitor", "pin": "2468"})
     e = [x for x in client.get("/api/audit").json()["entries"] if x["kind"] == "guard_mode"][0]
     assert e["data"]["by"] == "engineer (engineer)"
+
+
+
+def test_incident_grouping_and_ack_endpoint(client):
+    for a in ("lye", "mask", "readwrite", "recon", "coil"):
+        client.post(f"/api/attack/{a}")
+    s = client.get("/api/state").json()
+    inc = s["incidents"][0]
+    assert inc["count"] >= 3 and s["notifications_sent"] == 1          # several attacks, one text
+    r = client.post(f"/api/incidents/{inc['id']}/ack").json()
+    assert r["acked_by"] == "engineer (engineer)"
+    assert any(e["kind"] == "alert_ack" for e in client.get("/api/audit").json()["entries"])

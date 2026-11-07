@@ -85,5 +85,8 @@
       "chlorine_decay_per_hr": 0.3,
       "chlorine_demand": 0.25
     }
-  }
+  },
+  "max_reversals_per_10min": 4,
+  "max_reads_per_sec_per_ip": 50,
+  "read_cache_ms": 100
 }

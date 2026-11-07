@@ -50,6 +50,9 @@ async def main():
         g = Guard(modbus.Client("127.0.0.1", pport), plant.snapshot, twin=twin)
         g.policy["max_writes_per_min_per_source"] = 10 ** 9
         g.policy["limits"]["naoh_dose"]["max_change_per_min"] = None
+        g.policy["max_reversals_per_10min"] = None
+        g.policy["max_reads_per_sec_per_ip"] = None
+        g.policy["read_cache_ms"] = 0
         srv = await modbus.serve(g.handle, "127.0.0.1", 0)
         c = await modbus.Client("127.0.0.1", srv.sockets[0].getsockname()[1]).connect()
         rows.append((label + ": write", await timed(c, N, True)))

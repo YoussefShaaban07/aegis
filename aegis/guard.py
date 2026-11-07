@@ -11,6 +11,7 @@ Checks, in order (first failure wins):
   3. range      absolute min/max
   4. step       largest change in a single command
   5. ramp       largest net change within any 60 s window (slow-ramp attacks)
+  5b. cycling   too many direction reversals in 10 min (oscillation wears out equipment)
   6. interlock  process conditions (e.g. don't stop distribution when tank is nearly full)
   6b. permit    critical commands (e.g. stopping the town's pump) need a
                 single-use permit issued on the dashboard with the PIN
@@ -31,6 +32,7 @@ from __future__ import annotations
 
 import inspect
 import statistics
+import struct
 import time
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
@@ -52,6 +54,7 @@ ATTACK = {
     "step": [("T0836", "Modify Parameter")],
     "ramp": [("T0836", "Modify Parameter")],
     "interlock": [("T0831", "Manipulation of Control")],
+    "cycling": [("T0831", "Manipulation of Control"), ("T0879", "Damage to Property")],
     "permit": [("T0855", "Unauthorized Command Message"), ("T0826", "Loss of Availability")],
     "predict": [("T0831", "Manipulation of Control"), ("T0836", "Modify Parameter")],
 }
@@ -109,6 +112,11 @@ class Guard:
         self.log: deque[Decision] = deque(maxlen=200)
         self._changes: dict[str, deque] = defaultdict(deque)   # register -> (t, before, after)
         self._attempts: dict[str, deque] = defaultdict(deque)  # source -> attempt times
+        self._dirs: dict[str, deque] = defaultdict(deque)      # register -> (t, +1/-1) of allowed changes
+        self._reads: dict[str, deque] = defaultdict(deque)     # ip -> read request times (last 1 s)
+        self._read_cache: dict[tuple, tuple[float, bytes]] = {}
+        self.read_stats = {"served": 0, "from_cache": 0, "throttled": 0}
+        self.seen: dict[str, dict] = {}          # "table:address" -> observed raw min/max, reads, writes
         self.lat_check: deque = deque(maxlen=5000)   # ms spent deciding (per write request)
         self.lat_total: deque = deque(maxlen=5000)   # ms per request incl. PLC round trip
         self.counts = defaultdict(int)
@@ -190,6 +198,19 @@ class Guard:
         use_twin = self.twin is not None and pred and pred.get("enabled", True)
         if soft and not use_twin:
             return deny(*soft)
+        # 5b. cycling: rapid back-and-forth changes wear out pumps and valves and cause pressure
+        #     surges, without ever crossing a limit (the Aurora-style "oscillate the equipment" attack)
+        rev_cap = self.policy.get("max_reversals_per_10min")
+        if rev_cap and old is not None and new != old:
+            sign = 1 if new > old else -1
+            hist = self._dirs[register]
+            while hist and now - hist[0][0] > 600:
+                hist.popleft()
+            seq = [d for _, d in hist] + [sign]
+            reversals = sum(1 for a, b in zip(seq, seq[1:]) if a != b)
+            if reversals > rev_cap:
+                return deny("cycling", f"{reversals} direction reversals in 10 min (limit {rev_cap}): "
+                                       "rapid cycling damages pumps and valves and causes pressure surges")
         # 6. interlocks
         for il in self.policy.get("interlocks", []):
             if il["register"] == register and new == il["value"]:
@@ -249,6 +270,8 @@ class Guard:
 
     # ------------------------------------------------------------------ bookkeeping
     def _commit(self, d: Decision):
+        if d.allowed and d.old is not None and d.new != d.old:
+            self._dirs[d.register].append((d.t, 1 if d.new > d.old else -1))
         if d.allowed:
             self.commanded[d.register] = d.new
         if d.allowed and d.old is not None and d.new != d.old:
@@ -331,6 +354,56 @@ class Guard:
     def set_enabled(self, enabled: bool, by: str = "engineer"):
         self.set_mode("enforce" if enabled else "off", by)
 
+    def _read_gate(self, req: modbus.Request, peer_s: str, source: str):
+        """Protect the PLC's CPU from read floods. Small PLCs choke on heavy polling, so:
+        (1) per-IP read rate limit -> exception 6 'server busy' (logged once per second per IP);
+        (2) identical reads within `read_cache_ms` are answered from a short cache (coalescing many HMIs)."""
+        now = time.monotonic()
+        ip = peer_s.rsplit(":", 1)[0] if ":" in peer_s else peer_s
+        cap = self.policy.get("max_reads_per_sec_per_ip")
+        if cap and ip not in self.trusted_ips:
+            dq = self._reads[ip]
+            while dq and now - dq[0] > 1.0:
+                dq.popleft()
+            dq.append(now)
+            if len(dq) > cap:
+                self.read_stats["throttled"] += 1
+                if len(dq) == cap + 1:            # one log entry per burst, not thousands
+                    self._record(Decision(False, source, f"reads FC {req.fc}", None, len(dq),
+                                          f"more than {cap} reads per second from {ip}: possible denial-of-service "
+                                          "against the PLC (answered 'busy')", peer_s, "read_flood", self.clock(), "",
+                                          req.fc, [("T0814", "Denial of Service")]))
+                raise modbus.ModbusError(modbus.DEVICE_BUSY)
+        ttl = (self.policy.get("read_cache_ms") or 0) / 1000
+        self.read_stats["served"] += 1
+        hit = self._read_cache.get((req.fc, req.address, req.count))
+        if ttl and hit and now - hit[0] <= ttl:
+            self.read_stats["from_cache"] += 1
+            return hit[1]
+        return None
+
+    def _observe(self, req: modbus.Request, out: bytes):
+        """Discovery: remember which registers are used on the wire and their raw value ranges."""
+        try:
+            if req.fc in (modbus.READ_HOLDING, modbus.READ_INPUT):
+                table = "holding" if req.fc == modbus.READ_HOLDING else "input"
+                vals = list(struct.unpack(f">{req.count}H", out[2:2 + 2 * req.count]))
+                kind = "reads"
+            elif req.fc in (modbus.READ_COILS, modbus.READ_DISCRETE):
+                table = "coil" if req.fc == modbus.READ_COILS else "discrete"
+                vals, kind = modbus.unpack_bits(out[2:], req.count), "reads"
+            elif req.is_write and req.values is not None:
+                table, vals, kind = req.table, req.values, "writes"
+            else:
+                return
+        except Exception:
+            return
+        for i, v in enumerate(vals):
+            k = f"{table}:{req.address + i}"
+            e = self.seen.setdefault(k, {"min": v, "max": v, "reads": 0, "writes": 0})
+            e["min"], e["max"] = min(e["min"], v), max(e["max"], v)
+            e[kind] += 1
+
     # ------------------------------------------------------------------ proxy
     async def _targets(self, req: modbus.Request) -> list[tuple[str, float, int]]:
         """(name, engineering value, raw) for every register/coil this write would change."""
@@ -393,8 +466,17 @@ class Guard:
             checked = True
             if not ok:
                 raise modbus.ModbusError(modbus.ILLEGAL_VALUE)   # whole write rejected
+        elif req.fc in (modbus.READ_COILS, modbus.READ_DISCRETE, modbus.READ_HOLDING, modbus.READ_INPUT):
+            out = self._read_gate(req, peer_s, source)
+            if out is not None:
+                return out
         try:
             out = await self.upstream.call_pdu(req.raw, unit=None)
+            self._observe(req, out)
+            if not req.is_write and req.known:
+                self._read_cache[(req.fc, req.address, req.count)] = (time.monotonic(), out)
+            elif req.is_write:
+                self._read_cache.clear()          # anything cached may now be stale
         except modbus.ModbusError:
             raise
         except (ConnectionError, OSError):

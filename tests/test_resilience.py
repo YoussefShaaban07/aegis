@@ -46,6 +46,8 @@ def test_soak_many_concurrent_hmis():
         g = Guard(modbus.Client("127.0.0.1", plc.sockets[0].getsockname()[1]), plant.snapshot)
         g.policy["max_writes_per_min_per_source"] = 10 ** 9
         g.policy["limits"]["naoh_dose"]["max_change_per_min"] = None
+        g.policy["max_reads_per_sec_per_ip"] = None       # concurrency test, not a rate-limit test
+        g.policy["max_reversals_per_10min"] = None        # (its 100<->105 writes would trip the cycling check)
         srv = await modbus.serve(g.handle, "127.0.0.1", 0)
         port = srv.sockets[0].getsockname()[1]
         stop = time.time() + 3
