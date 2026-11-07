@@ -18,7 +18,7 @@ from .replyguard import check as check_reply
 from .plant import HOLDING, TAGS, UNITS
 
 API = os.getenv("AEGIS_LLM_URL", "https://api.groq.com/openai/v1/chat/completions")
-MODEL = os.getenv("AEGIS_LLM_MODEL", "llama-3.3-70b-versatile")
+MODEL = os.getenv("AEGIS_LLM_MODEL", "openai/gpt-oss-120b")   # Groq moved the Llama models to enterprise-only (Aug 2026)
 
 SYSTEM = """You are the AI operator copilot for a small-town water treatment plant.
 Help the operator understand plant status in plain English, short and specific.
@@ -152,7 +152,13 @@ class Copilot:
                 r = await http.post(API, headers={"Authorization": f"Bearer {key}"},
                                     json={"model": MODEL, "messages": msgs, "tools": self.tools(),
                                           "temperature": 0.2})
-                r.raise_for_status()
+                if r.status_code >= 400:          # say what the provider said (bad key, model not available, ...)
+                    try:
+                        detail = r.json().get("error", {}).get("message", r.text)
+                    except ValueError:
+                        detail = r.text
+                    return {"reply": f"AI copilot error from the model provider ({r.status_code}, model {MODEL}): "
+                                     f"{detail[:300]}", "trace": trace}
                 m = r.json()["choices"][0]["message"]
                 msgs.append({k: v for k, v in m.items() if k in ("role", "content", "tool_calls")})
                 calls = m.get("tool_calls") or []
