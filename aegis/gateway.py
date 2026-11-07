@@ -14,6 +14,15 @@ PLC doesn't expose the sensors it needs (pH, chlorine, level, raw-water pH,
 alkalinity, turbidity); the static checks still run.
 
 If the PLC is unreachable, writes fail safe (Modbus exception 0x0B) and an alert is raised.
+
+Allen-Bradley MicroLogix / SLC over EtherNet/IP (what FactoryTalk / PanelView actually use):
+
+    python -m aegis.gateway --protocol cip --plc-host 192.168.1.50 --listen-port 44818 \
+        --sources "10.0.0.5=Operator HMI"
+
+Same checks, same twin, same safe-hold; tags are addressed by their "pccc" data-file
+address in tags.json (N7:1, B3:0/1). Mode changes, program download/upload and any
+command Aegis doesn't recognise are refused. See aegis/cip.py for what is and isn't covered.
 """
 from __future__ import annotations
 
@@ -24,6 +33,7 @@ import time
 from dotenv import load_dotenv
 
 from . import modbus
+from .cip import CIPGuard, PCCCClient
 from .alerts import Alerter
 from .audit import AuditLog
 from .config import POLICY_PATH, Tags, verify_policy_file
@@ -36,15 +46,21 @@ from .twin import REQUIRED, Twin
 
 def build(plc_host: str, plc_port: int, mode: str = "enforce", plc_unit: int = 1, audit=None, alerter=None,
           use_twin: bool = True, printer=print, unit_mode: str = "route", plc_units: set | None = None,
-          ip_sources: dict | None = None):
+          ip_sources: dict | None = None, protocol: str = "modbus"):
     tags = Tags.load()
     audit = audit or AuditLog()
     alerter = alerter or Alerter(audit)
-    upstream = modbus.Client(plc_host, plc_port, unit=plc_unit)          # connects lazily, reconnects
-    state_client = modbus.Client(plc_host, plc_port, unit=plc_unit)
+    if protocol == "cip":
+        upstream = PCCCClient(plc_host, plc_port, tags)                   # safe-hold writes go through this
+        state_client = PCCCClient(plc_host, plc_port, tags)
+        reader_fn = lambda: state_client.read_state(tags)               # noqa: E731
+    else:
+        upstream = modbus.Client(plc_host, plc_port, unit=plc_unit)      # connects lazily, reconnects
+        state_client = modbus.Client(plc_host, plc_port, unit=plc_unit)
+        reader_fn = lambda: read_plc_state(state_client, tags)          # noqa: E731
     has_sensors = all(k in tags.all for k in REQUIRED)
     twin = Twin() if (use_twin and has_sensors) else None
-    guard = Guard(upstream, lambda: read_plc_state(state_client, tags), tags=tags, audit=audit,
+    guard = Guard(upstream, reader_fn, tags=tags, audit=audit,
                   alerter=alerter, policy_path=POLICY_PATH, twin=twin, mode=mode, unit_mode=unit_mode,
                   plc_units=plc_units or {plc_unit}, ip_sources=ip_sources)
     orig = guard._record
@@ -57,7 +73,21 @@ def build(plc_host: str, plc_port: int, mode: str = "enforce", plc_unit: int = 1
                 f"[{d.check}{' ' + tech if tech else ''}] {d.reason}")
 
     guard._record = record_and_print
+    guard.protocol = protocol
     return guard, audit, twin
+
+
+async def poll_state(reader, tags) -> dict:
+    if isinstance(reader, PCCCClient):
+        return await reader.read_state(tags)
+    return await read_plc_state(reader, tags)
+
+
+def make_reader(guard):
+    up = guard.upstream
+    if isinstance(up, PCCCClient):
+        return PCCCClient(up.host, up.port, guard.tags)
+    return modbus.Client(up.host, up.port, unit=up.unit)
 
 
 async def integrity_loop(guard, twin, poll_s: float = 10.0, printer=print, history_path: str | None = None):
@@ -65,12 +95,12 @@ async def integrity_loop(guard, twin, poll_s: float = 10.0, printer=print, histo
     mon = IntegrityMonitor(twin.model if twin else None, alerter=guard.alerter, audit=guard.audit)
     watch = ForecastWatch(guard.alerter, guard.audit)
     hold = SafeHold(guard)
-    reader = modbus.Client(guard.upstream.host, guard.upstream.port, unit=guard.upstream.unit)
+    reader = make_reader(guard)
     seen = 0
     writer = None
     while True:
         try:
-            st = await read_plc_state(reader, guard.tags)
+            st = await poll_state(reader, guard.tags)
             if history_path:
                 import csv
                 from pathlib import Path
@@ -137,7 +167,10 @@ async def health_server(guard, audit, port: int, host: str = "127.0.0.1"):
             await asyncio.wait_for(reader.readline(), 5)
             ok = True
             try:
-                await asyncio.wait_for(guard.upstream.read_holding(0, 1), 2)
+                if isinstance(guard.upstream, PCCCClient):
+                    await asyncio.wait_for(guard.upstream.read_state(guard.tags), 2)
+                else:
+                    await asyncio.wait_for(guard.upstream.read_holding(0, 1), 2)
             except Exception:
                 ok = False
             body = json.dumps({"status": "ok" if ok else "plc_unreachable", "mode": guard.mode,
@@ -153,17 +186,23 @@ async def health_server(guard, audit, port: int, host: str = "127.0.0.1"):
 
 
 async def run(plc_host, plc_port, listen_host, listen_port, mode, plc_unit, use_twin, health_port=None,
-              ip_sources=None):
-    guard, audit, twin = build(plc_host, plc_port, mode, plc_unit, use_twin=use_twin, ip_sources=ip_sources)
+              ip_sources=None, protocol="modbus"):
+    guard, audit, twin = build(plc_host, plc_port, mode, plc_unit, use_twin=use_twin, ip_sources=ip_sources,
+                               protocol=protocol)
     if guard.load_state("data/guard_state.json"):
         print("Restored rate/ramp windows from before the restart")
     if health_port:
         await health_server(guard, audit, health_port)
         print(f"Health: http://127.0.0.1:{health_port}/health")
     asyncio.create_task(integrity_loop(guard, twin, history_path="data/history.csv"))
-    srv = await modbus.serve(guard.handle, listen_host, listen_port)
-    print(f"Aegis gateway [{mode}]: listening on {listen_host}:{listen_port} -> PLC {plc_host}:{plc_port} "
-          f"(unit {plc_unit})")
+    if protocol == "cip":
+        srv = await CIPGuard(guard, plc_host, plc_port).serve(listen_host, listen_port)
+        print(f"Aegis gateway [{mode}, EtherNet/IP + PCCC]: listening on {listen_host}:{listen_port} -> "
+              f"MicroLogix/SLC {plc_host}:{plc_port}")
+    else:
+        srv = await modbus.serve(guard.handle, listen_host, listen_port)
+        print(f"Aegis gateway [{mode}]: listening on {listen_host}:{listen_port} -> PLC {plc_host}:{plc_port} "
+              f"(unit {plc_unit})")
     print(f"Digital twin: {'on' if twin else 'off (sensor tags missing or --no-twin)'}")
     print(f"Audit log: {audit.path}  ({audit.verify()['message']})")
     async with srv:
@@ -174,7 +213,9 @@ def main():
     load_dotenv()
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--plc-host", required=True)
-    p.add_argument("--plc-port", type=int, default=502)
+    p.add_argument("--protocol", choices=["modbus", "cip"], default="modbus",
+                   help="modbus (TCP 502) or cip (EtherNet/IP + PCCC to a MicroLogix / SLC, TCP 44818)")
+    p.add_argument("--plc-port", type=int, default=None, help="default 502 (modbus) or 44818 (cip)")
     p.add_argument("--plc-unit", type=int, default=1, help="Modbus unit/slave ID of the PLC")
     p.add_argument("--listen-host", default="0.0.0.0")
     p.add_argument("--listen-port", type=int, default=5502)
@@ -184,8 +225,9 @@ def main():
     p.add_argument("--sources", default="", help='name writers by IP, e.g. "10.0.0.5=Operator HMI,10.0.0.9=AI copilot"')
     a = p.parse_args()
     srcs = dict(x.split("=", 1) for x in a.sources.split(",") if "=" in x)
-    asyncio.run(run(a.plc_host, a.plc_port, a.listen_host, a.listen_port, a.mode, a.plc_unit, not a.no_twin,
-                    a.health_port, srcs))
+    port = a.plc_port or (44818 if a.protocol == "cip" else 502)
+    asyncio.run(run(a.plc_host, port, a.listen_host, a.listen_port, a.mode, a.plc_unit, not a.no_twin,
+                    a.health_port, srcs, a.protocol))
 
 
 if __name__ == "__main__":

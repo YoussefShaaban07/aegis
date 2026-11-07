@@ -21,6 +21,7 @@ class Tag:
     unit: str
     label: str
     table: str          # coil | holding | input | discrete
+    pccc: str | None = None   # MicroLogix / SLC data-file address (EtherNet/IP), e.g. "N7:1" or "B3:0/1"
 
     @property
     def writable(self) -> bool:
@@ -52,7 +53,7 @@ class Tags:
                 if n in self.all:
                     raise ValueError(f"tag '{n}' defined twice")
                 self.all[n] = Tag(n, int(d["address"]), d.get("scale", 1), d.get("unit", ""),
-                                  d.get("label", n), table)
+                                  d.get("label", n), table, d.get("pccc"))
         self.holding = {n: t for n, t in self.all.items() if t.writable}
         self.input = {n: t for n, t in self.all.items() if not t.writable}
         self.by_addr = {(t.table, t.address): t for t in self.all.values()}

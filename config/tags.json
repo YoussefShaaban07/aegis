@@ -4,12 +4,14 @@
     "intake_pump": {
       "address": 0,
       "unit": "on/off",
-      "label": "Intake pump P-1"
+      "label": "Intake pump P-1",
+      "pccc": "B3:0/0"
     },
     "distribution_pump": {
       "address": 1,
       "unit": "on/off",
-      "label": "Distribution pump P-2"
+      "label": "Distribution pump P-2",
+      "pccc": "B3:0/1"
     }
   },
   "holding": {
@@ -17,19 +19,22 @@
       "address": 0,
       "scale": 100,
       "unit": "mg/L",
-      "label": "Chlorine dose"
+      "label": "Chlorine dose",
+      "pccc": "N7:0"
     },
     "naoh_dose": {
       "address": 1,
       "scale": 1,
       "unit": "ppm",
-      "label": "Lye (NaOH) feed"
+      "label": "Lye (NaOH) feed",
+      "pccc": "N7:1"
     },
     "distribution_rate": {
       "address": 2,
       "scale": 1,
       "unit": "gpm",
-      "label": "Distribution rate"
+      "label": "Distribution rate",
+      "pccc": "N7:2"
     }
   },
   "input": {
@@ -37,55 +42,65 @@
       "address": 0,
       "scale": 10,
       "unit": "%",
-      "label": "Clearwell level"
+      "label": "Clearwell level",
+      "pccc": "N7:10"
     },
     "chlorine_residual": {
       "address": 1,
       "scale": 100,
       "unit": "mg/L",
-      "label": "Chlorine residual"
+      "label": "Chlorine residual",
+      "pccc": "N7:11"
     },
     "ph": {
       "address": 2,
       "scale": 100,
       "unit": "pH",
-      "label": "Finished water pH"
+      "label": "Finished water pH",
+      "pccc": "N7:12"
     },
     "flow_out": {
       "address": 3,
       "scale": 1,
       "unit": "gpm",
-      "label": "Flow to town"
+      "label": "Flow to town",
+      "pccc": "N7:13"
     },
     "raw_ph": {
       "address": 4,
       "scale": 100,
       "unit": "pH",
-      "label": "Raw water pH"
+      "label": "Raw water pH",
+      "pccc": "N7:14"
     },
     "raw_alkalinity": {
       "address": 5,
       "scale": 1,
       "unit": "mg/L CaCO3",
-      "label": "Raw water alkalinity"
+      "label": "Raw water alkalinity",
+      "pccc": "N7:15"
     },
     "raw_turbidity": {
       "address": 6,
       "scale": 10,
       "unit": "NTU",
-      "label": "Raw water turbidity"
+      "label": "Raw water turbidity",
+      "pccc": "N7:16"
     },
     "alarms": {
       "address": 7,
       "scale": 1,
       "unit": "bits",
-      "label": "Alarm bits"
+      "label": "Alarm bits",
+      "pccc": "N7:17"
     },
     "water_temp": {
       "address": 8,
       "scale": 10,
       "unit": "C",
-      "label": "Water temperature"
+      "label": "Water temperature",
+      "pccc": "N7:18"
     }
-  }
+  },
+  "_doc_pccc": "pccc: the same tag's data-file address on an Allen-Bradley MicroLogix / SLC 500 reached over EtherNet/IP (e.g. N7:1 = integer file 7, word 1; B3:0/1 = bit file 3, word 0, bit 1). Used by `python -m aegis.gateway --protocol cip`. Same scale as Modbus."
 }

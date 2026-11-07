@@ -4,4 +4,5 @@ httpx
 pydantic
 python-dotenv
 pymodbus
+pycomm3          # tests only: independent EtherNet/IP client
 pytest

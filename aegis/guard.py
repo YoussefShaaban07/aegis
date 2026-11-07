@@ -200,7 +200,7 @@ class Guard:
             return deny("allowlist", "register not on the write allowlist")
         reason = lim.get("reason", "")
         # 2b. writers: in route mode an engineer can make every host not named in --sources read-only
-        if (self.unit_mode == "route" and self.policy.get("unknown_writers") == "block"
+        if ((self.unit_mode == "route" or source.startswith("Unknown host")) and self.policy.get("unknown_writers") == "block"
                 and source not in self.ip_sources.values() and source != SAFE_HOLD):
             return deny("writer", f"{source} is not a named writer (read-only); name it in --sources to allow writes")
         # 2c. safe-hold: after Aegis undid a dangerous change nobody responded to, the register stays
@@ -669,6 +669,39 @@ class Guard:
             d.reason = f"MONITOR MODE (not enforced): would block: {d.reason}"
         return d
 
+    async def judge_writes(self, targets: list[tuple[str, float]], state: dict, source: str, peer_s: str,
+                           fc: int = 0) -> bool:
+        """Decide every value in one write request together; all or nothing. Shared by the Modbus
+        proxy and the EtherNet/IP (PCCC) proxy, so both protocols get exactly the same checks."""
+        together = {n: v for n, v in targets}
+
+        def decide():
+            out = []
+            for name, value in targets:
+                others = {k: v for k, v in together.items() if k != name}
+                out.append(self._apply_mode(self.check(name, value, state, source, peer_s, together=others, fc=fc)))
+            return out
+        # The twin can take tens of ms (more on slow hardware): decide in a worker thread so reads
+        # from other HMIs keep flowing; one write decision at a time keeps the rate windows consistent.
+        async with self._decide_lock:
+            decisions = await asyncio.to_thread(decide)
+        ok = all(d.allowed for d in decisions)
+        for d in decisions:
+            if not d.allowed or ok:
+                self._record(d)
+            if ok:
+                self._commit(d)
+        return ok
+
+    def record_blocked(self, source: str, what: str, reason: str, peer_s: str, check: str = "function",
+                       techniques=None, code: int = 0):
+        """Log a refused request that isn't a setpoint write (unknown function, program download, ...).
+        `code`: the protocol's command/function number, shown where a setpoint value would be."""
+        d = self._apply_mode(Decision(False, source, what, None, code, reason, peer_s, check, time.time(), "", 0,
+                                      list(techniques if techniques is not None else ATTACK["function"])))
+        self._record(d)
+        return d
+
     async def handle(self, req: modbus.Request, peer) -> bytes:
         t0 = time.perf_counter()
         peer_s = f"{peer[0]}:{peer[1]}" if peer else "?"
@@ -702,25 +735,7 @@ class Guard:
                 state = await self._state()
             except (ConnectionError, OSError):
                 raise modbus.ModbusError(modbus.GATEWAY_TARGET_FAILED)
-            together = {n: v for n, v, _ in targets}
-
-            def decide():
-                out = []
-                for name, value, _ in targets:
-                    others = {k: v for k, v in together.items() if k != name}
-                    out.append(self._apply_mode(
-                        self.check(name, value, state, source, peer_s, together=others, fc=req.fc)))
-                return out
-            # The twin can take tens of ms (more on slow hardware): decide in a worker thread so reads
-            # from other HMIs keep flowing; one write decision at a time keeps the rate windows consistent.
-            async with self._decide_lock:
-                decisions = await asyncio.to_thread(decide)
-            ok = all(d.allowed for d in decisions)
-            for d in decisions:
-                if not d.allowed or ok:
-                    self._record(d)
-                if ok:
-                    self._commit(d)
+            ok = await self.judge_writes([(n, v) for n, v, _ in targets], state, source, peer_s, req.fc)
             self.lat_check.append((time.perf_counter() - t0) * 1000)
             checked = True
             if not ok:

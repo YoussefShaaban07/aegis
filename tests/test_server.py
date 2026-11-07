@@ -19,6 +19,7 @@ def client(tmp_path, monkeypatch):
     importlib.reload(server)
     server.POLICY_PATH = pol
     server.PLC_PORT, server.GUARD_PORT = 15020 + (int(time.time() * 1000) % 300), 16020 + (int(time.time() * 1000) % 300)
+    server.CIP_PLC_PORT, server.CIP_GUARD_PORT = 17020 + (int(time.time() * 1000) % 300), 18020 + (int(time.time() * 1000) % 300)
     with TestClient(server.app) as c:
         c.server = server
         c.headers["X-Aegis"] = "1"
@@ -43,6 +44,17 @@ def test_lye_attack_blocked_and_logged(client):
     a = client.get("/api/audit").json()
     assert a["verify"]["ok"] and any(e["kind"] == "decision" for e in a["entries"])
     assert "decision" in client.get("/api/audit/export.csv").text
+
+
+def test_ethernet_ip_attacks_blocked_and_logged(client):
+    r = client.post("/api/attack/cip-lye").json()["result"]
+    assert "REJECTED by Aegis" in r
+    s = client.get("/api/state").json()
+    assert s["plant"]["naoh_dose"] == 100 and s["log"][0]["check"] == "range" and "EtherNet/IP" in s["log"][0]["peer"]
+    r = client.post("/api/attack/cip-program").json()["result"]
+    assert "REJECTED" in r
+    assert client.server.S["cip_plc"].mode == "RUN"
+    assert "processor mode" in client.get("/api/state").json()["log"][0]["reason"]
 
 
 def test_flood_endpoint(client):

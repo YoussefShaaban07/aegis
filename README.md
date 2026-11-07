@@ -14,10 +14,10 @@ Inspired by [Control Seat (YC S26)](https://www.ycombinator.com/launches/RJ6-con
 
 ## The problem
 
-- Water utilities run on PLCs that speak **Modbus**, a 1979 protocol with **no authentication**: any device that can reach the controller can change a setpoint.
+- Water utilities run on PLCs that speak **Modbus** (1979) or Rockwell's **EtherNet/IP + PCCC** (the MicroLogix / SLC family), with **no authentication**: any device that can reach the controller can change a setpoint.
 - In May 2024 the EPA said **over 70%** of the water systems it inspected did not fully comply with basic cybersecurity requirements. The EPA's 2023 rule requiring cyber checks in sanitary surveys was withdrawn after a lawsuit by states and industry groups.
 - In 2023, CISA warned after Iran-linked hackers compromised a Unitronics PLC at the Municipal Water Authority of Aliquippa, PA.
-- In the widely reported 2021 Oldsmar, FL incident, the lye (sodium hydroxide) setpoint was raised from **100 ppm to 11,100 ppm**. (Later reporting questioned whether it was an outside hacker; the risk it shows is the same.)
+- In the widely reported 2021 Oldsmar, FL incident, the lye (sodium hydroxide) setpoint was raised from **100 ppm to 11,100 ppm**. In 2023 the city's former manager said it was probably an employee's mistake, not a hacker. **Aegis doesn't care which**: the guard checks the command, not who typed it, so it stops the attack *and* the fat-finger.
 - In 2026, Dragos reported attackers used commercial LLMs to plan a breach of a water utility.
 - Vendors are adding **AI copilots** that read plant data and can write setpoints. An AI that reads untrusted text (work orders, emails, alarm notes) can be **prompt-injected** into issuing commands.
 
@@ -35,9 +35,9 @@ So a static rule like "lye 0–250, at most +50 per command" lets a patient atta
 
 ```
  Operator HMI ─┐
- AI copilot  ──┼──► AEGIS GUARD (Modbus proxy) ──► PLC ──► pumps, chemical dosing
+ AI copilot  ──┼──► AEGIS GUARD (Modbus TCP or EtherNet/IP) ──► PLC ──► pumps, chemical dosing
  Attacker    ──┘        │
-                        ├─ decodes every write (FC 5, 6, 15, 16, 22, 23), blocks other codes
+                        ├─ decodes every write (Modbus FC 5, 6, 15, 16, 22, 23; PCCC typed writes), blocks the rest
                         ├─ static rules + digital-twin forecast for each command
                         ├─ HMAC hash-chained audit log, incident reports (MITRE ATT&CK for ICS)
                         └─ SMS + phone call to the on-call operator
@@ -65,6 +65,7 @@ Every write is checked in this order; the first failure blocks it:
 ## Features
 
 - **Modbus TCP from scratch** (`aegis/modbus.py`): FC 1, 2, 3, 4, 5, 6, 15, 16, 22, 23; fuzz-tested parser; idle timeouts and connection caps; automatic upstream reconnect; fails safe (exception 0x0B) if the PLC is unreachable.
+- **EtherNet/IP + PCCC from scratch** (`aegis/cip.py`): the protocol FactoryTalk, PanelView and RSLinx actually use with a MicroLogix 1100/1400 or SLC 5/05. Typed writes to data files (`N7:1`, `B3:0/1`) are decoded to tags and judged by **the same checks, twin and safe-hold** as Modbus writes. Mode changes (RUN → PROGRAM), program upload/download, Logix tag writes, CIP Set Attribute and anything unrecognised are refused. Writes hidden inside an Unconnected Send are unwrapped and checked. Tested against **pycomm3** (an independent open-source EtherNet/IP client). `python -m aegis.gateway --protocol cip`.
 - **Digital twin** (`aegis/process.py`, `aegis/twin.py`): carbonate chemistry (charge balance solved for pH, temperature-dependent constants), a baffled clearwell (stirred tanks in series), CO2 exchange with air, chlorine demand and decay, and the HOCl/OCl⁻ split (how much chlorine actually disinfects). State is *estimated from sensors*, and every forecast is "with this command vs without it".
 - **Twin accuracy measured live** against the simulator, which deliberately differs from the twin (3% stronger lye feed, 20% faster chlorine decay, drifting demand, sensor noise).
 - **AI copilot, propose → approve (default)**: the AI can call `simulate_change` (ask the twin) and `propose_setpoint`. Proposals are pre-checked; unsafe ones are BLOCKED and can't be approved; safe ones show their forecast and wait for a human; on approval the write is checked **again**.
@@ -134,6 +135,19 @@ Point the HMI and AI at the gateway instead of the PLC, and firewall the PLC so 
 
 ## Measured numbers (this repo, not marketing)
 
+**Current version, fresh held-out seeds 300000–300199** (`python -m aegis.evaluate --seed-offset 300000 --safe-hold [--attacker hmi]`). Same setup as below; nobody ever answers an alarm.
+
+| | Attacks that made the water unsafe |
+|---|---|
+| Static rules only | 98/200 (49%) |
+| Rules + twin, attacker on the **operator's HMI PC** (no safe-hold) | 40/200 (20%); clearwell drain 25/27 |
+| Rules + twin + **safe-hold**, attacker on the HMI PC | **25/200 (12%)**; clearwell drain **10/27** |
+| Rules + twin + safe-hold, attacker elsewhere on the network | **25/200 (12%)** |
+
+Cost to a (simulated) operator, 380 writes in 30 sessions: 12 blocked by the twin (10 justified, **2 false**), **4 refused by safe-hold holds**. Safe-hold undid 19 operator changes: 15 made the true outcome better, 3 no difference, **1 slightly worse** (a storm where the water was unsafe either way). An earlier version of this run found a hole: an HMI attacker could cycle pumps through the "advice" path; fixed in Round 9 (`docs/JUDGE_ROUNDS.md`).
+
+**Earlier version** (before safe-hold), for comparison:
+
 **Evaluation on held-out seeds** (`python -m aegis.evaluate --seed-offset 200000`; seeds never looked at during development). 200 randomized attack episodes per guard: attackers who know the static rules (stepper, boundary-prober, weather-timed) going for caustic water, no disinfection, chlorine overdose, draining the clearwell, or cycling equipment. Plus 30 episodes of a simulated operator. Ground truth from the simulated "true" plant; an attack counts only if it caused harm or made it clearly worse than the same weather with no attacker. **Nobody responds to alarms in these runs**, which overstates harm.
 
 | Held-out seeds 200000–200199 | Static rules only | Rules + digital twin |
@@ -172,7 +186,8 @@ The previous held-out run (seeds 100000+, before Round 7) had the twin blocking 
 | AI copilot against a real model (Groq) | ⚠️ **not yet run with a real key** |
 | Twilio SMS/call | ⚠️ request format tested against a mock; **not yet sent to a real phone** |
 | OpenPLC / real hardware | ⚠️ **not tested** (the sandbox this was built in blocked OpenPLC's installer). pymodbus is the third-party stand-in |
-| Protocols other than Modbus TCP (DNP3, EtherNet/IP, S7, Modbus RTU serial) | ❌ not built |
+| EtherNet/IP + PCCC (MicroLogix / SLC) | ✅ built + tested with pycomm3 against our simulated MicroLogix. ⚠️ **not tested against a real MicroLogix**. Not covered: UDP implicit I/O, CIP Security (TLS), Logix symbolic writes (refused, not judged) |
+| Other protocols (DNP3, S7, Modbus RTU serial) | ❌ not built |
 | HTTPS for the dashboard | ⚠️ set `AEGIS_HTTPS=1` behind a TLS reverse proxy; not built in |
 | TLS on Modbus (Modbus/TCP Security) | ❌ not built |
 
@@ -195,7 +210,7 @@ Sign in as **engineer**, type PIN **2468**, press **▶ Guided demo**. Each step
 - **"Is your chemistry real?"** It's the standard carbonate-system charge balance and a mixed-tank model, with simplifications listed above. Accuracy is measured against a simulator that deliberately differs from the model, not against itself. It hasn't been validated on a real plant.
 - **"What if the attacker bypasses the guard?"** In deployment the PLC is only reachable through the guard (network segmentation), and `python -m aegis.exposure` checks that from other machines (including EtherNet/IP on 44818). A bypass that still happens shows up as setpoints changing behind Aegis's back (integrity monitor). If the attacker is *on* the guard box, all bets are off, which is why the audit log can be keyed and checkpointed off-box.
 - **"Your evaluation grades the twin against your own simulator."** Partly true, so we built a second simulator with physics the twin gets wrong (more baffles, faster degassing, cold water, a quantized lye pump, analyzer lag). The first version false-alarmed in 11 of 20 runs against it; we found why and fixed it (`docs/JUDGE_ROUNDS.md`, Round 2). Neither replaces a real plant.
-- **"What does the July 2026 attack wave have to do with this?"** FBI/EPA, 30 July 2026: attackers took over internet-facing water PLCs in at least seven states, causing loss of pressure and flooding. Their first recommendation: put PLCs behind a secure gateway. Aegis is that gateway, plus physics. Caveat: those were Rockwell MicroLogix PLCs, which speak EtherNet/IP as well as Modbus TCP; Aegis only parses Modbus today.
+- **"What does the July 2026 attack wave have to do with this?"** FBI/EPA, 30 July 2026: attackers took over internet-facing water PLCs in at least seven states, causing loss of pressure and flooding. Their first recommendation: put PLCs behind a secure gateway. Aegis is that gateway, plus physics. Those were Rockwell MicroLogix PLCs, so Aegis guards EtherNet/IP + PCCC (what their HMIs use) as well as Modbus TCP; it has only been tested against a simulated MicroLogix and pycomm3, not real hardware.
 - **"Can't an attacker pretend to be the operator?"** Yes: Modbus unit IDs are labels, and an attacker on the HMI PC *is* the operator as far as Modbus can tell. That's why the rules apply to everyone, flood limits count per IP, critical commands need a permit created on the dashboard, and a safe-hold can only be released with a login. We evaluate this case separately (`--attacker hmi`).
 
 ## Docs
@@ -209,6 +224,7 @@ Sign in as **engineer**, type PIN **2468**, press **▶ Guided demo**. Each step
 ## Credits
 
 - [pymodbus](https://github.com/pymodbus-dev/pymodbus): third-party client/server for interoperability tests.
+- [pycomm3](https://github.com/ottowayi/pycomm3) (MIT): independent EtherNet/IP client used to test the PCCC guard and the simulated MicroLogix. Protocol details from the ODVA EtherNet/IP specification and Rockwell publication 1770-6.5.16 (DF1 Protocol and Command Set).
 - [FastAPI](https://fastapi.tiangolo.com/), [uvicorn](https://www.uvicorn.org/), [httpx](https://www.python-httpx.org/), [pytest](https://pytest.org/), [Playwright](https://playwright.dev/) (screenshots).
 - [MITRE ATT&CK for ICS](https://attack.mitre.org/matrices/ics/) technique IDs; [OWASP Top 10 for LLM Applications](https://genai.owasp.org/llmrisk/llm01-prompt-injection/) (LLM01).
 - Carbonate chemistry: standard aquatic-chemistry constants (pK1 6.35, pK2 10.33, HOCl pKa ≈ 7.5 at 25 °C).

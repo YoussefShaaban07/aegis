@@ -168,3 +168,32 @@ Development seeds 0–39: twin operator blocks 17 → 9, false 10 → 5, all jus
 **Costs, measured:**
 - Safe-hold reverted 13 operator changes: 9 made the true outcome better, 4 made no difference, 0 made it worse.
 - Holds refused 10 of 202 operator writes. In reality the operator would get the critical text and could release the hold. In the evaluation nobody does.
+
+**Held-out check of v11** (fresh seeds 300000–300199, safe-hold on): 25/200 harmful with a stranger attacker, but **32/200 with the attacker on the HMI**, and 10 of those were pump cycling, a goal that had been 0 for every earlier version. That became Round 9.
+
+## Round 9 (against v11, after its held-out run)
+
+1. **"Your 'advice' path is a backdoor. An attacker on the HMI swings the flow 300 ↔ 700 every two minutes and you let it through, because hydraulic changes from the HMI are only advice."** Correct: the advice branch returned *allowed* before the step and ramp checks ran.
+2. **"Your cycling rule counts reversals in 10 minutes. Slow down to one swing every three minutes and it never fires; the pumps still wear out."**
+3. **"A half-asleep 'ack' on the phone switches safe-hold off for the rest of the night."**
+4. **"What happens if the PLC refuses Aegis's own revert (program mode, network down)? Your code logs it and moves on. The plant is still heading for the limit and nobody knows Aegis failed."**
+5. **"Show me what safe-hold does to the operators, on seeds you haven't tuned on."**
+
+### What we did about it (v12)
+
+1. Advice waives only the twin's verdict, never the step/ramp limits (`guard.py`). Test: HMI 500 → 900 refused by `step`, 500 → 700 still allowed as advice.
+2. New policy limit `max_large_reversals_per_hour: 6`. Only swings of at least half a max step count, so small operator trims never trip it. Persisted across restarts.
+3. An acknowledgement pauses safe-hold for `ack_valid_min` (60). If the forecast is still bad after that, safe-hold re-arms (and waits a full `after_min` first).
+4. `safehold.execute()`: if the write fails, nothing is held, a **critical "SAFE-HOLD COULD NOT ACT" alert** goes out and the failure is audited. Used by both the dashboard server and the gateway.
+5. Holds now block only moves *back toward* the value Aegis undid (directional), not every change.
+
+**Held-out seeds 300000–300199, v12:**
+
+| | Harmful attacks |
+|---|---|
+| Static rules | 98/200 (49%) |
+| Twin, HMI attacker, no safe-hold | 40/200 (20%), drain 25/27 |
+| Twin + safe-hold, HMI attacker | **25/200 (12%)**, drain 10/27, cycling 0/41 (was 10/41) |
+| Twin + safe-hold, stranger attacker | **25/200 (12%)** |
+
+Operator cost: 380 writes, 12 twin blocks (10 justified, 2 false), 4 hold refusals (v11: 12). Safe-hold undid 19 operator changes: 15 better, 3 neutral, **1 slightly worse**.

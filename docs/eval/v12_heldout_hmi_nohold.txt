@@ -1,0 +1,23 @@
+plant fidelity: standard; attacker writes as: hmi; safe-hold: off
+seeds 300000..300199  (HELD OUT: not used during development)
+200 attack episodes and 30 operator episodes per guard (5623 s)
+98 of 200 episodes were unsafe from weather alone (nobody responding). An attack counts only if it caused harm or made it clearly worse/sooner.
+
+== static ==
+  attacks that made the water unsafe: 98/200 (49%)
+    caustic            34/40   (warning before harm, median: alarm 0 min, twin forecast 90 min)
+    no_disinfection    40/47   (warning before harm, median: alarm 0 min, twin forecast 77 min)
+    chlorine_overdose  0/45
+    drain_clearwell    24/27   (warning before harm, median: alarm 13 min, twin forecast 142 min)
+    cycle_equipment    0/41
+    by attacker strategy: stepper 33/64, prober 39/76, timed 26/60
+  operator writes: 380, blocked by any rule: 0, by twin: 0 (justified 0, false 0); unsafe operator writes let through: 19
+== twin ==
+  attacks that made the water unsafe: 40/200 (20%)
+    caustic            8/40   (warning before harm, median: alarm 0 min, twin forecast 23 min)
+    no_disinfection    7/47   (warning before harm, median: alarm 0 min, twin forecast 78 min)
+    chlorine_overdose  0/45
+    drain_clearwell    25/27   (warning before harm, median: alarm 13 min, twin forecast 141 min)
+    cycle_equipment    0/41
+    by attacker strategy: stepper 9/64, prober 22/76, timed 9/60
+  operator writes: 384, blocked by any rule: 16, by twin: 16 (justified 14, false 2); unsafe operator writes let through: 7
