@@ -14,6 +14,15 @@ import time
 from . import modbus
 
 
+def _compact(fc: dict | None) -> dict | None:
+    """Keep the twin forecast small for the UI: pH and chlorine every 30 min."""
+    if not fc:
+        return None
+    pick = lambda pts: [{"min": x["min"], "ph": x["ph"], "cl": x["chlorine_residual"]}
+                        for x in pts if x["min"] % 30 == 0]
+    return {"with": pick(fc["with"]), "without": pick(fc["without"])}
+
+
 class Proposals:
     def __init__(self, guard, guard_port: int, audit=None, alerter=None, host: str = "127.0.0.1"):
         self.guard, self.guard_port, self.host = guard, guard_port, host
@@ -36,9 +45,10 @@ class Proposals:
         p = {"id": next(self._ids), "t": time.time(), "source": source, "name": name, "label": tag.label,
              "value": float(value), "old": d.old, "unit": tag.unit, "reason": reason or "",
              "status": "pending" if d.allowed else "blocked", "guard": d.reason, "check": d.check,
-             "decided_by": None}
+             "decided_by": None, "techniques": d.techniques,
+             "forecast": _compact(d.forecast)}
         self.items.insert(0, p)
-        self._log("proposal", p)
+        self._log("proposal", {k: v for k, v in p.items() if k != "forecast"})
         if not d.allowed and self.alerter:
             self.alerter.raise_alert(f"proposal_blocked:{name}", "critical",
                                      f"{source} proposed {name} = {value:g} {tag.unit}; guard blocked it: {d.reason}.")
@@ -49,9 +59,12 @@ class Proposals:
         if p is None or p["status"] != "pending":
             raise ValueError("proposal is not pending")
         tag = self.guard.tags.holding[p["name"]]
+        lim = self.guard.policy["limits"].get(p["name"]) or {}
+        if p["value"] in (lim.get("permit_values") or []):
+            self.guard.issue_permit(p["name"], p["value"], 1, by=f"{by} (approving AI proposal #{pid})")
         c = await modbus.Client(self.host, self.guard_port, unit=1).connect()
         try:
-            await c.write(tag.address, max(0, min(65535, tag.to_raw(p["value"]))))
+            await c.write_tag(tag, p["value"])
             p["status"], p["guard"] = "approved", "applied after operator approval"
         except modbus.ModbusError:
             last = self.guard.log[0].reason if self.guard.log else "blocked"

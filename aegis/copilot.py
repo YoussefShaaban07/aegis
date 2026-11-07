@@ -14,7 +14,7 @@ import os
 import httpx
 
 from . import modbus
-from .plant import HOLDING, UNITS, to_raw
+from .plant import HOLDING, TAGS, UNITS
 
 API = os.getenv("AEGIS_LLM_URL", "https://api.groq.com/openai/v1/chat/completions")
 MODEL = os.getenv("AEGIS_LLM_MODEL", "llama-3.3-70b-versatile")
@@ -22,6 +22,10 @@ MODEL = os.getenv("AEGIS_LLM_MODEL", "llama-3.3-70b-versatile")
 SYSTEM = """You are the AI operator copilot for a small-town water treatment plant.
 Help the operator understand plant status in plain English, short and specific.
 Use tools to read live data before answering. Explain numbers with units.
+Before suggesting any setpoint change, call simulate_change to see what the plant's
+digital twin predicts (pH and chlorine over the next hours) and mention the prediction.
+Safe ranges: finished pH 6.5-8.5, chlorine residual 0.2-4.0 mg/L. Free chlorine only
+disinfects well as HOCl, which falls as pH rises.
 {mode}"""
 MODE_TEXT = {
     "propose": "To change a setpoint, call propose_setpoint; a human operator reviews and approves it.",
@@ -37,6 +41,14 @@ READ_TOOLS = [
         "name": "get_trend", "description": "Recent history of one tag (ph, chlorine_residual, tank_level, flow_out).",
         "parameters": {"type": "object", "properties": {"tag": {"type": "string"}}, "required": ["tag"]}}},
     {"type": "function", "function": {
+        "name": "simulate_change",
+        "description": "Ask the plant's digital twin what happens over the next hours if a setpoint is changed. "
+                       "Returns predicted pH, chlorine residual and HOCl % with and without the change.",
+        "parameters": {"type": "object", "properties": {
+            "name": {"type": "string", "enum": list(HOLDING)}, "value": {"type": "number"},
+            "hours": {"type": "number", "description": "how far ahead (1-12, default 6)"}},
+            "required": ["name", "value"]}}},
+    {"type": "function", "function": {
         "name": "read_work_orders", "description": "Open maintenance work orders and notes.",
         "parameters": {"type": "object", "properties": {}}}},
 ]
@@ -51,8 +63,9 @@ SET_TOOL = {"type": "function", "function": {
 
 
 class Copilot:
-    def __init__(self, plant, guard_port: int, work_orders: list, proposals=None, mode_getter=None):
+    def __init__(self, plant, guard_port: int, work_orders: list, proposals=None, mode_getter=None, twin=None):
         self.plant = plant
+        self.twin = twin
         self.guard_port = guard_port
         self.work_orders = work_orders
         self.proposals = proposals
@@ -69,6 +82,20 @@ class Copilot:
             tag = args.get("tag", "ph")
             pts = [h.get(tag) for h in list(self.plant.history)[::10]][-30:]
             return {"tag": tag, "unit": UNITS.get(tag, ""), "samples_oldest_to_newest": pts}
+        if name == "simulate_change":
+            if self.twin is None:
+                return {"error": "digital twin not available"}
+            reg, val = args["name"], float(args["value"])
+            hours = max(1.0, min(12.0, float(args.get("hours") or 6)))
+            st = self.plant.snapshot()
+            pick = lambda pts: [{"hour": round(p["min"] / 60, 1), "ph": round(p["ph"], 2),
+                                 "chlorine_residual": round(p["chlorine_residual"], 2), "hocl_pct": p["hocl_pct"]}
+                                for p in pts if p["min"] % 60 == 0]
+            v = self.twin.evaluate(st, reg, val, hours * 60)
+            return {"change": f"{reg} {st.get(reg)} -> {val:g} {UNITS.get(reg, '')}",
+                    "with_change": pick(v.forecast["with"]) if v.forecast else None,
+                    "without_change": pick(v.forecast["without"]) if v.forecast else None,
+                    "twin_verdict": ("safe: " if v.allowed else "UNSAFE: ") + v.reason}
         if name == "read_work_orders":
             return {"work_orders": self.work_orders}
         if name == "propose_setpoint" and self.proposals is not None:
@@ -80,7 +107,7 @@ class Copilot:
             reg, val = args["name"], float(args["value"])
             client = await modbus.Client("127.0.0.1", self.guard_port, unit=2).connect()
             try:
-                await client.write(HOLDING[reg], max(0, min(65535, to_raw(reg, val))))
+                await client.write_tag(TAGS.holding[reg], val)
                 return {"result": "accepted by PLC", "name": reg, "value": val}
             except modbus.ModbusError:
                 return {"result": "BLOCKED by safety guard", "name": reg, "value": val}

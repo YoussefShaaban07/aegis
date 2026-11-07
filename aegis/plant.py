@@ -1,85 +1,152 @@
 """Simulated small-town water treatment plant + its PLC (Modbus TCP).
 
-Process: intake pump -> chemical dosing (chlorine for disinfection, sodium
-hydroxide / lye for pH) -> clearwell tank -> distribution pump -> town.
+Process: raw water -> intake pump -> chemical dosing (chlorine for
+disinfection, sodium hydroxide / lye for pH) -> clearwell tank -> distribution
+pump -> town. Chemistry and mixing come from aegis/process.py.
 
-Safety reference values (EPA): pH secondary standard 6.5-8.5;
-chlorine maximum residual disinfectant level 4.0 mg/L.
+The simulator deliberately differs from the guard's twin, the way a real plant
+differs from any model of it: slightly different "true" parameters, a drifting
+chlorine demand, and sensor noise. The twin's live accuracy score measures that gap.
+
+Weather scenarios change the raw water:
+  normal  pH 6.9, alkalinity 77 mg/L, turbidity 1 NTU
+  storm   runoff: turbidity 15 NTU (chlorine demand jumps), alkalinity 55, pH 6.8
+  bloom   algae consume CO2 in the reservoir: raw pH 8.3 (lye dose must drop)
+
+Safety reference values (EPA): pH secondary standard 6.5-8.5; chlorine maximum
+residual disinfectant level 4.0 mg/L; a detectable residual (we use 0.2 mg/L) is required.
 """
 from __future__ import annotations
 
-import math
+import random
 import time
 from collections import deque
 from dataclasses import dataclass, field
 
 from . import modbus
-from .config import Tags
+from .config import Tags, load_process
+from .process import ProcessModel, ProcessState, Raw, hocl_fraction
 
-# ---- register map (what an HMI / attacker sees on the wire), from config/tags.json ----
 TAGS = Tags.load()
-HOLDING = {n: t.address for n, t in TAGS.holding.items()}   # writable setpoints / commands
-INPUT = {n: t.address for n, t in TAGS.input.items()}       # read-only sensors
-SCALE = {n: t.scale for n, t in {**TAGS.holding, **TAGS.input}.items() if t.scale != 1}
-UNITS = {n: t.unit for n, t in {**TAGS.holding, **TAGS.input}.items()}
+HOLDING = {n: t.address for n, t in TAGS.holding.items()}   # writable tags (name -> address)
+UNITS = {n: t.unit for n, t in TAGS.all.items()}
 ALARMS = ["pH HIGH", "pH LOW", "CHLORINE HIGH", "CHLORINE LOW", "TANK HIGH", "TANK LOW"]
 
 NORMAL = {"intake_pump": 1, "distribution_pump": 1, "chlorine_dose": 1.5,
           "naoh_dose": 100, "distribution_rate": 500}
+SCENARIOS = {
+    "normal": Raw(6.9, 77.0, 1.0),
+    "storm": Raw(6.8, 55.0, 15.0),
+    "bloom": Raw(8.3, 77.0, 2.0),
+}
 
 
 def to_raw(name: str, value: float) -> int:
-    return int(round(value * SCALE.get(name, 1)))
+    return TAGS.all[name].to_raw(value)
 
 
 def from_raw(name: str, raw: int) -> float:
-    s = SCALE.get(name, 1)
-    return raw / s if s != 1 else raw
+    return TAGS.all[name].from_raw(raw)
+
+
+def _true_params() -> dict:
+    p = load_process()
+    # the real plant is never exactly the model
+    p.update(naoh_feed_strength=p["naoh_feed_strength"] * 1.03,
+             chlorine_decay_per_hr=p["chlorine_decay_per_hr"] * 1.2)
+    return p
 
 
 @dataclass
 class Plant:
-    speed: float = 30.0                 # simulated seconds per real second
-    capacity_gal: float = 100_000
-    intake_gpm: float = 520
-    hr: list[int] = field(default_factory=lambda: [0] * 8)
-    tank_level: float = 60.0            # %
-    chlorine: float = 1.3               # mg/L residual
-    ph: float = 7.0
-    flow_out: float = 0.0
-    history: deque = field(default_factory=lambda: deque(maxlen=600))
+    speed: float = 60.0                 # simulated seconds per real second
+    seed: int | None = 7
+    noise: bool = True
+    coils: list[int] = field(default_factory=lambda: [0] * 16)
+    hr: list[int] = field(default_factory=lambda: [0] * 16)
+    history: deque = field(default_factory=lambda: deque(maxlen=900))
+    scenario: str = "normal"
+    sim_time: float = 0.0
     _last: float = field(default_factory=time.monotonic)
 
     def __post_init__(self):
-        for k, v in NORMAL.items():
-            self.hr[HOLDING[k]] = to_raw(k, v)
+        self.model = ProcessModel(_true_params())
+        self.rng = random.Random(self.seed)
+        self.raw = Raw(**SCENARIOS["normal"].__dict__)
+        self._raw_target = Raw(**self.raw.__dict__)
+        self.demand_drift = 0.0
+        self.reset()
 
     # ---- setpoints ----
+    def _cell(self, name: str):
+        t = TAGS.holding[name]
+        return (self.coils if t.table == "coil" else self.hr), t.address
+
     def setpoint(self, name: str) -> float:
-        return from_raw(name, self.hr[HOLDING[name]])
+        regs, a = self._cell(name)
+        return from_raw(name, regs[a])
+
+    def set(self, name: str, value: float):
+        regs, a = self._cell(name)
+        regs[a] = to_raw(name, value)
+
+    def setpoints(self) -> dict:
+        return {k: self.setpoint(k) for k in HOLDING}
+
+    def reset(self):
+        for k, v in NORMAL.items():
+            self.set(k, v)
+        self.set_scenario("normal", immediate=True)
+        self.state: ProcessState = self.model.steady(self.raw, self.setpoints())
+        self.demand_drift = 0.0
+        self.history.clear()
+
+    def set_scenario(self, name: str, immediate: bool = False):
+        self.scenario = name
+        self._raw_target = Raw(**SCENARIOS[name].__dict__)
+        if immediate:
+            self.raw = Raw(**self._raw_target.__dict__)
+
+    # ---- convenience views (sensor values) ----
+    @property
+    def ph(self) -> float:
+        return self.model.ph(self.state)
+
+    @property
+    def chlorine(self) -> float:
+        return self.state.chlorine
+
+    @property
+    def tank_level(self) -> float:
+        return self.state.tank_level
+
+    @property
+    def flow_out(self) -> float:
+        return self.state.flow_out
 
     # ---- physics ----
     def step(self, real_dt: float | None = None):
         now = time.monotonic()
         real_dt = (now - self._last) if real_dt is None else real_dt
         self._last = now
-        dt = real_dt * self.speed  # simulated seconds
+        dt = real_dt * self.speed
+        self.sim_time += dt
+        # raw water drifts toward the scenario over ~20 simulated minutes
+        k = 1 - pow(2.718281828, -dt / 1200)
+        for f in ("ph", "alkalinity", "turbidity"):
+            cur, tgt = getattr(self.raw, f), getattr(self._raw_target, f)
+            setattr(self.raw, f, cur + (tgt - cur) * k)
+        if self.noise:   # chlorine demand wanders (organic load changes)
+            self.demand_drift += self.rng.gauss(0, 0.004) * (dt / 60) ** 0.5
+            self.demand_drift = max(-0.15, min(0.15, self.demand_drift * 0.999))
+        demand = self.model.demand(self.raw) + self.demand_drift
+        sub = max(1, int(dt // 30))
+        for _ in range(sub):
+            self.model.step(self.state, self.raw, self.setpoints(), dt / sub, demand)
+        self.history.append({"t": time.time(), "sim_t": self.sim_time, **self.snapshot(values_only=True)})
 
-        intake = self.intake_gpm if self.setpoint("intake_pump") else 0.0
-        out = self.setpoint("distribution_rate") if self.setpoint("distribution_pump") else 0.0
-        if self.tank_level <= 2:
-            out = 0.0
-        self.flow_out = out
-        self.tank_level += (intake - out) / 60 * dt / self.capacity_gal * 100
-        self.tank_level = min(100.0, max(0.0, self.tank_level))
-
-        # chemistry: first-order lag toward the dosed target
-        cl_target = 0.85 * self.setpoint("chlorine_dose") if intake else self.chlorine * 0.98
-        ph_target = 7.0 + 1.6 * math.log10(1 + self.setpoint("naoh_dose") / 100) - 0.48
-        self.chlorine += (cl_target - self.chlorine) * (1 - math.exp(-dt / 600))
-        self.ph += (ph_target - self.ph) * (1 - math.exp(-dt / 450))
-
-        self.history.append({"t": time.time(), **self.snapshot(values_only=True)})
+    def _noise(self, sd: float) -> float:
+        return self.rng.gauss(0, sd) if self.noise else 0.0
 
     def alarms(self) -> list[str]:
         out = []
@@ -91,34 +158,58 @@ class Plant:
         if self.tank_level < 10: out.append("TANK LOW")
         return out
 
+    def sensors(self) -> dict:
+        """What the instruments report (with a little noise)."""
+        return {"tank_level": round(self.tank_level + self._noise(0.05), 1),
+                "chlorine_residual": round(max(0.0, self.chlorine + self._noise(0.01)), 2),
+                "ph": round(self.ph + self._noise(0.01), 2),
+                "flow_out": round(self.flow_out),
+                "raw_ph": round(self.raw.ph + self._noise(0.01), 2),
+                "raw_alkalinity": round(self.raw.alkalinity),
+                "raw_turbidity": round(self.raw.turbidity, 1)}
+
     def input_registers(self) -> list[int]:
-        bits = sum(1 << ALARMS.index(a) for a in self.alarms())
-        return [to_raw("tank_level", self.tank_level), to_raw("chlorine_residual", self.chlorine),
-                to_raw("ph", self.ph), int(self.flow_out), bits, 0, 0, 0]
+        s = self.sensors()
+        regs = [0] * 16
+        for n, t in TAGS.table("input").items():
+            if n == "alarms":
+                regs[t.address] = sum(1 << ALARMS.index(a) for a in self.alarms())
+            elif n in s:
+                regs[t.address] = max(0, min(65535, t.to_raw(s[n])))
+        return regs
 
     def snapshot(self, values_only: bool = False) -> dict:
-        d = {"tank_level": round(self.tank_level, 1), "chlorine_residual": round(self.chlorine, 2),
-             "ph": round(self.ph, 2), "flow_out": round(self.flow_out)}
-        d.update({k: self.setpoint(k) for k in HOLDING})
+        d = self.sensors()
+        d["hocl_pct"] = round(100 * hocl_fraction(self.ph), 1)
+        d.update(self.setpoints())
         if values_only:
             return d
-        return {**d, "alarms": self.alarms()}
+        return {**d, "alarms": self.alarms(), "scenario": self.scenario}
 
     # ---- PLC: Modbus handler ----
     async def handle(self, req: modbus.Request, peer) -> bytes:
-        if req.fc == modbus.READ_HOLDING:
-            regs = self.hr
-        elif req.fc == modbus.READ_INPUT:
+        fc = req.fc
+        if not req.known:
+            raise modbus.ModbusError(modbus.ILLEGAL_FUNCTION)
+        if fc in (modbus.READ_COILS, modbus.READ_DISCRETE, modbus.WRITE_COIL, modbus.WRITE_COILS):
+            regs = self.coils if fc != modbus.READ_DISCRETE else [1 if a in self.alarms() else 0 for a in ALARMS] + [0] * 10
+        elif fc == modbus.READ_INPUT:
             regs = self.input_registers()
         else:
             regs = self.hr
+        if fc == modbus.READ_WRITE:
+            if req.read_address + req.read_count > len(regs) or req.address + req.count > len(regs):
+                raise modbus.ModbusError(modbus.ILLEGAL_ADDRESS)
+            for i, v in enumerate(req.values):           # spec: write happens before read
+                regs[req.address + i] = v
+            return modbus.response_pdu(req, regs[req.read_address:req.read_address + req.read_count])
         if req.address + req.count > len(regs):
             raise modbus.ModbusError(modbus.ILLEGAL_ADDRESS)
+        if fc == modbus.MASK_WRITE:
+            regs[req.address] = modbus.mask_result(regs[req.address], req.and_mask, req.or_mask)
+            return modbus.response_pdu(req)
         if req.is_write:
             for i, v in enumerate(req.values):
-                self.hr[req.address + i] = v
+                regs[req.address + i] = v
             return modbus.response_pdu(req)
         return modbus.response_pdu(req, regs[req.address:req.address + req.count])
-
-
-REG_NAME = {v: k for k, v in HOLDING.items()}

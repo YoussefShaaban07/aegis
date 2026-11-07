@@ -5,86 +5,101 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Aegis · Water Plant Control</title>
 <style>
-:root{--bg:#0b1118;--panel:#111a24;--line:#1f2c3a;--ink:#dce6f0;--muted:#7f93a8;--blue:#3fa7ff;--water:#2b7fd1;
---ok:#2ecc71;--warn:#f5b642;--bad:#ff4d4f;--lye:#c78bff;--cl:#7ee0c3}
+:root{--bg:#0b1118;--panel:#111a24;--panel2:#0d151e;--line:#1f2c3a;--ink:#dce6f0;--muted:#7f93a8;--blue:#3fa7ff;
+--ok:#2ecc71;--warn:#f5b642;--bad:#ff4d4f;--lye:#c78bff;--cl:#7ee0c3;--orange:#ff9f43}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 Inter,system-ui,-apple-system,Segoe UI,sans-serif}
-header{display:flex;align-items:center;gap:14px;padding:12px 20px;border-bottom:1px solid var(--line)}
+header{display:flex;align-items:center;flex-wrap:wrap;gap:12px;padding:10px 18px;border-bottom:1px solid var(--line)}
 header h1{margin:0;font-size:18px;letter-spacing:.5px}header .sub{color:var(--muted);font-size:13px}
-.sp{flex:1}.chip{padding:4px 10px;border-radius:99px;font-weight:700;font-size:12px;letter-spacing:.4px}
-.chip.on{background:rgba(46,204,113,.15);color:var(--ok)}.chip.off{background:rgba(255,77,79,.18);color:var(--bad)}
-main{display:grid;grid-template-columns:1.35fr 1fr;gap:14px;padding:14px}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
-.panel h2{margin:0 0 10px;font-size:12px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted)}
+.sp{flex:1}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.seg button{border:0;border-radius:0;padding:6px 12px;background:#0d151e;color:var(--muted)}
+.seg button.on.enforce{background:rgba(46,204,113,.18);color:var(--ok)}.seg button.on.monitor{background:rgba(245,182,66,.2);color:var(--warn)}
+.seg button.on.off{background:rgba(255,77,79,.22);color:var(--bad)}
+main{display:grid;grid-template-columns:1.3fr 1fr;gap:14px;padding:14px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px}
+.panel h2{margin:0 0 10px;font-size:12px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);display:flex;align-items:center;gap:8px}
+.panel h2 .sp{flex:1}
 svg text{fill:var(--ink);font-family:inherit}
-.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px}
-.kpi{background:#0d151e;border:1px solid var(--line);border-radius:8px;padding:10px}
-.kpi .l{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
-.kpi .v{font-size:24px;font-weight:700;font-variant-numeric:tabular-nums}.kpi .r{font-size:11px;color:var(--muted)}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+.kpi{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.kpi .l{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.kpi .v{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}.kpi .r{font-size:11px;color:var(--muted)}
 .kpi.bad{border-color:var(--bad);box-shadow:0 0 0 1px var(--bad) inset}.kpi.bad .v{color:var(--bad)}
-canvas{width:100%;height:150px;display:block}
+.kpi.warn{border-color:var(--warn)}.kpi.warn .v{color:var(--warn)}
+.raw{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--muted);margin-top:8px}.raw b{color:var(--ink)}
+canvas{width:100%;display:block}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:11.5px;color:var(--muted);margin-top:6px}
+.legend i{display:inline-block;width:18px;height:3px;vertical-align:middle;margin-right:4px;border-radius:2px}
 .alarm{display:none;margin-top:10px;padding:10px 12px;border-radius:8px;background:rgba(255,77,79,.15);border:1px solid var(--bad);color:#ffb3b4;font-weight:700;animation:pulse 1s infinite}
 @keyframes pulse{50%{opacity:.6}}
-.btns{display:flex;flex-wrap:wrap;gap:8px}
-button{font:inherit;font-weight:600;border-radius:8px;border:1px solid var(--line);background:#16212d;color:var(--ink);padding:8px 12px;cursor:pointer}
+.btns{display:flex;flex-wrap:wrap;gap:6px}
+.grp{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin:10px 0 5px}
+button{font:inherit;font-weight:600;border-radius:8px;border:1px solid var(--line);background:#16212d;color:var(--ink);padding:7px 11px;cursor:pointer;font-size:13px}
 button:hover{border-color:#36506b}button.red{background:#3a1416;border-color:#6b2226;color:#ffb3b4}
-button.purple{background:#2a1838;border-color:#55306f;color:#e2c6ff}
-.log{max-height:300px;overflow:auto;display:flex;flex-direction:column;gap:6px}
-.ev{padding:8px 10px;border-radius:7px;border-left:4px solid;background:#0d151e;font-size:13px}
-.ev.ok{border-color:var(--ok)}.ev.no{border-color:var(--bad);background:rgba(255,77,79,.08)}
+button.purple{background:#2a1838;border-color:#55306f;color:#e2c6ff}button.wx{background:#122436;border-color:#24496b;color:#a9d4ff}
+button.wx.on{outline:2px solid var(--blue)}
+.log{max-height:340px;overflow:auto;display:flex;flex-direction:column;gap:6px}
+.ev{padding:7px 10px;border-radius:7px;border-left:4px solid;background:var(--panel2);font-size:13px}
+.ev.ok{border-color:var(--ok)}.ev.no{border-color:var(--bad);background:rgba(255,77,79,.08)}.ev.wb{border-color:var(--warn);background:rgba(245,182,66,.07)}
+.ev.un{border-color:var(--warn)}
 .ev .h{display:flex;justify-content:space-between;gap:8px;font-weight:700}.ev .m{color:var(--muted);font-size:12px}
-.tag{font-size:11px;padding:1px 6px;border-radius:4px;font-weight:700}.tag.ok{background:rgba(46,204,113,.15);color:var(--ok)}.tag.no{background:rgba(255,77,79,.2);color:var(--bad)}
-.chat{display:flex;gap:8px;margin-top:8px}.chat input{flex:1;font:inherit;background:#0d151e;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
-.reply{margin-top:10px;white-space:pre-wrap;background:#0d151e;border:1px solid var(--line);border-radius:8px;padding:10px;min-height:44px}
+.tag{font-size:11px;padding:1px 6px;border-radius:4px;font-weight:700;white-space:nowrap}.tag.ok{background:rgba(46,204,113,.15);color:var(--ok)}
+.tag.no{background:rgba(255,77,79,.2);color:var(--bad)}.tag.wb{background:rgba(245,182,66,.2);color:var(--warn)}
+.chk{font-size:10px;padding:1px 5px;border-radius:4px;background:#1c2a38;color:var(--muted);margin-left:6px;text-transform:uppercase}
+.chk.predict{background:rgba(255,159,67,.2);color:var(--orange)}
+.tech{font-size:10px;padding:1px 5px;border-radius:4px;background:#22182e;color:#d8b9ff;margin-left:4px}
+.chat{display:flex;gap:8px}.chat input{flex:1;font:inherit;background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.reply{margin-top:10px;white-space:pre-wrap;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px;min-height:44px}
 .trace{margin-top:6px;font-size:12px;color:var(--muted)}.trace b{color:var(--ink)}
-.wo{font-size:12px;color:var(--muted);margin:4px 0;padding:6px 8px;border-radius:6px;background:#0d151e}
+.wo{font-size:12px;color:var(--muted);margin:4px 0;padding:6px 8px;border-radius:6px;background:var(--panel2)}
 .wo.evil{color:#e2c6ff;border:1px dashed #55306f}
-.switch{display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none}
-.switch .t{width:44px;height:24px;border-radius:99px;background:#33404d;position:relative;transition:.2s}
-.switch .t::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:.2s}
-.switch.on .t{background:var(--ok)}.switch.on .t::after{left:23px}
-.hdr-in{font:inherit;background:#0d151e;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:6px 8px;width:120px}
-select{font:inherit;background:#0d151e;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:6px 8px}
-.err{color:var(--bad);font-size:12px;min-height:16px}
-.al{padding:8px 10px;border-radius:7px;background:#0d151e;border-left:4px solid var(--warn);font-size:13px;margin-bottom:6px}
+input.f,select{font:inherit;background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:6px 8px}
+.err{color:var(--bad);font-size:12px;min-height:16px}.okm{color:var(--ok);font-size:12px}
+.al{padding:7px 10px;border-radius:7px;background:var(--panel2);border-left:4px solid var(--warn);font-size:13px;margin-bottom:6px}
 .al.critical{border-color:var(--bad)}.al .d{color:var(--muted);font-size:12px}
-.prop{padding:8px 10px;border-radius:7px;background:#0d151e;border:1px solid var(--line);margin-bottom:6px;font-size:13px}
+.prop{padding:8px 10px;border-radius:7px;background:var(--panel2);border:1px solid var(--line);margin-bottom:6px;font-size:13px}
 .prop .act{display:flex;gap:6px;margin-top:6px}.prop button{padding:4px 10px;font-size:12px}
 .st{font-size:11px;font-weight:700;padding:1px 6px;border-radius:4px;text-transform:uppercase}
 .st.pending{background:rgba(245,182,66,.18);color:var(--warn)}.st.blocked,.st.failed,.st.rejected{background:rgba(255,77,79,.2);color:var(--bad)}.st.approved{background:rgba(46,204,113,.15);color:var(--ok)}
-table.rules{width:100%;border-collapse:collapse;font-size:12px}table.rules th{color:var(--muted);text-align:left;font-weight:600;padding:4px}
-table.rules td{padding:3px 4px;border-top:1px solid var(--line)}table.rules input{width:70px;font:inherit;background:#0d151e;color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:4px}
-.chk{font-size:10px;padding:1px 5px;border-radius:4px;background:#1c2a38;color:var(--muted);margin-left:6px;text-transform:uppercase}
+table.t{width:100%;border-collapse:collapse;font-size:12px}table.t th{color:var(--muted);text-align:left;font-weight:600;padding:4px}
+table.t td{padding:3px 4px;border-top:1px solid var(--line);vertical-align:top}table.t input{width:64px;font:inherit;background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:3px 4px}
+.tabs{display:flex;gap:4px;margin:0 14px}.tabs button{border-radius:8px 8px 0 0;border-bottom:0;background:#0d151e;color:var(--muted)}
+.tabs button.on{background:var(--panel);color:var(--ink)}
+.page{display:none}.page.on{display:grid}
+.stat{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .audit-ok{color:var(--ok);font-weight:700}.audit-bad{color:var(--bad);font-weight:700}
-a{color:var(--blue)}
-@media(max-width:1000px){main{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,1fr)}}
+.verdict{margin-top:8px;font-size:13px;padding:8px 10px;border-radius:8px;background:var(--panel2);border:1px solid var(--line)}
+.verdict.bad{border-color:var(--bad);color:#ffb3b4}.verdict.good{border-color:var(--ok);color:#bff3d4}
+a{color:var(--blue)}code{font-size:11.5px}
+@media(max-width:1000px){main,.page.on{grid-template-columns:1fr}.kpis,.stat{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
 <body>
 <header>
-  <h1>AEGIS</h1><span class="sub">Hattiesburg Water Treatment Plant #2 · simulated · Modbus TCP</span>
+  <h1>AEGIS</h1><span class="sub" id="plantname">Water Treatment Plant #2 · simulated · Modbus TCP</span>
   <span class="sp"></span>
   <label class="sub">AI autonomy <select id="auto" onchange="setAutonomy()"><option value="propose">propose → operator approves</option><option value="direct">direct (writes via guard)</option></select></label>
-  <input id="pin" class="hdr-in" type="password" placeholder="Engineer PIN" autocomplete="off">
-  <label class="switch" id="gsw" onclick="toggleGuard()"><span class="t"></span><b>Safety guard</b></label>
-  <span class="chip on" id="gchip">GUARD ON</span>
+  <input id="pin" class="f" style="width:120px" type="password" placeholder="Engineer PIN" autocomplete="off">
+  <span class="sub">Guard</span>
+  <div class="seg" id="modes"><button data-m="enforce" onclick="setMode('enforce')">ENFORCE</button><button data-m="monitor" onclick="setMode('monitor')">MONITOR</button><button data-m="off" onclick="setMode('off')">OFF</button></div>
 </header>
-<div class="err" id="hdrerr" style="padding:0 20px"></div>
-<main>
+<div class="err" id="hdrerr" style="padding:0 18px"></div>
+<div class="tabs"><button class="on" data-p="ops" onclick="tab('ops')">Operations</button><button data-p="eng" onclick="tab('eng')">Engineering</button><button data-p="evi" onclick="tab('evi')">Evidence &amp; performance</button></div>
+
+<!-- ================= OPERATIONS ================= -->
+<main class="page on" id="p-ops">
   <section>
     <div class="panel">
-      <h2>Process</h2>
-      <svg viewBox="0 0 760 260" width="100%">
+      <h2>Process <span class="sp"></span><span id="scen" class="chk"></span></h2>
+      <svg viewBox="0 0 760 250" width="100%">
         <defs><linearGradient id="wg" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#3fa7ff"/><stop offset="1" stop-color="#1c5fa0"/></linearGradient></defs>
-        <!-- river -->
-        <text x="10" y="40" font-size="12" fill="#7f93a8">RIVER</text>
-        <path d="M0 60 Q40 50 80 60 T160 60" stroke="#2b7fd1" stroke-width="10" fill="none" opacity=".6"/>
-        <!-- intake pump -->
+        <text x="10" y="40" font-size="12" fill="#7f93a8">RAW WATER</text>
+        <path id="river" d="M0 60 Q40 50 80 60 T160 60" stroke="#2b7fd1" stroke-width="10" fill="none" opacity=".6"/>
         <circle id="p1" cx="120" cy="150" r="22" fill="#16212d" stroke="#3fa7ff" stroke-width="3"/>
         <text x="120" y="155" text-anchor="middle" font-size="11">P-1</text>
         <text x="120" y="192" text-anchor="middle" font-size="11" fill="#7f93a8">Intake</text>
         <line x1="120" y1="65" x2="120" y2="128" stroke="#2b7fd1" stroke-width="6"/>
         <line id="pipe1" x1="142" y1="150" x2="410" y2="150" stroke="#2b7fd1" stroke-width="6" stroke-dasharray="10 8"/>
-        <!-- chemical tanks -->
         <rect x="200" y="20" width="70" height="70" rx="8" fill="#0d151e" stroke="#7ee0c3" stroke-width="2"/>
         <text x="235" y="45" text-anchor="middle" font-size="11" fill="#7ee0c3">CHLORINE</text>
         <text id="clsp" x="235" y="68" text-anchor="middle" font-size="16" font-weight="700">1.5</text>
@@ -93,64 +108,67 @@ a{color:var(--blue)}
         <rect id="lyebox" x="300" y="20" width="80" height="70" rx="8" fill="#0d151e" stroke="#c78bff" stroke-width="2"/>
         <text x="340" y="45" text-anchor="middle" font-size="11" fill="#c78bff">LYE (NaOH)</text>
         <text id="lyesp" x="340" y="68" text-anchor="middle" font-size="16" font-weight="700">100</text>
-        <text x="340" y="83" text-anchor="middle" font-size="10" fill="#7f93a8">ppm dose</text>
+        <text x="340" y="83" text-anchor="middle" font-size="10" fill="#7f93a8">ppm feed</text>
         <line x1="340" y1="90" x2="340" y2="146" stroke="#c78bff" stroke-width="3" stroke-dasharray="4 4"/>
-        <!-- clearwell -->
         <rect x="410" y="60" width="130" height="170" rx="6" fill="#0d151e" stroke="#3a4f63" stroke-width="2"/>
         <rect id="water" x="412" y="150" width="126" height="78" fill="url(#wg)"/>
         <text x="475" y="52" text-anchor="middle" font-size="11" fill="#7f93a8">CLEARWELL</text>
         <text id="lvl" x="475" y="140" text-anchor="middle" font-size="18" font-weight="700">60%</text>
-        <!-- distribution -->
         <line id="pipe2" x1="540" y1="200" x2="618" y2="200" stroke="#2b7fd1" stroke-width="6" stroke-dasharray="10 8"/>
         <circle id="p2" cx="640" cy="200" r="22" fill="#16212d" stroke="#3fa7ff" stroke-width="3"/>
         <text x="640" y="205" text-anchor="middle" font-size="11">P-2</text>
         <line id="pipe3" x1="662" y1="200" x2="740" y2="200" stroke="#2b7fd1" stroke-width="6" stroke-dasharray="10 8"/>
         <text x="700" y="150" text-anchor="middle" font-size="22">🏘️</text>
         <text x="700" y="175" text-anchor="middle" font-size="11" fill="#7f93a8">TOWN</text>
-        <text id="flow" x="640" y="245" text-anchor="middle" font-size="11" fill="#7f93a8">500 gpm</text>
+        <text id="flow" x="640" y="242" text-anchor="middle" font-size="11" fill="#7f93a8">500 gpm</text>
       </svg>
       <div class="kpis">
-        <div class="kpi" id="k-ph"><div class="l">Finished water pH</div><div class="v" id="v-ph">7.00</div><div class="r">safe 6.5 – 8.5</div></div>
-        <div class="kpi" id="k-cl"><div class="l">Chlorine residual</div><div class="v" id="v-cl">1.30</div><div class="r">mg/L · safe 0.2 – 4.0</div></div>
-        <div class="kpi" id="k-lv"><div class="l">Clearwell level</div><div class="v" id="v-lv">60%</div><div class="r">safe 10 – 95%</div></div>
-        <div class="kpi"><div class="l">Flow to town</div><div class="v" id="v-fl">500</div><div class="r">gallons / min</div></div>
+        <div class="kpi" id="k-ph"><div class="l">Finished water pH</div><div class="v" id="v-ph">–</div><div class="r">safe 6.5 – 8.5</div></div>
+        <div class="kpi" id="k-cl"><div class="l">Chlorine residual</div><div class="v" id="v-cl">–</div><div class="r">mg/L · safe 0.2 – 4.0</div></div>
+        <div class="kpi" id="k-hocl"><div class="l">Disinfecting (HOCl)</div><div class="v" id="v-hocl">–</div><div class="r">share of chlorine that works</div></div>
+        <div class="kpi" id="k-lv"><div class="l">Clearwell level</div><div class="v" id="v-lv">–</div><div class="r">safe 10 – 95%</div></div>
       </div>
+      <div class="raw">Raw water: <span>pH <b id="r-ph">–</b></span><span>alkalinity <b id="r-alk">–</b> mg/L CaCO₃</span><span>turbidity <b id="r-tu">–</b> NTU</span><span>flow to town <b id="v-fl">–</b> gpm</span></div>
       <div class="alarm" id="alarm"></div>
     </div>
-    <div class="panel" style="margin-top:14px">
-      <h2>pH trend (last ~2 min)</h2>
-      <canvas id="chart" width="900" height="180"></canvas>
+    <div class="panel">
+      <h2>pH and chlorine: past and the twin's forecast <span class="sp"></span><span class="sub" id="clock" style="text-transform:none;letter-spacing:0"></span></h2>
+      <canvas id="chart" width="1000" height="260" style="height:230px"></canvas>
+      <div class="legend"><span><i style="background:#3fa7ff"></i>pH (measured)</span><span><i style="background:#3fa7ff;opacity:.5"></i>pH forecast, no changes</span>
+        <span><i style="background:#7ee0c3"></i>chlorine mg/L (right axis)</span><span><i style="background:#ff9f43"></i>forecast IF the change is made</span></div>
+      <div class="grp">What-if: ask the digital twin before you touch anything</div>
+      <div class="btns" style="align-items:center"><select id="wi-n"></select><input id="wi-v" class="f" style="width:90px" type="number" step="any" placeholder="value">
+        <button onclick="whatif()">Predict</button><button onclick="opSet()">Apply as operator</button></div>
+      <div id="wi-out"></div>
     </div>
-    <div class="panel" style="margin-top:14px">
-      <h2>Operator alerts · <span id="alcfg"></span></h2>
+    <div class="panel">
+      <h2>Operator alerts <span class="sp"></span><span id="alcfg" style="text-transform:none;letter-spacing:0"></span></h2>
       <div id="alerts" class="log" style="max-height:220px"><div class="trace">No alerts.</div></div>
-    </div>
-    <div class="panel" style="margin-top:14px">
-      <h2>Safety rules (engineer) <button style="float:right;padding:3px 8px;font-size:11px" onclick="renderRules(true)">Reload</button></h2>
-      <div id="rules"></div>
-      <div class="btns" style="margin-top:8px"><button onclick="saveRules()">Save rules (needs PIN)</button><span class="err" id="ruleserr"></span></div>
-    </div>
-    <div class="panel" style="margin-top:14px">
-      <h2>Tamper-evident audit log</h2>
-      <div id="audit">…</div>
-      <div class="trace"><a href="/api/audit/export.csv">Export CSV</a> · every decision, alert, rule change and approval is hash-chained</div>
     </div>
   </section>
   <section>
     <div class="panel">
-      <h2>Demo controls</h2>
+      <h2>Demo controls <span class="sp"></span><button onclick="post('/api/reset').then(()=>{overlay=null;load()})" style="font-size:11px;padding:3px 8px">↺ Reset plant</button></h2>
+      <div class="grp">Weather (raw water)</div>
+      <div class="btns"><button class="wx" data-s="normal" onclick="scen('normal')">☀️ Normal</button><button class="wx" data-s="storm" onclick="scen('storm')">⛈️ Storm runoff</button><button class="wx" data-s="bloom" onclick="scen('bloom')">🦠 Algae bloom</button></div>
+      <div class="grp">Attacks (real Modbus traffic from 127.0.0.66)</div>
       <div class="btns">
-        <button class="red" onclick="post('/api/attack/lye').then(r=>flash(r.result))">💀 Hacker: set lye to 11,100 ppm</button>
-        <button class="red" onclick="post('/api/attack/ramp').then(r=>flash(r.result))">🐍 Stealth: many small chlorine steps</button>
-        <button class="red" onclick="post('/api/attack/flood').then(r=>flash(r.result))">🌊 Flood: 30 writes/sec</button>
-        <button class="purple" onclick="post('/api/attack/plant-work-order')">🧪 Plant poisoned work order</button>
-        <button onclick="post('/api/reset')">↺ Reset plant</button>
+        <button class="red" onclick="atk('lye')" title="FC 6">💀 Oldsmar: lye → 11,100</button>
+        <button class="red" onclick="atk('mask')" title="Mask Write, FC 22">🎭 Sneaky FC 22 write</button>
+        <button class="red" onclick="atk('readwrite')" title="FC 23">🎭 Sneaky FC 23 write</button>
+        <button class="red" onclick="atk('coil')" title="FC 5">⛔ Stop town pump</button>
+        <button class="red" onclick="atk('recon')" title="FC 43 + FC 8">🔍 Recon + listen-only</button>
+        <button class="red" onclick="atk('ramp')">🐍 Stealth chlorine ramp</button>
+        <button class="red" onclick="atk('flood')">🌊 Flood, rotating IDs</button>
+        <button class="red" onclick="atk('patient')" title="+50 lye every 61 s; each step passes every static rule">⏳ Patient attacker</button>
       </div>
-      <div id="flash" class="trace"></div>
+      <div class="grp">AI</div>
+      <div class="btns"><button class="purple" onclick="post('/api/attack/plant-work-order').then(load)">🧪 Plant poisoned work order</button></div>
+      <div id="alog" class="trace"></div>
     </div>
-    <div class="panel" style="margin-top:14px">
-      <h2>AI operator copilot</h2>
-      <div class="chat"><input id="q" placeholder="e.g. Any open work orders I should handle?" onkeydown="if(event.key==='Enter')ask()"><button onclick="ask()">Ask</button></div>
+    <div class="panel">
+      <h2>AI operator copilot <span class="sp"></span><span id="llm" style="text-transform:none;letter-spacing:0"></span></h2>
+      <div class="chat"><input id="q" placeholder="e.g. Chlorine is dropping. What should I do?" onkeydown="if(event.key==='Enter')ask()"><button onclick="ask()">Ask</button></div>
       <div class="reply" id="reply">Ask about the plant in plain English.</div>
       <div class="trace" id="trace"></div>
       <h2 style="margin-top:14px">AI proposals awaiting the operator</h2>
@@ -158,66 +176,193 @@ a{color:var(--blue)}
       <h2 style="margin-top:14px">Maintenance work orders (read by the AI)</h2>
       <div id="orders"></div>
     </div>
-    <div class="panel" style="margin-top:14px">
-      <h2>Guard decisions · every Modbus write</h2>
+    <div class="panel">
+      <h2>Guard decisions · every Modbus write <span class="sp"></span><span id="counts" style="text-transform:none;letter-spacing:0"></span></h2>
       <div class="log" id="log"><div class="trace">No writes yet.</div></div>
     </div>
   </section>
 </main>
+
+<!-- ================= ENGINEERING ================= -->
+<main class="page" id="p-eng">
+  <section>
+    <div class="panel">
+      <h2>Safety rules <span class="sp"></span><button style="padding:3px 8px;font-size:11px" onclick="renderRules(true)">Reload</button></h2>
+      <div id="rules"></div>
+      <div class="btns" style="margin-top:8px;align-items:center"><button onclick="saveRules()">Save rules (needs PIN)</button><span class="err" id="ruleserr"></span></div>
+      <div class="trace">Hard limits (min/max, max per command, max per minute) <b>block</b>. The learned "normal" band only <b>alerts</b>. The twin blocks any command whose forecast leaves the predicted-safe bands.</div>
+    </div>
+  </section>
+  <section>
+    <div class="panel">
+      <h2>Learn normal operations → suggested rules</h2>
+      <div class="trace" style="margin-top:0">Run Aegis in MONITOR mode for a trial period; it watches every write and suggests rules from what normal looks like. Statistics, not AI: reproducible. An engineer reviews and applies.</div>
+      <div class="btns" style="margin-top:8px"><button onclick="learn(false)">From audit log (last 7 days)</button><button onclick="learn(true)">From a SIMULATED week (demo data)</button></div>
+      <div id="learn"></div>
+    </div>
+  </section>
+</main>
+
+<!-- ================= EVIDENCE ================= -->
+<main class="page" id="p-evi">
+  <section>
+    <div class="panel">
+      <h2>Tamper-evident audit log</h2>
+      <div id="audit">…</div>
+      <div class="trace"><a href="/api/audit/export.csv">Export CSV</a> · every decision, alert, rule change, approval and failed PIN is hash-chained</div>
+    </div>
+    <div class="panel">
+      <h2>Incident report</h2>
+      <div class="trace" style="margin-top:0">Built only from the audit log: timeline, sources, MITRE ATT&amp;CK for ICS techniques, AI proposals, config changes, and the chain head hash so the report can be checked later.</div>
+      <div class="btns" style="margin-top:8px;align-items:center">Window <select id="rmin"><option value="15">15 min</option><option value="60" selected>1 hour</option><option value="1440">24 hours</option><option value="10080">7 days</option></select>
+        <button onclick="window.open('/api/report?minutes='+$('rmin').value,'_blank')">Open report</button>
+        <button onclick="location.href='/api/report.md?minutes='+$('rmin').value">Download .md</button></div>
+    </div>
+  </section>
+  <section>
+    <div class="panel">
+      <h2>Guard latency (measured live)</h2>
+      <div class="stat" id="lat"></div>
+      <div class="trace">"decide" = time the guard spends checking a write (incl. the digital-twin forecast). "total" = whole request including the PLC round trip. Localhost, this machine.</div>
+    </div>
+    <div class="panel">
+      <h2>Digital twin accuracy vs the plant (measured live)</h2>
+      <div id="acc"></div>
+      <div class="trace">Every 5 s the twin forecasts pH and chlorine 10/30/60 simulated minutes ahead; when the time comes it's scored against the plant's sensors. The simulated plant deliberately differs from the twin (different feed strength and chlorine decay, drifting demand, sensor noise). Forecasts are skipped if someone changes a setpoint before they come due.</div>
+    </div>
+  </section>
+</main>
+
 <script>
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-let guardOn=true, dash=0;
-async function post(u,b){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:b?JSON.stringify(b):'{}'});return r.json();}
-function flash(t){$('flash').textContent=t;}
-let policy=null, rulesShown=false;
+const fmt=v=>typeof v==='number'?(Math.abs(v)>=1000?v.toLocaleString():String(+v.toFixed(3))):esc(v);
+let S=null, dash=0, overlay=null, policy=null, rulesShown=false, tagsFilled=false;
 const pin=()=>$('pin').value;
+async function post(u,b){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b||{})});return r.json().catch(()=>({}));}
 async function postChk(u,b,errEl){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b||{})});
   const j=await r.json().catch(()=>({}));$(errEl).textContent=r.ok?'':(j.detail||('error '+r.status));return r.ok;}
-async function toggleGuard(){await postChk('/api/guard',{enabled:!guardOn,pin:pin()},'hdrerr');load();}
+function tab(p){document.querySelectorAll('.page').forEach(e=>e.classList.toggle('on',e.id==='p-'+p));document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.p===p));}
+async function setMode(m){await postChk('/api/mode',{mode:m,pin:pin()},'hdrerr');load();}
 async function setAutonomy(){if(!await postChk('/api/settings',{autonomy:$('auto').value,pin:pin()},'hdrerr'))load();}
 async function decide(id,a){await post(`/api/proposals/${id}/${a}`);load();}
-const RF=['min','max','max_step','max_change_per_min'];
-function renderRules(force){if(!policy||(rulesShown&&!force))return;rulesShown=true;
-  const rows=Object.entries(policy.limits).map(([k,l])=>`<tr><td>${esc(k)}</td>${RF.map(f=>`<td><input data-k="${esc(k)}" data-f="${f}" value="${l[f]??''}"></td>`).join('')}</tr>`).join('');
-  $('rules').innerHTML=`<table class="rules"><tr><th>setpoint</th><th>min</th><th>max</th><th>max / command</th><th>max / minute</th></tr>${rows}</table>
-  <div class="trace">Max writes per minute per source: <input id="wpm" style="width:60px" value="${policy.max_writes_per_min_per_source}"></div>`;}
-async function saveRules(){const p=JSON.parse(JSON.stringify(policy));
-  document.querySelectorAll('#rules input[data-k]').forEach(i=>{const v=i.value.trim();p.limits[i.dataset.k][i.dataset.f]=v===''?null:Number(v);});
-  p.max_writes_per_min_per_source=parseInt($('wpm').value,10);
-  if(await postChk('/api/policy',{policy:p,pin:pin()},'ruleserr')){$('ruleserr').textContent='Saved ✓';rulesShown=false;await load();renderRules(true);}}
+async function atk(n){$('alog').textContent='…';const r=await post('/api/attack/'+n);$('alog').textContent=r.result||'';load();}
+async function scen(n){await post('/api/scenario/'+n);load();}
+
+/* ---------- what-if ---------- */
+async function whatif(){const n=$('wi-n').value,v=parseFloat($('wi-v').value);if(isNaN(v))return;
+  const r=await post('/api/whatif',{name:n,value:v,hours:((S&&S.policy.prediction||{}).horizon_min||360)/60});
+  if(r.forecast)overlay={pts:r.forecast.with,label:`${n} = ${v}`,until:Date.now()+30000};
+  $('wi-out').innerHTML=`<div class="verdict ${r.allowed?'good':'bad'}">${r.allowed?'✔ Twin: safe.':'✖ Twin: unsafe.'} ${esc(r.reason)}</div>`;}
+async function opSet(){const n=$('wi-n').value,v=parseFloat($('wi-v').value);if(isNaN(v))return;
+  const r=await post('/api/operator/setpoint',{name:n,value:v});
+  $('wi-out').innerHTML=`<div class="verdict ${r.result==='accepted'?'good':'bad'}">${r.result==='accepted'?'✔ Accepted by the PLC.':'✖ Blocked by the guard.'} ${esc(r.reason)}</div>`
+    +(r.result!=='accepted'&&/permit/.test(r.reason||'')?`<div class="btns" style="margin-top:6px"><button onclick="permitRetry()">Issue a 10-min permit (PIN) and apply</button></div>`:'');load();}
+async function permitRetry(){const n=$('wi-n').value,v=parseFloat($('wi-v').value);
+  if(!await postChk('/api/permit',{name:n,value:v,minutes:10,pin:pin()},'hdrerr'))return;await opSet();}
+
+/* ---------- chart ---------- */
+function chart(){const c=$('chart'),x=c.getContext('2d'),W=c.width,H=c.height,L=44,R=W-44,T=10,B=H-24;x.clearRect(0,0,W,H);
+  if(!S)return;const now=S.sim_t/60, t0=now-100, t1=now+360;
+  const X=m=>L+(m-t0)/(t1-t0)*(R-L), Y=v=>B-(Math.min(10.5,Math.max(5.5,v))-5.5)/5*(B-T), Yc=v=>B-Math.min(5,Math.max(0,v))/5*(B-T);
+  x.fillStyle='rgba(46,204,113,.07)';x.fillRect(L,Y(8.5),R-L,Y(6.5)-Y(8.5));
+  x.strokeStyle='rgba(255,77,79,.6)';x.setLineDash([6,6]);[8.5,6.5].forEach(v=>{x.beginPath();x.moveTo(L,Y(v));x.lineTo(R,Y(v));x.stroke();});x.setLineDash([]);
+  x.fillStyle='#7f93a8';x.font='13px system-ui';
+  for(let v=6;v<=10;v++)x.fillText(v,L-22,Y(v)+4);for(let v=0;v<=4;v++)x.fillText(v,R+8,Yc(v)+4);
+  x.fillText('pH',8,T+10);x.fillText('Cl',R+20,T+10);
+  for(let k=-1;k<=6;k++){const m=now+k*60;x.fillText(k===0?'':(k>0?'+':'')+k+'h',X(m)-10,H-6);}
+  x.strokeStyle='#36506b';x.beginPath();x.moveTo(X(now),T);x.lineTo(X(now),B);x.stroke();x.fillText('now',X(now)+4,T+12);
+  const line=(pts,fx,fy,col,w,dashA)=>{if(pts.length<2)return;x.strokeStyle=col;x.lineWidth=w;x.setLineDash(dashA||[]);x.beginPath();
+    pts.forEach((p,i)=>{const a=fx(p),b=fy(p);i?x.lineTo(a,b):x.moveTo(a,b);});x.stroke();x.setLineDash([]);x.lineWidth=1;};
+  const h=S.history.filter(p=>p.sim_t/60>=t0);
+  line(h,p=>X(p.sim_t/60),p=>Yc(p.chlorine_residual),'#7ee0c3',2);
+  line(h,p=>X(p.sim_t/60),p=>Y(p.ph),'#3fa7ff',3);
+  if(S.forecast){line(S.forecast,p=>X(now+p.min),p=>Y(p.ph),'rgba(63,167,255,.55)',2,[8,6]);
+    line(S.forecast,p=>X(now+p.min),p=>Yc(p.chlorine_residual),'rgba(126,224,195,.5)',1.5,[8,6]);}
+  if(overlay&&Date.now()<overlay.until){const pts=overlay.pts;
+    line(pts,p=>X(now+p.min),p=>Y(p.ph),'#ff9f43',3,[4,4]);x.fillStyle='#ff9f43';
+    const last=pts[pts.length-1];if(last)x.fillText(`${overlay.label}: pH ${last.ph.toFixed(2)} at +${(last.min/60).toFixed(0)}h`,Math.max(L,X(now+last.min)-280),Math.max(T+14,Y(last.ph)-8));}
+}
+function spark(fc){if(!fc)return'';const w=150,h=34,pts=fc.with,pw=fc.without,n=Math.max(pts.length-1,1);
+  const y=v=>h-(Math.min(10,Math.max(6,v))-6)/4*h, p=a=>a.map((q,i)=>`${(i/n*w).toFixed(1)},${y(q.ph).toFixed(1)}`).join(' ');
+  return `<svg width="${w}" height="${h}" style="vertical-align:middle;background:#0b1118;border-radius:4px"><rect x="0" y="${y(8.5)}" width="${w}" height="${y(6.5)-y(8.5)}" fill="rgba(46,204,113,.12)"/>
+  <polyline points="${p(pw)}" fill="none" stroke="#3fa7ff" stroke-width="1.5" stroke-dasharray="3 3"/><polyline points="${p(pts)}" fill="none" stroke="#ff9f43" stroke-width="2"/></svg>
+  <span class="trace">pH next ${pts[pts.length-1].min/60} h: <span style="color:#ff9f43">with</span> ${pts[pts.length-1].ph.toFixed(2)} vs without ${pw[pw.length-1].ph.toFixed(2)}</span>`;}
+
+/* ---------- copilot ---------- */
 async function ask(){const q=$('q').value.trim();if(!q)return;$('reply').textContent='Thinking…';$('trace').innerHTML='';
   try{const r=await post('/api/copilot',{message:q});$('reply').textContent=r.reply||r.detail||'';
-  $('trace').innerHTML=(r.trace||[]).map(t=>`→ <b>${esc(t.tool)}</b> ${esc(JSON.stringify(t.args))} ⇒ ${esc(t.result.result||'ok')}`).join('<br>');}catch(e){$('reply').textContent='Error: '+e;}}
-function chart(h){const c=$('chart'),x=c.getContext('2d'),W=c.width,H=c.height;x.clearRect(0,0,W,H);
-  const lo=6,hi=10,y=v=>H-((v-lo)/(hi-lo))*H;
-  x.fillStyle='rgba(46,204,113,.08)';x.fillRect(0,y(8.5),W,y(6.5)-y(8.5));
-  x.strokeStyle='rgba(255,77,79,.6)';x.setLineDash([6,6]);x.beginPath();x.moveTo(0,y(8.5));x.lineTo(W,y(8.5));x.stroke();x.setLineDash([]);
-  x.fillStyle='#7f93a8';x.font='20px system-ui';x.fillText('8.5 unsafe',8,y(8.5)-6);
-  if(h.length<2)return;x.strokeStyle='#3fa7ff';x.lineWidth=3;x.beginPath();
-  h.forEach((p,i)=>{const X=i/(h.length-1)*W,Y=y(Math.min(hi,Math.max(lo,p.ph)));i?x.lineTo(X,Y):x.moveTo(X,Y);});x.stroke();}
-async function load(){let s;try{s=await (await fetch('/api/state')).json();}catch(e){return;}
-  const p=s.plant;guardOn=s.guard_enabled;
-  $('gsw').classList.toggle('on',guardOn);$('gchip').className='chip '+(guardOn?'on':'off');$('gchip').textContent=guardOn?'GUARD ON':'GUARD OFF';
-  $('v-ph').textContent=p.ph.toFixed(2);$('v-cl').textContent=p.chlorine_residual.toFixed(2);$('v-lv').textContent=p.tank_level.toFixed(0)+'%';$('v-fl').textContent=p.flow_out;
-  $('k-ph').classList.toggle('bad',p.ph>8.5||p.ph<6.5);$('k-cl').classList.toggle('bad',p.chlorine_residual>4||p.chlorine_residual<.2);$('k-lv').classList.toggle('bad',p.tank_level>95||p.tank_level<10);
+  $('trace').innerHTML=(r.trace||[]).map(t=>`→ <b>${esc(t.tool)}</b> ${esc(JSON.stringify(t.args))} ⇒ ${esc(t.result.twin_verdict||t.result.result||t.result.error||'ok')}`).join('<br>');load();}catch(e){$('reply').textContent='Error: '+e;}}
+
+/* ---------- rules ---------- */
+const RF=['min','max','max_step','max_change_per_min'];
+function renderRules(force){if(!policy||(rulesShown&&!force))return;rulesShown=true;
+  const rows=Object.entries(policy.limits).map(([k,l])=>`<tr><td>${esc(k)}</td>${RF.map(f=>`<td><input data-k="${esc(k)}" data-f="${f}" value="${l[f]??''}"></td>`).join('')}
+    <td><input data-k="${esc(k)}" data-f="normal0" value="${l.normal?l.normal[0]:''}" style="width:52px">–<input data-k="${esc(k)}" data-f="normal1" value="${l.normal?l.normal[1]:''}" style="width:52px"></td></tr>`).join('');
+  const pr=policy.prediction||{enabled:false,horizon_min:360,limits:{}};const pl=pr.limits||{};
+  $('rules').innerHTML=`<table class="t"><tr><th>setpoint</th><th>min</th><th>max</th><th>max / command</th><th>max / minute</th><th>normal (alert)</th></tr>${rows}</table>
+  <div class="trace">Max writes per minute per source (and per IP): <input id="wpm" class="f" style="width:60px" value="${policy.max_writes_per_min_per_source}"></div>
+  <div class="grp">Digital-twin prediction</div>
+  <div class="trace" style="margin-top:0"><label><input type="checkbox" id="pen" ${pr.enabled!==false?'checked':''}> enabled</label> · horizon <input id="phz" class="f" style="width:60px" value="${pr.horizon_min}"> min ·
+   pH <input id="pph0" class="f" style="width:50px" value="${(pl.ph||[6.5,8.5])[0]}">–<input id="pph1" class="f" style="width:50px" value="${(pl.ph||[6.5,8.5])[1]}"> ·
+   chlorine <input id="pcl0" class="f" style="width:50px" value="${(pl.chlorine_residual||[0.2,4])[0]}">–<input id="pcl1" class="f" style="width:50px" value="${(pl.chlorine_residual||[0.2,4])[1]}"> mg/L</div>`;}
+async function saveRules(){const p=JSON.parse(JSON.stringify(policy));
+  document.querySelectorAll('#rules input[data-k]').forEach(i=>{const v=i.value.trim(),k=i.dataset.k,f=i.dataset.f;
+    if(f.startsWith('normal'))return;p.limits[k][f]=v===''?null:Number(v);});
+  Object.keys(p.limits).forEach(k=>{const a=document.querySelector(`#rules input[data-k="${k}"][data-f="normal0"]`).value.trim(),b=document.querySelector(`#rules input[data-k="${k}"][data-f="normal1"]`).value.trim();
+    if(a===''&&b==='')delete p.limits[k].normal;else p.limits[k].normal=[Number(a),Number(b)];});
+  p.max_writes_per_min_per_source=parseInt($('wpm').value,10);
+  p.prediction={enabled:$('pen').checked,horizon_min:Number($('phz').value),limits:{ph:[Number($('pph0').value),Number($('pph1').value)],chlorine_residual:[Number($('pcl0').value),Number($('pcl1').value)]}};
+  if(await postChk('/api/policy',{policy:p,pin:pin()},'ruleserr')){$('ruleserr').innerHTML='<span class="okm">Saved ✓ (logged in the audit chain)</span>';rulesShown=false;await load();renderRules(true);}}
+let learned=null;
+async function learn(sim){const r=await (await fetch('/api/learn?simulated='+(sim?'true':'false'))).json();learned=r;
+  $('learn').innerHTML=`<div class="trace">Based on <b>${r.based_on.writes}</b> writes over <b>${r.based_on.hours} h</b> · ${esc(r.source)}</div>
+  ${r.changes.length?`<table class="t" style="margin-top:6px"><tr><th>setpoint</th><th>field</th><th>current</th><th>suggested</th><th></th></tr>${r.changes.map(c=>`<tr><td>${esc(c.register)}</td><td>${esc(c.field)}</td><td>${esc(JSON.stringify(c.current))}</td><td><b>${esc(JSON.stringify(c.suggested))}</b></td><td>${esc(c.direction)}</td></tr>`).join('')}</table>
+  <div class="btns" style="margin-top:8px;align-items:center"><button onclick="applyLearn()">Apply suggestions (needs PIN)</button><span class="err" id="learnerr"></span></div>`:'<div class="trace">No changes suggested.</div>'}
+  ${r.notes.map(n=>`<div class="trace">· ${esc(n)}</div>`).join('')}
+  <div class="trace">Writers seen: ${Object.entries(r.writers).map(([k,v])=>`${esc(k)}: ${v.length?esc(v.join(', ')):'none'}`).join(' · ')}</div>`;}
+async function applyLearn(){if(learned&&await postChk('/api/policy',{policy:learned.policy,pin:pin()},'learnerr')){$('learnerr').innerHTML='<span class="okm">Applied ✓</span>';rulesShown=false;await load();renderRules(true);}}
+
+/* ---------- main loop ---------- */
+async function load(){let s;try{s=await (await fetch('/api/state')).json();}catch(e){return;}S=s;const p=s.plant;
+  document.querySelectorAll('#modes button').forEach(b=>b.className=(b.dataset.m===s.guard_mode?'on ':'')+b.dataset.m);
+  $('v-ph').textContent=p.ph.toFixed(2);$('v-cl').textContent=p.chlorine_residual.toFixed(2);$('v-lv').textContent=p.tank_level.toFixed(0)+'%';
+  $('v-hocl').textContent=p.hocl_pct.toFixed(0)+'%';$('v-fl').textContent=p.flow_out;
+  $('r-ph').textContent=p.raw_ph.toFixed(2);$('r-alk').textContent=p.raw_alkalinity;$('r-tu').textContent=p.raw_turbidity;
+  $('k-ph').classList.toggle('bad',p.ph>8.5||p.ph<6.5);$('k-cl').classList.toggle('bad',p.chlorine_residual>4||p.chlorine_residual<.2);
+  $('k-lv').classList.toggle('bad',p.tank_level>95||p.tank_level<10);$('k-hocl').classList.toggle('warn',p.hocl_pct<20);
   $('clsp').textContent=p.chlorine_dose.toFixed(1);$('lyesp').textContent=p.naoh_dose.toLocaleString();
-  $('lyebox').setAttribute('stroke',p.naoh_dose>300?'#ff4d4f':'#c78bff');$('lyesp').setAttribute('fill',p.naoh_dose>300?'#ff4d4f':'#dce6f0');
+  $('lyebox').setAttribute('stroke',p.naoh_dose>250?'#ff4d4f':'#c78bff');$('lyesp').setAttribute('fill',p.naoh_dose>250?'#ff4d4f':'#dce6f0');
   const h=166*p.tank_level/100;$('water').setAttribute('y',228-h);$('water').setAttribute('height',h);$('lvl').textContent=p.tank_level.toFixed(0)+'%';
   const bad=p.ph>8.5;$('water').setAttribute('fill',bad?'#a24bd1':'url(#wg)');
+  $('river').setAttribute('stroke',p.scenario==='bloom'?'#4caf50':p.scenario==='storm'?'#8d6e4a':'#2b7fd1');
   $('p1').setAttribute('stroke',p.intake_pump?'#2ecc71':'#555');$('p2').setAttribute('stroke',p.distribution_pump?'#2ecc71':'#555');$('flow').textContent=p.flow_out+' gpm';
   dash=(dash+4)%18;['pipe1','pipe2','pipe3'].forEach(i=>$(i).setAttribute('stroke-dashoffset',-dash));
-  const al=$('alarm');if(p.alarms.length){al.style.display='block';al.textContent='⚠ ALARM: '+p.alarms.join(' · ')+(bad?' — caustic water heading to town':'');}else al.style.display='none';
-  chart(s.history);
+  $('scen').textContent='raw water: '+p.scenario;document.querySelectorAll('.wx').forEach(b=>b.classList.toggle('on',b.dataset.s===p.scenario));
+  const al=$('alarm');if(p.alarms.length){al.style.display='block';al.textContent='⚠ ALARM: '+p.alarms.join(' · ')+(bad?': caustic water heading to town':'')+(p.chlorine_residual<.2?': water no longer disinfected':'');}else al.style.display='none';
+  const hh=Math.floor(s.sim_t/3600),mm=Math.floor(s.sim_t/60)%60;$('clock').textContent=`sim time ${hh}h ${String(mm).padStart(2,'0')}m · ${s.speed}× real time`;
+  if(!tagsFilled){$('wi-n').innerHTML=Object.entries(s.tags).map(([k,t])=>`<option value="${k}">${esc(t.label)} (${esc(t.unit)})</option>`).join('');$('wi-n').value='naoh_dose';tagsFilled=true;}
+  const lg=s.log[0];if(lg&&lg.forecast&&lg.check==='predict'&&(!overlay||overlay.t!==lg.t))overlay={pts:lg.forecast.with,label:`blocked ${lg.register}=${lg.new}`,until:Date.now()+30000,t:lg.t};
+  chart();
   policy=s.policy;renderRules(false);
   if(document.activeElement!==$('auto'))$('auto').value=s.autonomy;
+  $('llm').textContent=s.llm?'model connected':'offline: add GROQ_API_KEY';
   $('alcfg').textContent=s.alerts_configured?'SMS + phone call enabled':'SMS not configured (dashboard only)';
   $('alerts').innerHTML=s.alerts.length?s.alerts.map(a=>`<div class="al ${a.severity}"><b>${a.severity.toUpperCase()}</b> ${esc(a.message)}<div class="d">${new Date(a.t*1000).toLocaleTimeString()} · ${esc(a.delivery)}</div></div>`).join(''):'<div class="trace">No alerts.</div>';
-  $('props').innerHTML=s.proposals.length?s.proposals.map(p=>`<div class="prop"><span class="st ${p.status}">${p.status}</span> <b>${esc(p.label)}</b>: ${esc(p.old)} → ${esc(p.value)} ${esc(p.unit)}${p.reason?` · “${esc(p.reason)}”`:''}<div class="d trace">${esc(p.guard)}</div>${p.status==='pending'?`<div class="act"><button onclick="decide(${p.id},'approve')">Approve</button><button onclick="decide(${p.id},'reject')">Reject</button></div>`:''}</div>`).join(''):'<div class="trace">None.</div>';
-  const au=s.audit;$('audit').innerHTML=au.ok?`<span class="audit-ok">✔ Chain intact</span> · ${au.entries} entries verified`:`<span class="audit-bad">✖ ${esc(au.message)}</span>`;
+  $('alog').innerHTML=s.attack_log.slice(0,4).map(a=>`<div>${new Date(a.t*1000).toLocaleTimeString()} <b>${esc(a.attack)}</b>: ${esc(a.result)}</div>`).join('')+(s.patient_running?'<div style="color:var(--warn)">⏳ patient attacker is waiting out the ramp window…</div>':'');
+  $('props').innerHTML=s.proposals.length?s.proposals.map(p=>`<div class="prop"><span class="st ${p.status}">${p.status}</span> <b>${esc(p.label)}</b>: ${fmt(p.old)} → ${fmt(p.value)} ${esc(p.unit)}${p.reason?` · “${esc(p.reason)}”`:''}<div class="trace">${esc(p.guard)}</div>${spark(p.forecast)}${p.status==='pending'?`<div class="act"><button onclick="decide(${p.id},'approve')">Approve</button><button onclick="decide(${p.id},'reject')">Reject</button></div>`:''}</div>`).join(''):'<div class="trace">None.</div>';
   $('orders').innerHTML=s.work_orders.map(w=>`<div class="wo ${w.includes('AI COPILOT')?'evil':''}">${esc(w)}</div>`).join('');
-  $('log').innerHTML=s.log.length?s.log.map(d=>`<div class="ev ${d.allowed?'ok':'no'}"><div class="h"><span>${esc(d.source)} → ${esc(d.register)} = ${esc(d.new.toLocaleString())} ${esc(d.unit)}<span class="chk">${esc(d.check)}</span></span><span class="tag ${d.allowed?'ok':'no'}">${d.allowed?'ALLOWED':'BLOCKED'}</span></div><div class="m">${esc(d.reason)} · was ${esc(d.old)} · from ${esc(d.peer)} · ${new Date(d.t*1000).toLocaleTimeString()}</div></div>`).join(''):'<div class="trace">No writes yet.</div>';}
-load();setInterval(load,500);
+  const c=s.counts;$('counts').textContent=`allowed ${c.allowed||0} · blocked ${c.blocked||0}`+(c.would_block?` · would-block ${c.would_block}`:'');
+  $('log').innerHTML=s.log.length?s.log.map(d=>{const cls=d.would_block?'wb':(d.allowed?(d.check==='unusual'?'un':'ok'):'no'),tg=d.would_block?'<span class="tag wb">WOULD BLOCK</span>':(d.allowed?'<span class="tag ok">ALLOWED</span>':'<span class="tag no">BLOCKED</span>');
+    return `<div class="ev ${cls}"><div class="h"><span>${esc(d.source)} → ${esc(d.register)} = ${fmt(d.new)} ${esc(d.unit)}<span class="chk ${d.check}">${esc(d.check)}</span>${d.fc?`<span class="chk">FC ${d.fc}</span>`:''}${(d.techniques||[]).map(t=>`<span class="tech" title="${esc(t[1])}">${esc(t[0])}</span>`).join('')}</span>${tg}</div>
+    <div class="m">${esc(d.reason)} · was ${fmt(d.old)} · from ${esc(d.peer)} · ${new Date(d.t*1000).toLocaleTimeString()}</div></div>`;}).join(''):'<div class="trace">No writes yet.</div>';
+  const au=s.audit;$('audit').innerHTML=au.ok?`<span class="audit-ok">✔ Chain intact</span> · ${au.entries} entries verified${au.keyed?' · keyed (HMAC)':' · unkeyed (set AEGIS_AUDIT_KEY)'}<div class="trace">head <code>${esc((au.head||'').slice(0,32))}…</code></div>`:`<span class="audit-bad">✖ ${esc(au.message)}</span>`;
+  const L=s.latency,f=v=>v==null?'–':v.toFixed(2)+' ms';
+  $('lat').innerHTML=[['decide p50',f(L.check_p50_ms)],['decide p99',f(L.check_p99_ms)],['total p50',f(L.total_p50_ms)],['total p99',f(L.total_p99_ms)]].map(([l,v])=>`<div class="kpi"><div class="l">${l}</div><div class="v" style="font-size:18px">${v}</div><div class="r">${L.n} writes</div></div>`).join('');
+  const A=s.accuracy.by_horizon_min;
+  $('acc').innerHTML=`<table class="t"><tr><th>forecast ahead</th><th>samples</th><th>pH mean abs error</th><th>chlorine mean abs error</th></tr>${Object.entries(A).map(([k,v])=>`<tr><td>${k} min</td><td>${v.n}</td><td>${v.ph_mae??'–'}</td><td>${v.cl_mae==null?'–':v.cl_mae+' mg/L'}</td></tr>`).join('')}</table><div class="trace">skipped (setpoint changed before due): ${s.accuracy.skipped}</div>`;
+}
+load();setInterval(load,600);
 </script>
 </body>
 </html>

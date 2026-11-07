@@ -97,7 +97,7 @@ def test_multi_write_rejected_atomically():
 
 
 def test_interlock():
-    plant = Plant(); plant.tank_level = 93
+    plant = Plant(); plant.state.tank_level = 93
     g = Guard(None, plant.snapshot)
     d = g.check("distribution_pump", 0, plant.snapshot(), "x", "p")
     assert not d.allowed and "interlock" in d.reason
@@ -111,7 +111,7 @@ def test_unknown_register_blocked():
 
 def test_physics_attack_raises_ph():
     plant = Plant()
-    plant.hr[HOLDING["naoh_dose"]] = 11100
+    plant.set("naoh_dose", 11100)
     for _ in range(30):
         plant.step(1.0)
     assert plant.ph > 8.5 and "pH HIGH" in plant.alarms()
@@ -121,4 +121,4 @@ def test_physics_normal_stable():
     plant = Plant()
     for _ in range(120):
         plant.step(1.0)
-    assert 6.8 < plant.ph < 7.2 and not plant.alarms()
+    assert 7.1 < plant.ph < 7.6 and not plant.alarms()

@@ -1,0 +1,12 @@
+{
+  "_doc": "Process parameters for the digital twin (and the simulator). Carbonate chemistry at 25 C, closed system (no CO2 exchange). naoh_feed_strength converts the lye feed setpoint (ppm of feed solution) into mg/L of NaOH actually added; calibrated so the normal setpoint gives finished pH about 7.3 for the normal raw water. chlorine_demand = demand_base + demand_per_ntu * turbidity.",
+  "capacity_gal": 100000,
+  "intake_gpm": 520,
+  "naoh_feed_strength": 0.1,
+  "chlorine_decay_per_hr": 0.15,
+  "chlorine_demand_base": 0.2,
+  "chlorine_demand_per_ntu": 0.08,
+  "pK1": 6.35,
+  "pK2": 10.33,
+  "pKw": 14.0
+}

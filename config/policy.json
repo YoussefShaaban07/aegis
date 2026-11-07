@@ -1,5 +1,5 @@
 {
-  "_doc": "Safety envelope enforced by the guard. min/max: absolute limits. max_step: largest change in one command. max_change_per_min: largest net change within any 60 s window (stops slow-ramp attacks). Edit via the dashboard (engineer PIN) or here.",
+  "_doc": "Safety envelope enforced by the guard. min/max: absolute limits. max_step: largest change in one command. max_change_per_min: largest net change within any 60 s window (stops slow-ramp attacks). prediction: the digital twin simulates horizon_min ahead and blocks commands that would push the water outside these bands. Edit via the dashboard (engineer PIN) or here.",
   "max_writes_per_min_per_source": 20,
   "limits": {
     "chlorine_dose": {
@@ -7,11 +7,11 @@
       "max": 4,
       "max_step": 0.5,
       "max_change_per_min": 0.6,
-      "reason": "EPA max residual disinfectant level is 4.0 mg/L"
+      "reason": "dose cap; the residual itself (EPA max 4.0 mg/L) is checked by the twin"
     },
     "naoh_dose": {
       "min": 0,
-      "max": 300,
+      "max": 250,
       "max_step": 50,
       "max_change_per_min": 75,
       "reason": "lye overdose pushes pH above the EPA 6.5-8.5 range"
@@ -26,16 +26,22 @@
     "intake_pump": {
       "min": 0,
       "max": 1,
-      "reason": "on/off",
+      "reason": "stopping it drains the clearwell",
       "max_step": null,
-      "max_change_per_min": null
+      "max_change_per_min": null,
+      "permit_values": [
+        0
+      ]
     },
     "distribution_pump": {
       "min": 0,
       "max": 1,
-      "reason": "on/off",
+      "reason": "stopping it cuts water to the town",
       "max_step": null,
-      "max_change_per_min": null
+      "max_change_per_min": null,
+      "permit_values": [
+        0
+      ]
     }
   },
   "interlocks": [
@@ -55,5 +61,19 @@
       "threshold": 15,
       "message": "can't stop intake while clearwell is below 15% (town runs dry)"
     }
-  ]
+  ],
+  "prediction": {
+    "enabled": true,
+    "horizon_min": 360,
+    "limits": {
+      "ph": [
+        6.5,
+        8.5
+      ],
+      "chlorine_residual": [
+        0.2,
+        4.0
+      ]
+    }
+  }
 }

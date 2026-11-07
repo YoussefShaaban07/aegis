@@ -32,7 +32,7 @@ def apply(g, plant, reg, value, source="Unknown device (unit 9)"):
     d = g.check(reg, value, plant.snapshot(), source, "p")
     if d.allowed:
         g._commit(d)
-        plant.hr[HOLDING[reg]] = to_raw(reg, value)
+        plant.set(reg, value)
     return d
 
 
@@ -81,7 +81,7 @@ def test_flood_blocked():
 # ---------------- config ----------------
 def test_shipped_policy_valid():
     p = load_policy(TAGS)
-    assert p["limits"]["naoh_dose"]["max"] == 300
+    assert p["limits"]["naoh_dose"]["max"] == 250 and p["prediction"]["enabled"]
 
 
 @pytest.mark.parametrize("mutate,msg", [
@@ -108,7 +108,7 @@ def test_policy_change_takes_effect_and_is_audited():
 
 
 def test_interlock_from_config():
-    plant = Plant(); plant.tank_level = 93
+    plant = Plant(); plant.state.tank_level = 93
     d = guard_for(plant).check("distribution_pump", 0, plant.snapshot(), "Operator HMI", "p")
     assert not d.allowed and d.check == "interlock"
 
@@ -206,7 +206,8 @@ def test_disabling_guard_alerts_and_audits():
     g = guard_for(plant, alerter=al, audit=audit)
     g.set_enabled(False, by="engineer")
     kinds = [e["kind"] for e in audit.recent(5)]
-    assert al.recent[0]["key"] == "guard_disabled" and {"guard_toggle", "alert"} <= set(kinds)
+    assert al.recent[0]["key"] == "guard_mode" and "DISABLED" in al.recent[0]["message"]
+    assert {"guard_mode", "alert"} <= set(kinds)
 
 
 # ---------------- gateway mode ----------------
@@ -216,7 +217,8 @@ def test_read_plc_state_from_real_modbus():
         plc = await modbus.serve(plant.handle, "127.0.0.1", 0)
         c = await modbus.Client("127.0.0.1", plc.sockets[0].getsockname()[1]).connect()
         s = await read_plc_state(c, TAGS)
-        assert s["naoh_dose"] == 100 and s["chlorine_dose"] == 1.5 and abs(s["ph"] - 7.0) < 0.05
+        assert s["naoh_dose"] == 100 and s["chlorine_dose"] == 1.5 and abs(s["ph"] - 7.33) < 0.05
+        assert s["intake_pump"] == 1 and s["raw_alkalinity"] == 77    # coils + input registers
         # guard with an async state reader (as used against a real/OpenPLC controller)
         g = Guard(c, lambda: read_plc_state(c, TAGS))
         d = await g.dry_run("naoh_dose", 11100, "AI copilot")

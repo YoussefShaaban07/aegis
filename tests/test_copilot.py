@@ -134,7 +134,7 @@ def test_approval_rechecked_at_apply_time(monkeypatch):
         plant, guard, props, port, plc, gsrv, audit = await _rig()
         p = await props.propose("chlorine_dose", 1.9, "test")
         assert p["status"] == "pending"
-        plant.hr[2] = 120   # plant changed meanwhile: 1.2 -> 1.9 is now a 0.7 jump (> 0.5 step)
+        plant.set("chlorine_dose", 1.2)   # plant changed meanwhile: 1.2 -> 1.9 is now a 0.7 jump (> 0.5 step)
         await props.approve(p["id"])
         assert p["status"] == "failed" and plant.setpoint("chlorine_dose") == 1.2
         plc.close(); gsrv.close()

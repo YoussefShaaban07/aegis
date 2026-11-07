@@ -4,11 +4,23 @@ Every entry stores the SHA-256 of (previous hash + this entry). Editing or
 deleting any past row breaks the chain, and verify() pinpoints where. That
 matters after an incident: investigators need to trust the record of who
 sent what command and what the guard decided.
+
+A plain hash chain only proves *consistency*: someone with write access to
+the database file could rewrite every row and recompute every hash. Two
+defences against that:
+  * keyed chain: set AEGIS_AUDIT_KEY and every link becomes HMAC-SHA256 with
+    that secret, so rewriting history needs the key, not just the file;
+  * checkpoints: head() returns the newest hash; it is printed in incident
+    reports and can be sent off-box, so a later rewrite won't match an
+    externally held copy.
+Changing or removing the key on an existing database makes verify() fail
+(by design): start a new database when you rotate it.
 """
 from __future__ import annotations
 
 import csv
 import hashlib
+import hmac
 import io
 import json
 import os
@@ -21,12 +33,17 @@ ROOT = Path(__file__).resolve().parents[1]
 GENESIS = "0" * 64
 
 
-def _hash(prev: str, t: float, kind: str, data: str) -> str:
-    return hashlib.sha256(f"{prev}|{t:.6f}|{kind}|{data}".encode()).hexdigest()
+def _hash(prev: str, t: float, kind: str, data: str, key: bytes | None = None) -> str:
+    msg = f"{prev}|{t:.6f}|{kind}|{data}".encode()
+    if key:
+        return hmac.new(key, msg, hashlib.sha256).hexdigest()
+    return hashlib.sha256(msg).hexdigest()
 
 
 class AuditLog:
-    def __init__(self, path: str | Path | None = None):
+    def __init__(self, path: str | Path | None = None, key: str | None = None):
+        k = key if key is not None else os.getenv("AEGIS_AUDIT_KEY", "")
+        self.key = k.encode() if k else None
         self.path = str(path or os.getenv("AEGIS_DB", ROOT / "data" / "audit.db"))
         if self.path != ":memory:":
             Path(self.path).parent.mkdir(parents=True, exist_ok=True)
@@ -43,7 +60,7 @@ class AuditLog:
             prev = row[0] if row else GENESIS
             t = time.time()
             payload = json.dumps(data, sort_keys=True, default=str)
-            h = _hash(prev, t, kind, payload)
+            h = _hash(prev, t, kind, payload, self.key)
             cur = self.db.execute("INSERT INTO audit (t, kind, data, prev_hash, hash) VALUES (?,?,?,?,?)",
                                   (t, kind, payload, prev, h))
             self.db.commit()
@@ -65,11 +82,30 @@ class AuditLog:
         with self._lock:
             rows = self.db.execute("SELECT id, t, kind, data, prev_hash, hash FROM audit ORDER BY id").fetchall()
         for i, t, k, d, p, h in rows:
-            if p != prev or _hash(prev, t, k, d) != h:
+            if p != prev or _hash(prev, t, k, d, self.key) != h:
                 return {"ok": False, "entries": len(rows), "broken_at": i,
                         "message": f"Audit chain broken at entry #{i}: record was altered or removed."}
             prev, n = h, n + 1
-        return {"ok": True, "entries": n, "message": f"All {n} entries verified, chain intact."}
+        return {"ok": True, "entries": n, "keyed": bool(self.key), "head": prev,
+                "message": f"All {n} entries verified, chain intact" + (" (keyed)." if self.key else ".")}
+
+    def head(self) -> dict:
+        with self._lock:
+            row = self.db.execute("SELECT id, hash FROM audit ORDER BY id DESC LIMIT 1").fetchone()
+        return {"id": row[0], "hash": row[1]} if row else {"id": 0, "hash": GENESIS}
+
+    def between(self, since: float = 0, until: float | None = None, kinds: tuple | None = None,
+                limit: int = 20000) -> list[dict]:
+        """Entries in a time window, oldest first."""
+        q, args = "SELECT id, t, kind, data, hash FROM audit WHERE t >= ?", [since]
+        if until is not None:
+            q += " AND t <= ?"; args.append(until)
+        if kinds:
+            q += f" AND kind IN ({','.join('?' * len(kinds))})"; args.extend(kinds)
+        q += " ORDER BY id LIMIT ?"; args.append(limit)
+        with self._lock:
+            rows = self.db.execute(q, args).fetchall()
+        return [{"id": i, "t": t, "kind": k, "data": json.loads(d), "hash": h} for i, t, k, d, h in rows]
 
     def export_csv(self) -> str:
         buf = io.StringIO()
