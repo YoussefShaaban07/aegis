@@ -320,7 +320,7 @@ details.demo>.in{padding:0 14px 12px}
 
 <script>
 const $=id=>document.getElementById(id);
-const DEFAULT_THEME='grey';
+const DEFAULT_THEME='steel';
 function setTheme(t){document.documentElement.dataset.theme=t;try{localStorage.setItem('aegis-theme',t)}catch(e){}if($('theme'))$('theme').value=t;if(typeof chart==='function')chart();}
 (()=>{let t=new URLSearchParams(location.search).get('theme');try{t=t||localStorage.getItem('aegis-theme')}catch(e){}
   document.documentElement.dataset.theme=t||DEFAULT_THEME;addEventListener('DOMContentLoaded',()=>{$('theme').value=document.documentElement.dataset.theme;});})();
