@@ -169,6 +169,7 @@ async def lifespan(app: FastAPI):
                                                           "events": list(S["integrity"].events)[:5]},
                                             "forewarn": list(S["forewarn"].active.values())})
     S["copilot"].audit = audit
+    S["copilot"].scripted_fallback = DEMO
     audit.append("startup", {"guard_port": GUARD_PORT, "plc_port": PLC_PORT, "plant": PLANT_NAME})
 
     async def tick():
@@ -294,7 +295,8 @@ def state(who: dict = Depends(role("viewer"))):
                           "after_min": S["safehold"].cfg["after_min"], "actions": S["safehold"].actions[-5:]},
             "attack_log": list(S["attack_log"]), "patient_running": bool(S["patient"] and not S["patient"].done()),
             "tags": {n: {"unit": t.unit, "label": t.label, "table": t.table} for n, t in TAGS.holding.items()},
-            "llm": bool(os.getenv("GROQ_API_KEY") or os.getenv("AEGIS_LLM_KEY"))}
+            "llm": bool(os.getenv("GROQ_API_KEY") or os.getenv("AEGIS_LLM_KEY")),
+            "llm_scripted": DEMO and not (os.getenv("GROQ_API_KEY") or os.getenv("AEGIS_LLM_KEY"))}
 
 
 class ModeIn(BaseModel):

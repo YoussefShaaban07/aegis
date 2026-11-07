@@ -41,7 +41,7 @@ ROLES = {
     "raw_turbidity":     ("input",   "NTU",        [r"(raw|intake).*turb", r"turb.*(raw|intake)"], (0, 100)),
     "water_temp":        ("input",   "C",          [r"(water|raw).*temp"], (0, 35)),
     "chlorine_dose":     ("holding", "mg/L",       [r"(cl2|chlorine|hypo).*(dose|setpoint|\bsp\b|feed)"], (0, 10)),
-    "naoh_dose":         ("holding", "ppm",        [r"(naoh|caustic|lye|sodium hydroxide).*(dose|setpoint|\bsp\b|feed)"], (0, 20000)),
+    "naoh_dose":         ("holding", "ppm",        [r"(naoh|caustic|lye|sodium hydroxide|lime|soda ash|na2co3|alkali|ph adjust).*(dose|setpoint|\bsp\b|feed)"], (0, 20000)),
     "distribution_rate": ("holding", "gpm",        [r"(dist|high.?service).*(rate|flow).*(sp|setpoint)", r"(dist|high.?service).*(speed|rate) (sp|setpoint)"], (0, 5000)),
     "intake_pump":       ("coil",    "on/off",     [r"(intake|raw|low.?service|well).*pump.*(run|start|cmd|enable)"], (0, 1)),
     "distribution_pump": ("coil",    "on/off",     [r"(dist|high.?service).*pump.*(run|start|cmd|enable)"], (0, 1)),

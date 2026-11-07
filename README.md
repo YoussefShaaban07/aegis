@@ -101,6 +101,9 @@ Every write is checked in this order; the first failure blocks it:
 - **Guided demo**: one button walks through the whole story with what to say at each step; fast-forwards slow chemistry.
 - **Operator console for real installs** (`--console-port`, `aegis/console.py`): the gateway serves the phone page (acknowledge, release safe-holds) with named accounts and optional built-in HTTPS.
 - **More careful when the model is wrong**: while the integrity monitor says the plant doesn't match the chemistry (stronger lye delivered, failing pump, compromised PLC), the twin judges with a wide uncertainty band.
+- **Not just caustic soda**: the twin's alkali feed can be NaOH, lime, soda ash or bicarbonate (`process.json "alkali"`); chlorine-only plants simply have no alkali register.
+- **Demo without internet**: with no API key the demo copilot is a clearly labelled scripted model that falls for the poisoned work order, and Aegis blocks it. Nothing on the dashboard loads from the internet.
+- **Several PLCs**: run one gateway per PLC (own port, own tag map); Modbus unit IDs behind a TCP-to-serial gateway are routed.
 - **One page for judges**: `docs/ONE_PAGER.md`.
 - **Operator runbook** (`docs/RUNBOOK.md`): one printable page: what each text means, what to do, what to do if the box fails.
 - **Defending its own judgement**: unnamed writers are refused if the twin runs out of time (slowing the box can't switch the twin off for an attacker); calibrations can't drift more than 40% from the commissioned values without an engineer on site; typed-in lab alkalinity is checked against what the plant's own pH implies.

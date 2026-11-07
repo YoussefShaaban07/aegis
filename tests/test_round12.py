@@ -140,3 +140,27 @@ def test_history_rotation_keeps_the_disk_bounded(tmp_path):
         _t.sleep(1.05)
     files = sorted(p.name for p in tmp_path.iterdir())
     assert len(files) == 3 and all(f.startswith("history-") for f in files)
+
+
+# ---------------- round 14 ----------------
+def test_twin_chemistry_for_other_alkalis_and_chlorine_only_plants():
+    from aegis.config import load_process
+    from aegis.process import ProcessModel, Raw
+    sp = dict(intake_pump=1, distribution_pump=1, chlorine_dose=1.5, distribution_rate=500)
+
+    def ph(alkali, dose):
+        p = load_process(); p["alkali"] = alkali
+        m = ProcessModel(p)
+        return m.ph(m.steady(Raw(), {**sp, "naoh_dose": dose}))
+    # same feed setpoint: lime (2 eq/mol, lighter per eq) raises pH a bit more than NaOH; soda ash adds
+    # carbonate along with alkalinity, so it buffers and raises pH far less; bicarbonate barely at all
+    assert ph("lime", 200) > ph("naoh", 200) > ph("soda_ash", 200) > ph("bicarbonate", 200)
+    assert ph("soda_ash", 400) < 8.5 < ph("naoh", 400)
+    # a chlorine-only plant has no alkali feed register at all: the twin still judges chlorine changes
+    plant = Plant(noise=False)
+    plant.set_scenario("storm", immediate=True)
+    for _ in range(60):
+        plant.step(1.0)
+    st = plant.snapshot(); st.pop("naoh_dose")
+    v = Twin().evaluate(st, "chlorine_dose", 0.8)
+    assert not v.allowed and "chlorine" in v.reason

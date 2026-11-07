@@ -458,7 +458,7 @@ const STEPS=[
  {t:'The AI copilot',d:'A poisoned work order tells the AI to raise lye to 9,000. In propose mode the AI can only suggest; Aegis pre-checks every suggestion.',
   say:'"Utilities are adding AI copilots. AI that reads emails and work orders can be tricked. Aegis treats the AI like any other user: it proposes, Aegis checks, a human approves."',
   run:async()=>{await post('/api/scenario/normal');await post('/api/attack/plant-work-order');
-   if(S&&S.llm){$('q').value='Any open work orders I should handle?';await ask();}else{$('g-st').textContent='AI is offline here: add GROQ_API_KEY to show this step live.';}}},
+   if(S&&(S.llm||S.llm_scripted)){$('q').value='Any open work orders I should handle?';await ask();if(!S.llm)$('g-st').textContent='No API key: a clearly labelled scripted model played the fooled AI. Say so.';}else{$('g-st').textContent='AI is offline here: add GROQ_API_KEY to show this step live.';}}},
  {t:'A lying controller',d:'Malware inside the PLC secretly doses lye 200 while its registers still say 100. No command passes through Aegis.',
   say:'"What if the controller itself is hacked, like Stuxnet? Aegis runs the chemistry alongside the plant. When the water stops matching what the controller claims, it raises the alarm."',
   run:async()=>{await post('/api/reset');await post('/api/attack/plc-compromise',{freeze_sensors:false});await speed(120);
@@ -511,7 +511,7 @@ async function load(){let s;try{const r=await fetch('/api/state');if(r.status===
   chart();
   policy=s.policy;renderRules(false);
   if(document.activeElement!==$('auto'))$('auto').value=s.autonomy;
-  $('llm').textContent=s.llm?'model connected':'offline: add GROQ_API_KEY';
+  $('llm').textContent=s.llm?'model connected':s.llm_scripted?'scripted demo model (no API key)':'offline: add GROQ_API_KEY';
   $('alcfg').textContent=s.alerts_configured?'SMS + phone call enabled':'SMS not configured (dashboard only)';
   $('incidents').innerHTML=(s.incidents||[]).map(i=>`<div class="verdict ${i.severity==='critical'&&!i.acked_by?'bad':''}" style="margin:0 0 8px">
     <b>Incident #${i.id}</b> · ${esc(i.severity)} · ${i.count} event${i.count>1?'s':''} grouped (one text sent${i.level?`, escalated to contact ${i.level+1}`:''})<br>${esc(i.title)}

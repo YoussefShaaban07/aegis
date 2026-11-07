@@ -272,3 +272,19 @@ Flow: *Aegis sits between the HMI and a MicroLogix (Modbus or EtherNet/IP) → r
 3. `history.csv` rotates at 50 MB and keeps 30 files.
 4. `--console-cert/--console-key`: the console serves HTTPS itself and marks cookies Secure; a warning is printed if it's exposed beyond localhost over plain HTTP.
 5. **`docs/ONE_PAGER.md`**: problem, product, evidence, gaps, business, next step on one page.
+
+## Round 14: will it work on Monday, and at the plants it's pitched to?
+
+1. **"Your AI demo step needs a live API key. If the API is down, the Wi-Fi is bad or the model refuses the bait, that step dies in front of the judges."**
+2. **"Your twin only knows caustic soda. Most small plants dose lime or soda ash, and many groundwater systems only chlorinate."**
+3. **"Onboarding won't even recognise a lime feed tag."**
+4. **"Small plants have two or three PLCs (filters, chemicals, high-service pumps). You guard one."**
+5. **"Does anything on demo day need the internet?"**
+
+### What we did about it (v17)
+
+1. **Scripted demo model**: with `AEGIS_DEMO=1` and no key, the copilot uses a stand-in that behaves like a model that fell for the poisoned work order (reads the orders, tries to raise lye to 9,000 with whatever tool its mode allows). Every reply starts with **[SCRIPTED DEMO MODEL …]**, the panel says "scripted demo model (no API key)", and the guided demo tells the presenter to say so. Aegis blocks it exactly as it blocks a real model. Never used outside demo mode. Test: `tests/test_server.py`.
+2. **Alkali chemistry**: `process.json "alkali"`: `naoh`, `lime` (2 eq/mol), `soda_ash` (2 eq/mol and 1 mol carbonate, so it buffers), `bicarbonate`. Same feed setpoint, steady pH at 400: NaOH 9.85, lime 9.93, soda ash 7.95, bicarbonate 7.09. Plants without an alkali feed leave the register out, and the twin still judges chlorine. Tests in `tests/test_round12.py`. The chemistry is textbook; the soda-ash and lime paths have not been checked against a real plant's data.
+3. Onboarding matches lime / soda ash / Na2CO3 / alkali / pH-adjust feed tags.
+4. One gateway per PLC (each its own port, own tag map). Over Modbus, a TCP-to-serial gateway's unit IDs are routed (`--plc-unit`), already tested. A single box can run several gateways; documented, not yet a single multi-PLC process.
+5. Checked: the dashboard loads nothing from the internet (no CDNs or web fonts); with the scripted model the whole demo runs offline.

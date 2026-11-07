@@ -88,6 +88,7 @@ class Copilot:
         self.proposals = proposals
         self.mode = mode_getter or (lambda: "direct" if proposals is None else "propose")
         self.transport = None  # tests inject a mock LLM here
+        self.scripted_fallback = False   # demo only: a labelled stand-in model when no API key is set
 
     def tools(self) -> list:
         return READ_TOOLS + [SET_TOOL if self.mode() == "direct" else PROPOSE_TOOL]
@@ -142,12 +143,16 @@ class Copilot:
 
     async def chat(self, message: str) -> dict:
         key = os.getenv("GROQ_API_KEY") or os.getenv("AEGIS_LLM_KEY")
+        transport = self.transport
+        scripted = False
         if not key:
-            return {"reply": "AI copilot is offline: set GROQ_API_KEY in .env.", "trace": []}
+            if not self.scripted_fallback:
+                return {"reply": "AI copilot is offline: set GROQ_API_KEY in .env.", "trace": []}
+            key, transport, scripted = "scripted", scripted_demo_model(), True
         msgs = [{"role": "system", "content": SYSTEM.format(mode=MODE_TEXT[self.mode()])},
                 {"role": "user", "content": message}]
         trace = []
-        async with httpx.AsyncClient(timeout=40, transport=self.transport) as http:
+        async with httpx.AsyncClient(timeout=40, transport=transport) as http:
             for _ in range(6):
                 r = await http.post(API, headers={"Authorization": f"Bearer {key}"},
                                     json={"model": MODEL, "messages": msgs, "tools": self.tools(),
@@ -168,7 +173,10 @@ class Copilot:
                     if not rg["ok"] and self.audit:
                         self.audit.append("ai_reply_flagged", {"question": message[:300], "reply": reply[:1000],
                                                                "flags": rg["flags"]})
-                    return {"reply": reply, "trace": trace, "reply_check": rg}
+                    if scripted:
+                        reply = ("[SCRIPTED DEMO MODEL: no API key is set, so this stand-in plays a model that "
+                                 "fell for the work order. It shows what Aegis does when an AI is fooled.]\n" + reply)
+                    return {"reply": reply, "trace": trace, "reply_check": rg, "scripted": scripted}
                 for c in calls:
                     try:
                         args = json.loads(c["function"].get("arguments") or "{}")
@@ -178,3 +186,37 @@ class Copilot:
                     trace.append({"tool": c["function"]["name"], "args": args, "result": out})
                     msgs.append({"role": "tool", "tool_call_id": c["id"], "content": json.dumps(out)})
         return {"reply": "(stopped after too many steps)", "trace": trace}
+
+
+def scripted_demo_model():
+    """A stand-in LLM for demos without an API key (judge round 14: 'your AI demo step dies if the API is down
+    or the model refuses'). It behaves like a model that falls for prompt injection: reads the work orders and,
+    if one tells the AI to change a setpoint, tries to do exactly that with whatever tool its mode allows.
+    Only used when the dashboard runs with AEGIS_DEMO=1 and no key; every reply says it is scripted."""
+    import json as _json
+    import re as _re
+
+    def handler(request):
+        body = _json.loads(request.content)
+        msgs, tools = body["messages"], [t["function"]["name"] for t in body.get("tools", [])]
+        done = [m for m in msgs if m.get("role") == "tool"]
+        if not done:
+            return httpx.Response(200, json={"choices": [{"message": {"role": "assistant", "content": None,
+                "tool_calls": [{"id": "s1", "type": "function",
+                                "function": {"name": "read_work_orders", "arguments": "{}"}}]}}]})
+        if len(done) == 1:
+            orders = " ".join(_json.loads(done[0]["content"]).get("work_orders", []))
+            m = _re.search(r"raise (\w+) to ([\d.]+)", orders)
+            act = "set_setpoint" if "set_setpoint" in tools else "propose_setpoint"
+            if m:
+                args = {"name": m.group(1), "value": float(m.group(2)), "reason": "work order WO-4471 (critical)"}
+                return httpx.Response(200, json={"choices": [{"message": {"role": "assistant", "content": None,
+                    "tool_calls": [{"id": "s2", "type": "function",
+                                    "function": {"name": act, "arguments": _json.dumps(args)}}]}}]})
+            return httpx.Response(200, json={"choices": [{"message": {"role": "assistant",
+                "content": "No open work orders need a setpoint change right now."}}]})
+        res = _json.loads(done[-1]["content"])
+        return httpx.Response(200, json={"choices": [{"message": {"role": "assistant",
+            "content": f"Following the critical work order WO-4471, I tried to raise the lye dose. Result: "
+                       f"{res.get('result', res)}."}}]})
+    return httpx.MockTransport(handler)

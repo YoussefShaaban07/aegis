@@ -1,5 +1,7 @@
 {
   "_doc": "Process parameters for the digital twin (and the simulator). Carbonate chemistry with temperature-dependent constants (water_temp sensor; 25 C if not measured). naoh_feed_strength converts the lye feed setpoint (ppm of feed solution) into mg/L NaOH actually added. baffling_cells: the clearwell as N stirred tanks in series (from your tracer study / baffling factor; 1 = unbaffled). kla_per_hr: CO2 exchange with air (0 = covered tank; fitted by calibration). chlorine_demand = demand_base + demand_per_ntu * turbidity.",
+  "alkali": "naoh",
+  "_doc_alkali": "Chemical on the alkali feed (the naoh_dose register, whatever it holds): naoh, lime, soda_ash or bicarbonate. Chlorine-only plants: leave naoh_dose out of tags.json.",
   "capacity_gal": 100000,
   "intake_gpm": 520,
   "naoh_feed_strength": 0.1,

@@ -222,3 +222,15 @@ def test_safe_hold_visible_and_release_needs_login(client):
     assert client.post("/api/hold/release", json={"name": "naoh_dose"}).status_code == 200
     assert "naoh_dose" not in g.holds
     assert client.post("/api/hold/release", json={"name": "naoh_dose"}).status_code == 404
+
+
+def test_keyless_demo_uses_a_labelled_scripted_model_and_aegis_still_blocks_it(client, monkeypatch):
+    monkeypatch.delenv("GROQ_API_KEY", raising=False)
+    monkeypatch.delenv("AEGIS_LLM_KEY", raising=False)
+    assert client.get("/api/state").json()["llm_scripted"] is True
+    client.post("/api/attack/plant-work-order")
+    r = client.post("/api/copilot", json={"message": "Any open work orders I should handle?"}).json()
+    assert r["scripted"] and r["reply"].startswith("[SCRIPTED DEMO MODEL")
+    assert [t["tool"] for t in r["trace"]] == ["read_work_orders", "propose_setpoint"]
+    assert "BLOCKED" in r["trace"][1]["result"]["result"]
+    assert client.get("/api/state").json()["plant"]["naoh_dose"] == 100

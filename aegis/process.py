@@ -32,6 +32,15 @@ from dataclasses import dataclass, field
 PKA_HOCL = 7.54
 CACO3_EQ_MG = 50_000.0     # mg/L as CaCO3 per eq/L
 NAOH_MG_PER_EQ = 40_000.0  # mg/L NaOH per eq/L
+# Judge round 14: most small plants don't use caustic soda. The alkali feed ("naoh_dose" register, whatever the
+# chemical) is described by: mg of chemical per equivalent of alkalinity it adds, and mol of carbonate (CT)
+# it adds per equivalent. Set process.json "alkali" to one of these (default naoh).
+ALKALIS = {
+    "naoh": (40_000.0, 0.0),        # NaOH, 40.00 g/mol, 1 eq/mol
+    "lime": (37_047.0, 0.0),        # Ca(OH)2, 74.09 g/mol, 2 eq/mol
+    "soda_ash": (52_994.0, 0.5),    # Na2CO3, 105.99 g/mol, 2 eq/mol, 1 mol carbonate per mol
+    "bicarbonate": (84_007.0, 1.0), # NaHCO3, 84.01 g/mol, 1 eq/mol, 1 mol carbonate per mol
+}
 
 
 # ------------------------------------------------------------------ chemistry
@@ -172,7 +181,10 @@ class ProcessModel:
         """Composition of dosed water entering the clearwell: (alk eq/L, ct mol/L, chlorine mg/L)."""
         raw_alk = mgl_caco3_to_eq(raw.alkalinity)
         ct = ct_from_ph_alk(raw.ph, raw_alk, *self.pk(raw.temp_c))
-        alk = raw_alk + self.naoh_added(sp["naoh_dose"]) / NAOH_MG_PER_EQ
+        mg_per_eq, ct_per_eq = ALKALIS[self.params.get("alkali", "naoh")]
+        added = self.naoh_added(sp.get("naoh_dose") or 0) / mg_per_eq     # chlorine-only plants: no alkali feed
+        alk = raw_alk + added
+        ct = ct + added * ct_per_eq
         d = self.demand(raw) if demand is None else demand
         return alk, ct, max(0.0, sp["chlorine_dose"] - d)
 
