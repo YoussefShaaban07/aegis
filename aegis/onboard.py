@@ -11,7 +11,9 @@ everything it's unsure about marked for review.
 
 Addresses: classic Modbus notation (00001 coils, 10001 discrete inputs,
 30001 input registers, 40001 holding registers; 5- or 6-digit) or table:offset
-(e.g. "HR:3", "IR:0", "CO:1").
+(e.g. "HR:3", "IR:0", "CO:1"), or Allen-Bradley MicroLogix / SLC data-file
+addresses from an RSLogix 500 / Connected Components Workbench export ("N7:1",
+"F8:0", "B3:0/1"), which become "pccc" tags for `aegis.gateway --protocol cip`.
 
 --ai: tags the keyword rules couldn't place are sent (descriptions only) to the
 LLM, which may suggest a role from the fixed list below. Suggestions are
@@ -99,13 +101,57 @@ def disambiguate(roles: list[str], table: str) -> list[str]:
     return roles
 
 
+PCCC_RE = re.compile(r"[NBF]\d+:\d+(/\d+)?")
+
+
+def pccc_row(out, review, unmapped, used, addr, name, desc, units, discovery):
+    roles = match_role(name, desc)
+    is_bit = "/" in addr
+    roles = [r for r in roles if (ROLES[r][0] == "coil") == is_bit]
+    roles = disambiguate(roles, "coil" if is_bit else "holding")
+    if len(roles) != 1:
+        unmapped.append({"address": addr, "name": name, "description": desc, "units": units, "candidates": roles})
+        return
+    role = roles[0]
+    if role in used:
+        review.append(f"{role}: matched twice ({used[role]} and {name}); kept the first, check which is right")
+        return
+    used[role] = name
+    table = ROLES[role][0]
+    entry = {"pccc": addr, "unit": ROLES[role][1], "label": name or role}
+    if table != "coil":
+        sc = scale_from_units(units, desc)
+        seen = discovery.get(f"pccc:{addr}")
+        how = "from units/description" if sc else None
+        if sc is None and seen and seen.get("min") is not None:
+            sc = scale_from_values(role, seen["min"], seen["max"])
+            how = f"from observed values {seen['min']}..{seen['max']}" if sc else None
+        if sc is None and addr.startswith("F"):
+            sc, how = 1.0, "float file: engineering units"
+        if sc is None:
+            sc = 1.0
+            if ROLES[role][3][1] < 20:
+                review.append(f"{role} ({name}): no scale in the export and no observed values; assumed 1, "
+                              "check (integer files usually store pH and chlorine x100)")
+        entry["scale"] = sc
+        if how:
+            entry["_scale_source"] = how
+    out[{"coil": "coils"}.get(table, table)][role] = entry
+
+
 def draft(export_rows: list[dict], discovery: dict | None = None) -> dict:
     discovery = discovery or {}
     out = {"coils": {}, "holding": {}, "input": {}}
     review, unmapped, used = [], [], {}
     for row in export_rows:
-        addr = parse_address(row.get("address") or row.get("Address") or "")
-        name = (row.get("name") or row.get("Name") or row.get("tag") or "").strip()
+        raw_addr = str(row.get("address") or row.get("Address") or "").strip()
+        name = (row.get("name") or row.get("Name") or row.get("tag") or row.get("Symbol") or "").strip()
+        if PCCC_RE.fullmatch(raw_addr.upper()):
+            pccc_row(out, review, unmapped, used, raw_addr.upper(), name,
+                     (row.get("description") or row.get("Description") or "").strip(),
+                     (row.get("units") or row.get("Units") or "").strip(), discovery)
+            continue
+        addr = parse_address(raw_addr)
         desc = (row.get("description") or row.get("Description") or "").strip()
         units = (row.get("units") or row.get("Units") or "").strip()
         if not addr:

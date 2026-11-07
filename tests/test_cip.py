@@ -239,3 +239,36 @@ def test_gateway_cip_mode_end_to_end():
             await asyncio.sleep(0.05)
         asyncio.run_coroutine_threadsafe(shut(), loop).result(5)
         loop.call_soon_threadsafe(loop.stop)
+
+
+def test_housekeeping_pass_list_and_discovery():
+    """Day one: the HMI also writes alarm-ack words Aegis doesn't guard. Monitor mode shows them,
+    the engineer puts them on pass_writes, and they're forwarded (logged, not judged)."""
+    r = Rig(policy_edit=lambda p: p.update(pass_writes=["N7:50-N7:59"]))
+    try:
+        with r.slc() as plc:
+            assert plc.write(("N7:52", 1)).error is None             # on the pass list
+            assert plc.write(("N7:60", 1)).error is not None         # not on it
+            plc.read("N7:0{3}")
+        assert r.guard.log[1].check == "pass" and r.guard.log[0].check == "allowlist"
+        assert r.sim.mem[("N", 7, 52)] == 1
+        assert r.guard.seen["pccc:N7:52"]["writes"] == 1 and r.guard.seen["pccc:N7:1"]["reads"] == 1
+        assert r.guard.passes("holding 55") is False and r.guard.passes("N7:59")
+    finally:
+        r.close()
+
+
+def test_onboarding_drafts_pccc_tags_from_an_rslogix_export():
+    from aegis.onboard import draft
+    rows = [{"Address": "N7:0", "Symbol": "CL2_DOSE_SP", "Description": "Chlorine dose setpoint", "Units": "mg/L x100"},
+            {"Address": "N7:1", "Symbol": "NAOH_SP", "Description": "Caustic feed setpoint", "Units": "ppm"},
+            {"Address": "N7:12", "Symbol": "FIN_PH", "Description": "Finished water pH", "Units": "pH x100"},
+            {"Address": "B3:0/1", "Symbol": "HS_PUMP_RUN", "Description": "High service pump run command"},
+            {"Address": "N7:50", "Symbol": "ALM_ACK", "Description": "HMI alarm acknowledge word"}]
+    d = draft(rows)
+    t = d["tags"]
+    assert t["holding"]["naoh_dose"]["pccc"] == "N7:1" and t["coils"]["distribution_pump"]["pccc"] == "B3:0/1"
+    assert t["input"]["ph"]["pccc"] == "N7:12" and t["holding"]["chlorine_dose"]["scale"] == 100
+    assert [u["address"] for u in d["unmapped"]] == ["N7:50"]
+    tags = Tags(t)                                                     # loads without Modbus addresses
+    assert tags.holding["naoh_dose"].pccc == "N7:1" and tags.by_addr == {}

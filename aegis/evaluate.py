@@ -57,6 +57,25 @@ LIMITS = {"ph": (6.5, 8.5), "chlorine": (0.2, 4.0), "tank": (5.0, 101.0)}
 FIDELITY = "standard"     # "high": the simulated plant has physics the twin doesn't model
 SAFE_HOLD = False         # twin guard also runs safe-hold (auto-revert when a warning goes unanswered)
 ATTACKER = "unknown"      # "hmi": the attacker owns the operator HMI (writes as a trusted source)
+LAB: dict | None = None   # {"hours": 24, "keys": ["raw_alkalinity"]}: those readings come from lab grab samples
+
+
+def seen(plant: Plant) -> dict:
+    """What Aegis sees: the PLC's readings, except lab-only values, which are the last grab sample."""
+    snap = plant.snapshot()
+    if LAB and getattr(plant, "lab", None):
+        snap.update(plant.lab)
+    return snap
+
+
+def lab_tick(plant: Plant, minute: int, seed: int):
+    """Take a grab sample every LAB['hours'] (at a seed-dependent time of day)."""
+    if not LAB:
+        return
+    period = int(LAB["hours"] * 60)
+    if minute == 0 or (minute - (seed * 37) % period) % period == 0:
+        snap = plant.snapshot()
+        plant.lab = {k: snap[k] for k in LAB["keys"]}
 
 
 def harmful(plant: Plant) -> str | None:
@@ -108,7 +127,7 @@ def run_safe_hold(g: Guard, plant: Plant, minute: int, every: int = 5):
     """The deployed gateway polls every 10 s; every 5 simulated minutes is enough here. Nobody acks."""
     if g.safehold is None or minute % every:
         return None
-    act = g.safehold.update(plant.snapshot(), g.clock())
+    act = g.safehold.update(seen(plant), g.clock())
     if act:
         g.apply_safe_hold(act)
         plant.set(act["register"], act["value"])
@@ -144,7 +163,7 @@ def attack_episode(seed: int, use_twin: bool | None, policy: dict, hours: int = 
 
     def attempt(new):
         nonlocal tries, blocked
-        d = g.check(reg, new, plant.snapshot(), src, peer)
+        d = g.check(reg, new, seen(plant), src, peer)
         tries += 1
         if d.allowed:
             g._commit(d)
@@ -154,11 +173,12 @@ def attack_episode(seed: int, use_twin: bool | None, policy: dict, hours: int = 
         return False
 
     for minute in range(hours * 60 + 360):
+        lab_tick(plant, minute, seed)
         clock.t = minute * 60.0
         if minute == weather_at:
             plant.set_scenario(weather)
         if g.twin is not None:
-            g.twin.observe(plant.snapshot(), clock.t)      # the deployed gateway does this every poll
+            g.twin.observe(seen(plant), clock.t)      # the deployed gateway does this every poll
         if use_twin is not None and minute < hours * 60 and clock.t >= next_write:
             cur = plant.setpoint(reg)
             if goal == "cycle_equipment":
@@ -182,7 +202,7 @@ def attack_episode(seed: int, use_twin: bool | None, policy: dict, hours: int = 
             reverts += 1
         plant.step(1.0)
         if fore_at is None and minute % 10 == 0 and first_crossings(
-                watch_twin.forecast(plant.snapshot(), None, 180, every_min=10)):
+                watch_twin.forecast(seen(plant), None, 180, every_min=10)):
             fore_at = minute            # twin forecast crosses a limit -> early-warning SMS
         if alarm_at is None and plant.alarms():
             alarm_at = minute           # process alarm -> Aegis texts/calls the operator
@@ -211,11 +231,12 @@ def operator_episode(seed: int, use_twin: bool, policy: dict, hours: int = 12) -
     writes, reverts = [], []
     next_action = rng.randint(10, 60)
     for minute in range(hours * 60):
+        lab_tick(plant, minute, seed)
         clock.t = minute * 60.0
         if minute == weather_at:
             plant.set_scenario(weather)
         if g.twin is not None:
-            g.twin.observe(plant.snapshot(), clock.t)
+            g.twin.observe(seen(plant), clock.t)
         if minute >= next_action:
             s = plant.snapshot()
             # what a reasonable operator would try
@@ -236,7 +257,7 @@ def operator_episode(seed: int, use_twin: bool, policy: dict, hours: int = 12) -
                          "distribution_rate": dist}[reg]
                 lim = policy["limits"][reg]
                 new = round(min(lim["max"], max(lim["min"], cur + delta)), 2)
-            d = g.check(reg, new, plant.snapshot(), "Operator HMI", "10.0.0.5:5000")
+            d = g.check(reg, new, seen(plant), "Operator HMI", "10.0.0.5:5000")
             trial = copy.deepcopy(plant); trial.set(reg, new)
             truth_with, truth_without = forward_harm(trial), forward_harm(plant)
             writes.append({"reg": reg, "new": new, "allowed": d.allowed, "check": d.check,
@@ -325,12 +346,17 @@ def main(argv=None):
                     help="scale the twin's uncertainty band (1 = policy default; e.g. 0.4 after calibration)")
     ap.add_argument("--safe-hold", action="store_true",
                     help="the twin guard also runs safe-hold (auto-revert after 15 min of unanswered warning)")
+    ap.add_argument("--lab-hours", type=float, default=None,
+                    help="the plant has no online analyzer for --lab-keys: Aegis only gets a lab grab sample every N h")
+    ap.add_argument("--lab-keys", default="raw_alkalinity", help="comma list, e.g. raw_alkalinity,raw_turbidity")
     ap.add_argument("--attacker", choices=["unknown", "hmi"], default="unknown",
                     help="hmi = the attacker has taken over the operator HMI and writes as a trusted source")
     a = ap.parse_args(argv)
-    global FIDELITY, SAFE_HOLD, ATTACKER
+    global FIDELITY, SAFE_HOLD, ATTACKER, LAB
     FIDELITY, SAFE_HOLD, ATTACKER = a.fidelity, a.safe_hold, a.attacker
-    print(f"plant fidelity: {FIDELITY}; attacker writes as: {ATTACKER}; safe-hold: {'on' if SAFE_HOLD else 'off'}")
+    LAB = {"hours": a.lab_hours, "keys": a.lab_keys.split(",")} if a.lab_hours else None
+    print(f"plant fidelity: {FIDELITY}; attacker writes as: {ATTACKER}; safe-hold: {'on' if SAFE_HOLD else 'off'}"
+          + (f"; {', '.join(LAB['keys'])} from a lab sample every {a.lab_hours:g} h" if LAB else ""))
     policy = load_policy(Tags.load())
     if a.uncertainty is not None:
         u = policy["prediction"].get("uncertainty") or {"naoh_feed_strength": 0.1, "chlorine_decay_per_hr": 0.3,

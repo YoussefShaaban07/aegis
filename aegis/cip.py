@@ -521,9 +521,27 @@ class CIPGuard:
             return cip_reply(req.service, CIP_PRIVILEGE_VIOLATION)
         return None
 
+    def _discover(self, t: Typed, write: bool):
+        """Onboarding: remember which data-file words are used on the wire (data/discovery.json)."""
+        try:
+            vals = _decode_words(t.letter, t.data)[:t.count] if write else [None] * t.count
+        except (struct.error, ValueError):
+            return
+        for i, v in enumerate(vals):
+            e = self.guard.seen.setdefault(f"pccc:{t.address(i)}", {"min": v, "max": v, "reads": 0, "writes": 0})
+            if v is not None:
+                e["min"] = v if e["min"] is None else min(e["min"], v)
+                e["max"] = v if e["max"] is None else max(e["max"], v)
+            e["writes" if write else "reads"] += 1
+
     async def inspect_pccc(self, p: PCCC, source: str, peer_s: str) -> bytes | None:
         key = (p.cmd, p.fnc)
         if key in PCCC_READS:
+            if p.fnc in (FNC_READ3, FNC_READ2):
+                try:
+                    self._discover(parse_typed(p.fnc, p.params), write=False)
+                except (IndexError, struct.error):
+                    pass
             return None
         if key not in PCCC_WRITES:
             name = PCCC_NAMES.get(key, f"PCCC command 0x{p.cmd:02X}/0x{(p.fnc or 0):02X}")
@@ -540,11 +558,19 @@ class CIPGuard:
         except (IndexError, struct.error):
             return None if await self._refuse(source, peer_s, "PCCC write", "malformed typed write") else p.reply(STS_ILLEGAL)
         targets, unmapped = self.map.write_targets(w)
+        self._discover(w, write=True)
+        housekeeping = [u for u in unmapped if " " not in u and self.guard.passes(u)]
+        unmapped = [u for u in unmapped if u not in housekeeping]
         if unmapped:
             ok = await self._refuse(source, peer_s, f"PCCC write {unmapped[0]}",
                                     f"write to {', '.join(unmapped)}: not a tag Aegis knows (add it to tags.json "
                                     "with a policy limit to allow it)", "allowlist")
             if not ok:
+                return p.reply(STS_ILLEGAL)
+        for u in housekeeping:
+            d = self.guard._apply_mode(self.guard.check(u, 0, {}, source, peer_s))
+            self.guard._record(d)
+            if not d.allowed:
                 return p.reply(STS_ILLEGAL)
         if not targets:
             return None

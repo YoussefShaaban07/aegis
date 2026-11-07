@@ -40,6 +40,7 @@ from .config import POLICY_PATH, Tags, verify_policy_file
 from .guard import MODES, Guard, read_plc_state
 from .forewarn import ForecastWatch
 from .integrity import IntegrityMonitor
+from .labinputs import LabInputs
 from .safehold import SafeHold, execute as safehold_execute
 from .twin import REQUIRED, Twin
 
@@ -58,7 +59,15 @@ def build(plc_host: str, plc_port: int, mode: str = "enforce", plc_unit: int = 1
         upstream = modbus.Client(plc_host, plc_port, unit=plc_unit)      # connects lazily, reconnects
         state_client = modbus.Client(plc_host, plc_port, unit=plc_unit)
         reader_fn = lambda: read_plc_state(state_client, tags)          # noqa: E731
-    has_sensors = all(k in tags.all for k in REQUIRED)
+    from .config import load_policy
+    lab_cfg = load_policy(tags).get("lab_inputs") or {}
+    lab = LabInputs(lab_cfg, "data/lab_inputs.json", audit=audit, alerter=alerter)
+    plc_reader = reader_fn
+
+    async def reader_fn():                      # PLC readings + fresh lab values for what the PLC lacks
+        lab.reload()
+        return lab.fill(await plc_reader())
+    has_sensors = all(k in tags.all or k in lab_cfg for k in REQUIRED)
     twin = Twin() if (use_twin and has_sensors) else None
     guard = Guard(upstream, reader_fn, tags=tags, audit=audit,
                   alerter=alerter, policy_path=POLICY_PATH, twin=twin, mode=mode, unit_mode=unit_mode,
@@ -74,6 +83,7 @@ def build(plc_host: str, plc_port: int, mode: str = "enforce", plc_unit: int = 1
 
     guard._record = record_and_print
     guard.protocol = protocol
+    guard.lab = lab
     return guard, audit, twin
 
 
@@ -101,6 +111,9 @@ async def integrity_loop(guard, twin, poll_s: float = 10.0, printer=print, histo
     while True:
         try:
             st = await poll_state(reader, guard.tags)
+            if getattr(guard, "lab", None):
+                guard.lab.reload()
+                st = guard.lab.fill(st)
             if history_path:
                 import csv
                 from pathlib import Path

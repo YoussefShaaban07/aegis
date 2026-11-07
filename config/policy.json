@@ -99,6 +99,8 @@
   "max_reads_per_sec_per_ip": 50,
   "read_cache_ms": 100,
   "unknown_writers": "allow",
+  "lab_inputs": {},
+  "_doc_lab_inputs": "Twin inputs the PLC doesn't measure, entered from lab grab samples: e.g. {\"raw_alkalinity\": {\"max_age_h\": 36}}. Older than max_age_h: twin chemistry pauses (static rules only) and the operator is alerted. python -m aegis.labinputs set raw_alkalinity 74 --by NAME",
   "safe_hold": {
     "enabled": true,
     "after_min": 15,

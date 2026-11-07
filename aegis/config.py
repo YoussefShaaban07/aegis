@@ -52,11 +52,13 @@ class Tags:
             for n, d in (data.get(key) or {}).items():
                 if n in self.all:
                     raise ValueError(f"tag '{n}' defined twice")
-                self.all[n] = Tag(n, int(d["address"]), d.get("scale", 1), d.get("unit", ""),
+                if "address" not in d and not d.get("pccc"):
+                    raise ValueError(f"tag '{n}' needs a Modbus 'address' or a 'pccc' data-file address")
+                self.all[n] = Tag(n, int(d.get("address", -1)), d.get("scale", 1), d.get("unit", ""),
                                   d.get("label", n), table, d.get("pccc"))
         self.holding = {n: t for n, t in self.all.items() if t.writable}
         self.input = {n: t for n, t in self.all.items() if not t.writable}
-        self.by_addr = {(t.table, t.address): t for t in self.all.values()}
+        self.by_addr = {(t.table, t.address): t for t in self.all.values() if t.address >= 0}
 
     def table(self, name: str) -> dict:
         return {n: t for n, t in self.all.items() if t.table == name}
@@ -122,6 +124,17 @@ def validate_policy(p: dict, tags: Tags) -> dict:
                 raise PolicyError(f"safe_hold.{k} must be a positive number")
         if any(r not in tags.holding or tags.holding[r].table == "coil" for r in sh.get("registers", [])):
             raise PolicyError("safe_hold.registers must list writable holding-register setpoints (not pumps)")
+    pw = p.get("pass_writes") or []
+    if not isinstance(pw, list) or not all(isinstance(x, str) for x in pw):
+        raise PolicyError("pass_writes must be a list of addresses, e.g. [\"N7:50-N7:59\", \"holding 40-49\"]")
+    for x in pw:
+        if x in p.get("limits", {}) or x in tags.all:
+            raise PolicyError(f"pass_writes: {x} is a guarded tag; it can't be on the pass list")
+    for name, cfg in (p.get("lab_inputs") or {}).items():
+        if name not in ("raw_ph", "raw_alkalinity", "raw_turbidity", "water_temp"):
+            raise PolicyError(f"lab_inputs: {name} is not a twin input that can come from the lab")
+        if not isinstance(cfg, dict) or not isinstance(cfg.get("max_age_h", 36), (int, float)) or cfg.get("max_age_h", 36) <= 0:
+            raise PolicyError(f"lab_inputs.{name}.max_age_h must be a positive number")
     for key in ("max_reversals_per_10min", "max_large_reversals_per_hour"):
         rc = p.get(key)
         if rc is not None and (not isinstance(rc, int) or rc < 1):

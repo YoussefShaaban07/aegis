@@ -195,8 +195,15 @@ class Guard:
                                  "possible automated attack")
 
         lim = self.policy["limits"].get(register)
-        # 2. allowlist
+        # 2. allowlist (housekeeping addresses an engineer put on `pass_writes`, e.g. HMI alarm-ack bits,
+        #    are forwarded without being judged, but still logged and still subject to flood / writer rules)
         if lim is None:
+            if self.passes(register):
+                if ((self.unit_mode == "route" or source.startswith("Unknown host"))
+                        and self.policy.get("unknown_writers") == "block" and source not in self.ip_sources.values()):
+                    return deny("writer", f"{source} is not a named writer (read-only)")
+                return Decision(True, source, register, old, new, "housekeeping address on the pass list "
+                                "(forwarded, not judged)", peer, "pass", wall, u, fc)
             return deny("allowlist", "register not on the write allowlist")
         reason = lim.get("reason", "")
         # 2b. writers: in route mode an engineer can make every host not named in --sources read-only
@@ -692,6 +699,25 @@ class Guard:
             if ok:
                 self._commit(d)
         return ok
+
+    def passes(self, name: str) -> bool:
+        """Is `name` ("N7:52", "holding 50") on policy.pass_writes? Entries: exact, or ranges "N7:50-N7:59",
+        "holding 50-59"."""
+        import re
+        for e in self.policy.get("pass_writes") or []:
+            e = str(e).strip()
+            if e == name:
+                return True
+            m = re.fullmatch(r"([A-Za-z]+\d+:)(\d+)-(?:[A-Za-z]+\d+:)?(\d+)", e) or \
+                re.fullmatch(r"([a-z]+ )(\d+)-(\d+)", e)
+            if m and name.startswith(m.group(1)):
+                try:
+                    n = int(name[len(m.group(1)):])
+                except ValueError:
+                    continue
+                if int(m.group(2)) <= n <= int(m.group(3)):
+                    return True
+        return False
 
     def record_blocked(self, source: str, what: str, reason: str, peer_s: str, check: str = "function",
                        techniques=None, code: int = 0):
