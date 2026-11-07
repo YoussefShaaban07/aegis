@@ -86,7 +86,8 @@
       "chlorine_demand": 0.25
     },
     "budget_ms": 500,
-    "on_timeout": "static"
+    "on_timeout": "static",
+    "margin": 0.01
   },
   "max_reversals_per_10min": 4,
   "max_reads_per_sec_per_ip": 50,

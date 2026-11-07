@@ -148,7 +148,8 @@ async def patient_attack(port: int, current, target: int = 250, step: int = 50, 
 
 
 if __name__ == "__main__":
-    p = argparse.ArgumentParser(description="Attack the LOCAL simulator through the guard")
+    p = argparse.ArgumentParser(description="Attack the simulator through the guard (from this or another machine: "
+                                             "--host LAPTOP_IP)")
     p.add_argument("attack", choices=["lye", "mask", "readwrite", "coil", "recon", "flood"])
     p.add_argument("--port", type=int, default=5502)
     p.add_argument("--host", default="127.0.0.1")

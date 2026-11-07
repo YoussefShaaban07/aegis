@@ -139,6 +139,8 @@ def attack_episode(seed: int, use_twin: bool | None, policy: dict, hours: int = 
         clock.t = minute * 60.0
         if minute == weather_at:
             plant.set_scenario(weather)
+        if g.twin is not None:
+            g.twin.observe(plant.snapshot(), clock.t)      # the deployed gateway does this every poll
         if use_twin is not None and minute < hours * 60 and clock.t >= next_write:
             cur = plant.setpoint(reg)
             if goal == "cycle_equipment":
@@ -192,6 +194,8 @@ def operator_episode(seed: int, use_twin: bool, policy: dict, hours: int = 12) -
         clock.t = minute * 60.0
         if minute == weather_at:
             plant.set_scenario(weather)
+        if g.twin is not None:
+            g.twin.observe(plant.snapshot(), clock.t)
         if minute >= next_action:
             s = plant.snapshot()
             # what a reasonable operator would try

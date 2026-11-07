@@ -151,3 +151,18 @@ def test_on_timeout_block_policy():
     g.policy["prediction"].update(budget_ms=100, on_timeout="block")
     d = g.check("naoh_dose", 110, plant.snapshot(), "Operator HMI", "h:1")
     assert not d.allowed and "time budget" in d.reason
+
+
+
+def test_restart_does_not_reset_ramp_window(tmp_path):
+    """Crash-and-restart must not hand an attacker a fresh ramp window."""
+    plant = Plant(noise=False)
+    g = Guard(None, plant.snapshot)
+    d = g.check("chlorine_dose", 1.9, plant.snapshot(), "x", "h:1"); g._commit(d); plant.set("chlorine_dose", 1.9)
+    g.save_state(tmp_path / "s.json")
+    g2 = Guard(None, plant.snapshot)                       # the restarted process
+    assert g2.load_state(tmp_path / "s.json")
+    d2 = g2.check("chlorine_dose", 2.3, plant.snapshot(), "x", "h:1")
+    assert not d2.allowed and d2.check == "ramp"
+    g3 = Guard(None, plant.snapshot)                       # without the saved state it would have passed
+    assert g3.check("chlorine_dose", 2.3, plant.snapshot(), "x", "h:1").allowed

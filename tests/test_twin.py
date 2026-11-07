@@ -192,3 +192,34 @@ def test_blocked_operator_is_told_what_is_safe():
     assert g.check("naoh_dose", safe, plant.snapshot(), "Operator HMI", "h:1").allowed     # and it really is
     att = g.check("naoh_dose", 230, plant.snapshot(), "Unknown device (unit 66)", "9.9.9.9:1")
     assert "Largest change" not in att.reason                                             # attackers get no hint
+
+
+def test_trend_projection_catches_storm_onset():
+    """Turbidity is rising (storm arriving). The twin projects the observed trend (damped, it levels
+    off) instead of assuming today's raw water persists, and blocks cutting chlorine into it."""
+    plant = Plant(noise=False)
+    for _ in range(10):
+        plant.step(1.0)
+    plant.set_scenario("storm")
+    aware = Twin()
+    for m in range(12):                         # 12 minutes into the storm's arrival
+        plant.step(1.0)
+        aware.observe(plant.snapshot(), plant.sim_time)
+    st = plant.snapshot()
+    proj = aware._raw_at(st, aware.trend(), 3600)
+    assert st["raw_turbidity"] + 3 < proj.turbidity < 40          # follows the storm, doesn't explode
+    v = aware.evaluate(st, "chlorine_dose", 1.1)
+    assert not v.allowed and "chlorine" in v.reason
+    assert aware.evaluate(st, "chlorine_dose", 2.2).allowed       # raising it is fine (corrective)
+
+
+def test_wrong_way_safety_net_when_failure_saturates():
+    """In a strong storm residual chlorine is forecast at 0 whether the dose is 1.5 or 1.0; magnitudes
+    can't tell them apart, but cutting the dose during a disinfection failure is still blocked."""
+    plant = Plant(noise=False)
+    plant.set_scenario("storm", immediate=True)
+    plant.raw.turbidity = 40
+    for _ in range(60):
+        plant.step(1.0)
+    v = Twin().evaluate(plant.snapshot(), "chlorine_dose", 1.0)
+    assert not v.allowed and "already forecast to go below" in v.reason

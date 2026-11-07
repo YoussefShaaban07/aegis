@@ -318,7 +318,7 @@ class Guard:
         st = dict(state)
         st.update(dict(rest))
         return self.twin.evaluate(st, last[0], last[1], pred.get("horizon_min", 360), pred.get("limits"),
-                                  deadline=deadline)
+                                  deadline=deadline, margin=pred.get("margin", 0.01))
 
     # ------------------------------------------------------------------ bookkeeping
     def _commit(self, d: Decision):
@@ -329,6 +329,40 @@ class Guard:
             self.commanded[d.register] = d.new
         if d.allowed and d.old is not None and d.new != d.old:
             self._changes[d.register].append((now, d.old, d.new))
+
+    def save_state(self, path) -> None:
+        """Persist rate/ramp/cycling windows so a restart (or a crash an attacker caused) doesn't reset them.
+        Times are stored as ages; on load they're aged by the wall-clock downtime."""
+        import json
+        now = self.clock()
+        data = {"wall": time.time(), "commanded": self.commanded,
+                "changes": {k: [(now - t, a, b) for t, a, b in dq] for k, dq in self._changes.items()},
+                "dirs": {k: [(now - t, d) for t, d in dq] for k, dq in self._dirs.items()},
+                "attempts": {k: [now - t for t in dq] for k, dq in self._attempts.items()}}
+        tmp = str(path) + ".tmp"
+        with open(tmp, "w") as f:
+            json.dump(data, f)
+        import os
+        os.replace(tmp, path)                     # atomic: a crash mid-write can't corrupt the state
+
+    def load_state(self, path) -> bool:
+        import json
+        try:
+            data = json.loads(open(path).read())
+        except (OSError, ValueError):
+            return False
+        down = time.time() - data.get("wall", 0)
+        if not 0 <= down < 600:                   # stale or clock nonsense: start fresh
+            return False
+        now = self.clock()
+        for k, items in data.get("changes", {}).items():
+            self._changes[k] = deque((now - age - down, a, b) for age, a, b in items if age + down < 600)
+        for k, items in data.get("dirs", {}).items():
+            self._dirs[k] = deque((now - age - down, d) for age, d in items if age + down < 600)
+        for k, items in data.get("attempts", {}).items():
+            self._attempts[k] = deque(now - age - down for age in items if age + down < WINDOW)
+        self.commanded.update(data.get("commanded", {}))
+        return True
 
     def sync_commanded(self, state: dict):
         """Seed the approved-setpoint record from the PLC (at startup, before any writes)."""

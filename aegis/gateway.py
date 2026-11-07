@@ -83,7 +83,12 @@ async def integrity_loop(guard, twin, poll_s: float = 10.0, printer=print, histo
                 fh.flush()
             guard.sync_commanded(st)
             mon.update(st, time.time(), guard.commanded)
+            if twin:
+                twin.observe(st, time.time())
             guard.flush_suppressed()
+            if history_path:
+                from pathlib import Path
+                guard.save_state(Path(history_path).with_name("guard_state.json"))
             ok, msg = verify_policy_file(POLICY_PATH)
             if not ok:
                 guard.alerter.raise_alert("policy_tamper", "critical", f"Policy file integrity check failed: {msg}")
@@ -133,6 +138,8 @@ async def health_server(guard, audit, port: int, host: str = "127.0.0.1"):
 async def run(plc_host, plc_port, listen_host, listen_port, mode, plc_unit, use_twin, health_port=None,
               ip_sources=None):
     guard, audit, twin = build(plc_host, plc_port, mode, plc_unit, use_twin=use_twin, ip_sources=ip_sources)
+    if guard.load_state("data/guard_state.json"):
+        print("Restored rate/ramp windows from before the restart")
     if health_port:
         await health_server(guard, audit, health_port)
         print(f"Health: http://127.0.0.1:{health_port}/health")

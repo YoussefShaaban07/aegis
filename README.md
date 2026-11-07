@@ -8,6 +8,10 @@ Inspired by [Control Seat (YC S26)](https://www.ycombinator.com/launches/RJ6-con
 
 ![Aegis dashboard](docs/dashboard.png)
 
+| The AI tries to talk the operator into switching Aegis off | The on-call operator's phone |
+|---|---|
+| ![](docs/copilot-reply-guard.png) | ![](docs/operator-view.png) |
+
 ## The problem
 
 - Water utilities run on PLCs that speak **Modbus**, a 1979 protocol with **no authentication**: any device that can reach the controller can change a setpoint.
@@ -85,6 +89,8 @@ Every write is checked in this order; the first failure blocks it:
 - **Reply guard** (`aegis/replyguard.py`): the AI's answers are checked against live readings and for advice to disable safety, before the operator reads them.
 - **Tell the operator what *is* safe**: when the twin blocks an operator or AI change, Aegis computes the largest change it would accept right now.
 - **Tamper resistance**: signed policy file (edits outside Aegis are detected), off-box audit copy via syslog, monotonic rate windows.
+- **Operator view** (`/operator`): a phone-sized page for the on-call operator: is the water safe, what to acknowledge, what's coming.
+- **Real Modbus semantics in the gateway**: unit IDs are routed to the target device (TCP-to-serial gateways work); writers are named by IP; tested with `mbpoll`/libmodbus (C) and pymodbus (Python) on both sides.
 - **Guided demo**: one button walks through the whole story with what to say at each step; fast-forwards slow chemistry.
 - **Resilience**: per-request errors fail closed without taking the server down; a supervisor restarts the gateway; `/health` endpoint; systemd unit with least privilege (`deploy/aegis.service`); soak-tested with 20 concurrent HMIs.
 
@@ -96,7 +102,7 @@ Every write is checked in this order; the first failure blocks it:
 pip install -r requirements.txt
 cp .env.example .env          # add GROQ_API_KEY for the AI copilot (free at console.groq.com)
 python -m aegis.server        # open http://127.0.0.1:8000
-python -m pytest -q           # 134 tests
+python -m pytest -q           # 140 tests
 python -m aegis.evaluate      # attack/operator evaluation (~10 min)
 python -m aegis.redteam       # prompt-injection red team against the real copilot (needs GROQ_API_KEY)
 python scripts/bench.py       # latency on your machine
@@ -112,7 +118,8 @@ python -m aegis.attacks lye | mask | readwrite | coil | recon | flood
 ### Gateway mode (real PLC)
 
 ```bash
-python -m aegis.gateway --plc-host 192.168.1.50 --plc-port 502 --listen-port 5502 --mode monitor
+python -m aegis.gateway --plc-host 192.168.1.50 --plc-port 502 --listen-port 5502 --mode monitor \
+    --sources "10.0.0.5=Operator HMI,10.0.0.9=AI copilot" --health-port 8081
 ```
 
 Point the HMI and AI at the gateway instead of the PLC, and firewall the PLC so only the gateway can reach it. Onboarding, in order:
@@ -138,7 +145,8 @@ Point the HMI and AI at the gateway instead of the PLC, and firewall the PLC so 
 |---|---|
 | Guard checks: function, flood (label + IP), allowlist, range, step, ramp, interlock, permit, twin predict, unusual | ✅ built + tested |
 | All write function codes incl. FC 22/23 bypass attempts; coils | ✅ tested with our client and with pymodbus |
-| Gateway in front of a **third-party** Modbus server (pymodbus) with a pymodbus client | ✅ tested (`tests/test_interop.py`) |
+| Gateway in front of a **third-party** Modbus server (pymodbus) with pymodbus and libmodbus (`mbpoll`) clients | ✅ tested (`tests/test_interop.py`) |
+| Unit-ID routing for TCP-to-serial gateways | ✅ tested |
 | Digital twin: chemistry, forecasts, live accuracy | ✅ tested against our simulator **and** a high-fidelity simulator with physics the twin gets wrong. ⚠️ **Not validated against a real plant** |
 | Integrity monitor (lying PLC), early warnings, calibration | ✅ tested on both simulators (0 false alarms in 40 × 10 h runs; hidden attack caught in 20/20) |
 | Dashboard accounts, roles, CSRF, lockout | ✅ tested |

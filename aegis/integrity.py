@@ -52,6 +52,8 @@ class IntegrityMonitor:
         self.status = {"ok": True, "message": "starting", "ph_err": None, "cl_err": None}
         self.events: deque = deque(maxlen=50)
         self._flagged: set[str] = set()
+        self._same: dict[str, list] = {}       # sensor -> [last value, consecutive identical readings]
+        self.stuck_after = 20                  # polls (= minutes at 1/min) of a bit-identical reading
 
     # ---------------------------------------------------------------- helpers
     def _event(self, key: str, severity: str, message: str, data: dict):
@@ -99,10 +101,36 @@ class IntegrityMonitor:
                             {"register": k, "reported": reported[k], "approved": commanded[k]})
         return out
 
+    def check_stuck(self, state: dict):
+        """Real analyzers are noisy: a reading that doesn't move AT ALL for a long time means a stuck
+        instrument (common, not an attack) or a crudely replayed value. Say which instrument, don't
+        accuse the PLC."""
+        stuck = []
+        for k in ("ph", "chlorine_residual"):
+            v = state.get(k)
+            if v is None:
+                continue
+            last = self._same.get(k)
+            if last and last[0] == v:
+                last[1] += 1
+            else:
+                self._same[k] = [v, 1]
+                self._flagged.discard(f"stuck:{k}")
+                continue
+            if last[1] >= self.stuck_after:
+                stuck.append(k)
+                name = {"ph": "pH analyzer", "chlorine_residual": "chlorine analyzer"}[k]
+                self._event(f"stuck:{k}", "warning",
+                            f"The {name} has reported exactly {v} for {last[1]} readings in a row. Real analyzers "
+                            "fluctuate: it may be stuck, fouled or disconnected (or the value is being replayed). "
+                            "Check the instrument and take a grab sample.", {"sensor": k, "value": v})
+        return stuck
+
     def update(self, state: dict, t: float, commanded: dict | None = None) -> dict:
         """Call periodically with the PLC-reported state and the time in seconds."""
         if commanded:
             self.check_setpoints(state, commanded)
+        self.check_stuck(state)
         if self.model is None or any(state.get(k) is None for k in
                                      ("ph", "chlorine_residual", "raw_ph", "raw_alkalinity", "raw_turbidity")):
             self.status = {"ok": True, "message": "physics check unavailable (sensor tags missing)",

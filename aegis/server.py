@@ -185,7 +185,9 @@ async def lifespan(app: FastAPI):
                                             "keeps enforcing the last good policy it loaded.")
                 S["accuracy"].score(plant)
                 if n % 5 == 0:       # every simulated minute: is the process what the PLC claims?
-                    S["integrity"].update(plant.snapshot(), plant.sim_time, guard.commanded)
+                    snap = plant.snapshot()
+                    S["integrity"].update(snap, plant.sim_time, guard.commanded)
+                    twin.observe(snap, plant.sim_time)          # raw-water trend for forecasts
             except Exception as e:   # the sim loop must never die silently
                 print("tick error:", e)
             n += 1
@@ -626,6 +628,8 @@ async def copilot(m: Msg, who: dict = Depends(role("operator"))):
 
 def main():
     import uvicorn
+    print(f"Aegis dashboard: http://127.0.0.1:{os.getenv('PORT', 8000)}   operator view: /operator")
+    print(f"Guarded Modbus port (attack it from another terminal or device): {GUARD_PORT} on all interfaces")
     uvicorn.run(app, host=os.getenv("AEGIS_HOST", "127.0.0.1"), port=int(os.getenv("PORT", 8000)))
 
 

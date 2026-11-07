@@ -94,3 +94,22 @@ def test_grab_sample_catches_replay_early():
     t = plant.truth()
     assert t["ph"] - plant.snapshot()["ph"] > 0.2
     assert not mon.grab_sample(plant.snapshot(), ph=t["ph"])["ok"]
+
+
+
+def test_stuck_analyzer_is_named_not_blamed_on_plc():
+    plant, mon, cmd = fresh()
+    run(plant, mon, 15, cmd)
+    plant.noise = False                    # the analyzer freezes: identical readings from now on
+    stuck_at = 7.31
+    orig = plant.sensors
+    plant.sensors = lambda: {**orig(), "ph": stuck_at}
+    run(plant, mon, 30, cmd)
+    ev = [e for e in mon.events if e["key"].startswith("stuck")]
+    assert ev and "pH analyzer" in ev[0]["message"] and ev[0]["severity"] == "warning"
+
+
+def test_noisy_real_analyzer_never_flagged_stuck():
+    plant, mon, cmd = fresh()
+    run(plant, mon, 300, cmd)
+    assert not any(e["key"].startswith("stuck") for e in mon.events)

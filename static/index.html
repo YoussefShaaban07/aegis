@@ -102,6 +102,8 @@ a{color:var(--blue)}code{font-size:11.5px}
   <span class="sub" id="who"></span><button style="padding:4px 9px;font-size:12px" onclick="logout()">Sign out</button>
   <div class="seg" id="modes" title="Guard mode"><button data-m="enforce" onclick="setMode('enforce')">ENFORCE</button><button data-m="monitor" onclick="setMode('monitor')">MONITOR</button><button data-m="off" onclick="setMode('off')">OFF</button></div>
 </header>
+<div id="simbanner" style="display:none;background:#2a2410;color:#ffe2a8;border-bottom:1px solid #5a4a14;padding:5px 18px;font-size:12.5px">
+  SIMULATED PLANT · demo controls and demo accounts are on (AEGIS_DEMO=1). Attacks and weather on this page are simulated; the Modbus traffic is real.</div>
 <div class="err" id="hdrerr" style="padding:0 18px"></div>
 <div class="tabs"><button class="on" data-p="ops" onclick="tab('ops')">Operations</button><button data-p="eng" onclick="tab('eng')">Engineering</button><button data-p="evi" onclick="tab('evi')">Evidence &amp; performance</button></div>
 
@@ -437,9 +439,9 @@ async function guideGo(dir){const b=$('g-next');
 function showLogin(){$('login').style.display='flex';}
 async function doLogin(){const r=await fetch('/api/login',{method:'POST',headers:H,body:JSON.stringify({username:$('lu').value,password:$('lp').value})});
   const j=await r.json().catch(()=>({}));if(!r.ok){$('lerr').textContent=j.detail||'login failed';return;}
-  $('login').style.display='none';$('lp').value='';$('who').textContent=`${j.user} · ${j.role}`;load();}
+  $('login').style.display='none';$('lp').value='';$('who').textContent=`${j.user} · ${j.role}`;$('simbanner').style.display=j.demo?'':'none';load();}
 async function logout(){await post('/api/logout');showLogin();}
-(async()=>{const r=await fetch('/api/me');if(r.ok){const j=await r.json();$('who').textContent=`${j.user} · ${j.role}`;$('ldemo').style.display=j.demo?'':'none';}else showLogin();})();
+(async()=>{const r=await fetch('/api/me');if(r.ok){const j=await r.json();$('who').textContent=`${j.user} · ${j.role}`;$('ldemo').style.display=j.demo?'':'none';$('simbanner').style.display=j.demo?'':'none';}else showLogin();})();
 
 /* ---------- main loop ---------- */
 async function load(){let s;try{const r=await fetch('/api/state');if(r.status===401){showLogin();return;}s=await r.json();}catch(e){return;}S=s;const p=s.plant;
