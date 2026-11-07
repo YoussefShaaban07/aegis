@@ -251,9 +251,17 @@ class Twin:
                 why = (var, val, when, i)
         wrong_way = self._wrong_way(register, value, state, base_viol)
         if wrong_way:
-            name, unit = LABELS.get(wrong_way[0], (wrong_way[0], ""))
-            return Verdict(False, f"{name} is already forecast to go {wrong_way[1]} its safe limit; this change "
-                                  f"pushes it further that way", wrong_way[0], None, None, fc)
+            var, direction = wrong_way
+            name, unit = LABELS.get(var, (var, ""))
+            lo, hi = limits[var][0], limits[var][1]
+            pts = [p for p in fc["without"] if p.get(var) is not None]
+            worst = (min if direction == "below" else max)(pts, key=lambda p: p[var]) if pts else None
+            cross = self._first_cross(fc["without"], var, limits)
+            detail = (f" (without any change it reaches {worst[var]:.2f}{unit}"
+                      + (f", crossing {lo if direction == 'below' else hi:g} in about {cross:g} min" if cross else "")
+                      + ")") if worst else ""
+            return Verdict(False, f"{name} is already forecast to go {direction} its safe limit{detail}; this "
+                                  f"change pushes it further that way", var, None, None, fc)
         if worst_c > 0 and worst_c > worst_b + margin:     # only MATERIALLY worse than doing nothing
             var, val, when, i = why
             name, unit = LABELS.get(var, (var, ""))

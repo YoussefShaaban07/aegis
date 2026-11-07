@@ -102,3 +102,28 @@ can't be fixed in software or in a hackathon are recorded as limitations, not hi
 3. **Log-flood protection.** After 5 identical blocked writes from one sender per minute, entries are summarised: 1,000 blocked writes → 5 entries + one "995 more like this" summary, all still counted, chain intact. Incident reports include the summarised counts.
 4. **Held-out seeds.** `python -m aegis.evaluate --seed-offset 100000` runs on seeds never looked at during development. The final numbers in the README come from held-out seeds.
 5. **Operator view** at `/operator`: phone-sized, one status ("WATER IS SAFE" / "WATCH" / "ACTION NEEDED"), pH/chlorine/level/guard tiles, open incidents with a one-tap Acknowledge, the twin's early warnings, and recent blocks in plain English. Checked on an emulated iPhone 13: no horizontal scroll.
+
+## Round 6 (against v8)
+
+1. **"Every attack in your demo is a button on your own dashboard. It looks staged."**
+2. **"A pH analyzer sticks at 3 AM (common, not an attack). You falsely accuse the PLC of lying."**
+3. **"You've tested the attacks you thought of. Prove nothing gets through under random traffic."**
+4. **"I can't tell what on this screen is simulated."**
+5. **"Crash Aegis and it restarts with fresh rate windows. That's a reset button for attackers."**
+
+Plus what our own v6 evaluation showed: with fairer attribution (storm/bloom episodes no longer excluded), the twin let through 8/41 caustic and 11/42 no-disinfection attacks, and 8 of its 14 operator blocks were false.
+
+### What we did about it (v9)
+
+1. **`docs/DEMO.md`** with a "hacker terminal" moment: attacks from a second terminal, another laptop, `mbpoll`, or a Modbus app on a judge's phone against port 5502. Plus what to say carefully and what to do if something breaks.
+2. **Stuck-analyzer detection**: a reading that doesn't move at all for 20 minutes is reported as a stuck/fouled instrument (warning), not as a lying PLC. Real analyzers never sat still that long in 300 simulated minutes.
+3. **Randomized safety invariants** (`tests/test_invariants.py`): 20,000 random requests (all function codes including unknown ones, random addresses, values, multi-register spans, random unit IDs): after *every* request, every tagged setpoint is inside its hard limits, nothing outside the allowlist changed, and no pump was stopped without a permit. 4,559 accepted, 15,441 rejected, 0 violations.
+4. **"SIMULATED PLANT" banner** whenever demo controls are on.
+5. **Restart-safe windows**: the gateway saves ramp/flood/cycling windows every poll (atomic write) and restores them on start, aged by the downtime.
+
+**The evaluation findings, root-caused:**
+- *Storm onset:* the twin assumed today's raw water persists. A chlorine cut made as turbidity started rising looked safe. Fix: the twin now **projects the observed raw-water trend**. First attempt (linear) overshot so badly that every option looked equally doomed; the projection is now damped (changes level off).
+- *Scoring:* excursions were divided by the band width, so a total loss of disinfection (0.2 mg/L under a 0.2–4.0 band) scored ~20× smaller than a pH excursion. Each variable now has its own scale.
+- *Saturated failures:* when chlorine is forecast at zero whatever the dose, magnitudes can't rank options. Safety net: while a variable is forecast out of band, a dose change that pushes it further that way is blocked.
+- *Marginal false blocks:* most were distribution-rate changes during storms that changed the true outcome by <0.1%. The twin now blocks only changes that are **materially** worse than doing nothing (configurable margin).
+- *Bloom cases that remain:* legal, safe lye increases made *before* a bloom, which no forecaster can see coming, and then nobody responds for hours. Aegis's answer is the early warning (36–90 min before harm in those runs), not a block. The evaluation's "nobody responds" assumption makes these count as losses; we report them anyway.
