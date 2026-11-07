@@ -476,7 +476,7 @@ def scenario(name: str, who: dict = Depends(role("operator", demo_only=True))):
 def reset(who: dict = Depends(role("operator", demo_only=True))):
     p, g = S["plant"], S["guard"]
     p.reset()
-    g.log.clear(); g._changes.clear(); g._attempts.clear(); g._dirs.clear(); g.counts.clear()
+    g.log.clear(); g._changes.clear(); g._attempts.clear(); g._dirs.clear(); g._big_dirs.clear(); g.counts.clear()
     S["alerter"].recent.clear(); S["alerter"]._last.clear(); S["alerter"].incidents.clear()
     S["proposals"].items.clear()
     S["orders"][:] = BASE_ORDERS

@@ -126,6 +126,7 @@ class Guard:
         self._changes: dict[str, deque] = defaultdict(deque)   # register -> (t, before, after)
         self._attempts: dict[str, deque] = defaultdict(deque)  # source -> attempt times
         self._dirs: dict[str, deque] = defaultdict(deque)      # register -> (t, +1/-1) of allowed changes
+        self._big_dirs: dict[str, deque] = defaultdict(deque)  # same, only large swings, kept 1 h
         self._reads: dict[str, deque] = defaultdict(deque)     # ip -> read request times (last 1 s)
         self._read_cache: dict[tuple, tuple[float, bytes]] = {}
         self.read_stats = {"served": 0, "from_cache": 0, "throttled": 0}
@@ -209,9 +210,13 @@ class Guard:
             self.holds.pop(register, None)
             hold = None
         held = bool(hold and source != SAFE_HOLD and abs(new - hold["value"]) > 1e-9)
-        hold_msg = (f"{register} is held at {hold['value']:g} {u} by Aegis safe-hold ({hold['reason']}); only changes "
-                    "the twin forecasts as corrective are accepted until someone releases it on the dashboard "
-                    "(operator login)") if held else ""
+        if held and hold.get("from") is not None and hold["from"] != hold["value"]:
+            # only moves back toward the value Aegis undid are held; moving further away from it
+            # (e.g. lowering the rate even more after a drain revert) goes through the normal checks
+            held = (new - hold["value"]) * (hold["from"] - hold["value"]) > 0
+        hold_msg = (f"{register} is held at {hold['value']:g} {u} by Aegis safe-hold ({hold['reason']}); changes back "
+                    f"toward {hold.get('from', '?')} are accepted only if the twin forecasts them as corrective, until "
+                    "someone releases the hold on the dashboard (operator login)") if held else ""
         # 3. range
         if not lim["min"] <= new <= lim["max"]:
             return deny("range", f"outside safe range {lim['min']:g}-{lim['max']:g} {u} ({reason})")
@@ -246,6 +251,19 @@ class Guard:
             if reversals > rev_cap:
                 return deny("cycling", f"{reversals} direction reversals in 10 min (limit {rev_cap}): "
                                        "rapid cycling damages pumps and valves and causes pressure surges")
+        # 5c. slow cycling (judge round 9): large swings that pace themselves under the 10-minute cap
+        #     still wear pumps out over an hour. Only swings of at least half a max step count.
+        hr_cap = self.policy.get("max_large_reversals_per_hour")
+        if hr_cap and old is not None and self._is_big(register, old, new):
+            sign = 1 if new > old else -1
+            hist = self._big_dirs[register]
+            while hist and now - hist[0][0] > 3600:
+                hist.popleft()
+            seq = [d for _, d in hist] + [sign]
+            reversals = sum(1 for a, b in zip(seq, seq[1:]) if a != b)
+            if reversals > hr_cap:
+                return deny("cycling", f"{reversals} large direction reversals in the last hour (limit {hr_cap}): "
+                                       "slow, repeated swings still wear out pumps and valves")
         # 6. interlocks
         for il in self.policy.get("interlocks", []):
             if il["register"] == register and new == il["value"]:
@@ -294,6 +312,12 @@ class Guard:
             if not v.allowed and trusted and register not in pred.get("block_registers", BLOCK_REGISTERS):
                 # Hydraulic setpoints (rates, pumps): a known operator gets the forecast as advice and
                 # an alert, not a block. Unknown writers are still blocked; chemical doses block for all.
+                # Advice waives the twin's verdict only, never the step / ramp limits (judge round 9:
+                # a compromised HMI used the advice path to swing the flow 300 <-> 700 and cycle pumps).
+                if soft:
+                    d = deny(*soft)
+                    d.forecast = forecast
+                    return d
                 if self.alerter:
                     self.alerter.raise_alert(f"twin_advice:{register}", "warning",
                                              f"{source} set {register} to {new:g} {u} against the twin's advice: "
@@ -362,10 +386,19 @@ class Guard:
                                   deadline=deadline, margin=pred.get("margin", 0.01))
 
     # ------------------------------------------------------------------ bookkeeping
+    def _is_big(self, register, old, new) -> bool:
+        lim = self.policy.get("limits", {}).get(register) or {}
+        step = lim.get("max_step")
+        if step is None:
+            step = (lim.get("max", 1) - lim.get("min", 0))
+        return abs(new - old) >= step / 2 - 1e-9
+
     def _commit(self, d: Decision):
         now = self.clock()                      # windows run on the guard's (monotonic) clock, not d.t
         if d.allowed and d.old is not None and d.new != d.old:
             self._dirs[d.register].append((now, 1 if d.new > d.old else -1))
+            if self._is_big(d.register, d.old, d.new):
+                self._big_dirs[d.register].append((now, 1 if d.new > d.old else -1))
         if d.allowed:
             self.commanded[d.register] = d.new
         if d.allowed and d.old is not None and d.new != d.old:
@@ -383,7 +416,7 @@ class Guard:
         self._record(d)
         self._commit(d)
         hold_min = (self.policy.get("safe_hold") or {}).get("hold_min", 240)
-        self.holds[reg] = {"value": val, "until": self.clock() + hold_min * 60, "by": SAFE_HOLD,
+        self.holds[reg] = {"value": val, "from": action.get("from"), "until": self.clock() + hold_min * 60, "by": SAFE_HOLD,
                            "reason": f"forecast {action['forecast']}"}
         if self.audit:
             self.audit.append("safe_hold", {**action, "hold_min": hold_min})
@@ -408,6 +441,7 @@ class Guard:
         data = {"wall": time.time(), "commanded": self.commanded,
                 "changes": {k: [(now - t, a, b) for t, a, b in dq] for k, dq in self._changes.items()},
                 "dirs": {k: [(now - t, d) for t, d in dq] for k, dq in self._dirs.items()},
+                "big_dirs": {k: [(now - t, d) for t, d in dq] for k, dq in self._big_dirs.items()},
                 "attempts": {k: [now - t for t in dq] for k, dq in self._attempts.items()},
                 "holds": {k: {**h, "until": h["until"] - now} for k, h in self.holds.items()},
                 "setpoint_log": [(now - t, r, a, b, src) for t, r, a, b, src in self.setpoint_log]}
@@ -437,6 +471,8 @@ class Guard:
 
         for k, items in data.get("changes", {}).items():
             self._changes[k] = deque((now - age - down, a, b) for age, a, b in items if age + down < 600)
+        for k, items in data.get("big_dirs", {}).items():
+            self._big_dirs[k] = deque((now - age - down, d) for age, d in items if age + down < 3600)
         for k, items in data.get("dirs", {}).items():
             self._dirs[k] = deque((now - age - down, d) for age, d in items if age + down < 600)
         for k, items in data.get("attempts", {}).items():

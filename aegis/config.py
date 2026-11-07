@@ -121,6 +121,10 @@ def validate_policy(p: dict, tags: Tags) -> dict:
                 raise PolicyError(f"safe_hold.{k} must be a positive number")
         if any(r not in tags.holding or tags.holding[r].table == "coil" for r in sh.get("registers", [])):
             raise PolicyError("safe_hold.registers must list writable holding-register setpoints (not pumps)")
+    for key in ("max_reversals_per_10min", "max_large_reversals_per_hour"):
+        rc = p.get(key)
+        if rc is not None and (not isinstance(rc, int) or rc < 1):
+            raise PolicyError(f"{key} must be a positive integer or absent")
     rc = p.get("max_reversals_per_10min")
     if rc is not None and (not isinstance(rc, int) or rc < 1):
         raise PolicyError("max_reversals_per_10min must be a positive integer or absent")

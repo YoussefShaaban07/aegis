@@ -94,6 +94,8 @@
     ]
   },
   "max_reversals_per_10min": 4,
+  "max_large_reversals_per_hour": 6,
+  "_doc_max_large_reversals_per_hour": "Swings of at least half a max step that reverse direction more than this many times in an hour are refused (slow pump cycling).",
   "max_reads_per_sec_per_ip": 50,
   "read_cache_ms": 100,
   "unknown_writers": "allow",

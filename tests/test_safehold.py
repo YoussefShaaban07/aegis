@@ -120,3 +120,55 @@ def test_safe_hold_stands_down_when_sensors_are_not_trusted():
     plant, g, sh, acts, clk = drained()
     sh2 = SafeHold(g, {"enabled": True, "after_min": 0})
     assert sh2.update(plant.snapshot(), clk(), sensors_trusted=False) is None and sh2.standing_down
+
+
+def test_hold_only_blocks_moves_back_toward_the_undone_value():
+    plant, clk = Plant(noise=False), Clock()
+    g = Guard(None, plant.snapshot, twin=Twin(), clock=clk)
+    g.holds["naoh_dose"] = {"value": 100, "from": 160, "until": clk() + 3600, "by": "x", "reason": "test"}
+    assert g.check("naoh_dose", 120, plant.snapshot(), "Operator HMI", "h:1").check == "hold"   # back toward 160
+    d = g.check("naoh_dose", 90, plant.snapshot(), "Operator HMI", "h:1")                      # further away
+    assert d.check != "hold" and d.allowed, d.reason
+
+
+# ---------------- judge round 9 ----------------
+def test_advice_path_does_not_waive_step_limit():
+    """A compromised HMI used 'advice' (allowed against the twin) to swing the flow 300 <-> 700."""
+    from aegis.twin import Twin
+    plant = Plant(noise=False)
+    plant.state.tank_level = 30
+    g = Guard(None, plant.snapshot, twin=Twin())
+    d = g.check("distribution_rate", 900, plant.snapshot(), "Operator HMI", "10.0.0.5:5000")
+    assert not d.allowed and d.check == "step"
+    d = g.check("distribution_rate", 700, plant.snapshot(), "Operator HMI", "10.0.0.5:5000")
+    assert d.allowed and d.check == "advice"          # within the step: still the operator's call
+
+
+def test_slow_large_swings_are_capped_per_hour():
+    class C:
+        t = 0.0
+        def __call__(self):
+            return self.t
+    clk = C()
+    plant = Plant(noise=False)
+    g = Guard(None, plant.snapshot, clock=clk)
+    cur, allowed, blocked = 500, 0, None
+    for i in range(12):
+        clk.t += 180                                    # one swing every 3 min: under the 10-min cap
+        new = 650 if cur == 500 else 500
+        d = g.check("distribution_rate", new, {**plant.snapshot(), "distribution_rate": cur}, "Operator HMI", "h:1")
+        if not d.allowed:
+            blocked = d
+            break
+        g._commit(d); cur = new; allowed += 1
+    assert blocked is not None and blocked.check == "cycling" and "last hour" in blocked.reason
+    assert allowed == 7                                 # 6 reversals allowed, the 7th refused
+    # small trims never count toward the hourly budget
+    g2 = Guard(None, plant.snapshot, clock=clk)
+    cur = 500
+    for i in range(20):
+        clk.t += 180
+        new = 520 if cur == 500 else 500
+        d = g2.check("distribution_rate", new, {**plant.snapshot(), "distribution_rate": cur}, "Operator HMI", "h:1")
+        assert d.allowed, d.reason
+        g2._commit(d); cur = new
