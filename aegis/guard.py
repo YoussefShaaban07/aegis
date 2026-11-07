@@ -307,6 +307,13 @@ class Guard:
                 if pred.get("on_timeout", "static") == "block":
                     return deny("predict", "digital twin couldn't finish within its time budget; blocked "
                                            "(prediction.on_timeout = block)")
+                # Judge round 12: "make Aegis slow and the twin switches itself off". Someone who can load
+                # the box (floods from many IPs, a slow PLC) must not thereby downgrade the guard for
+                # THEIR OWN writes. Only named operators get the static fallback; everyone else waits.
+                trusted_src = source in SOURCES.values() or source in self.ip_sources.values() or source == SAFE_HOLD
+                if not trusted_src:
+                    return deny("predict", "digital twin couldn't finish within its time budget, and changes from "
+                                           "unnamed writers are never allowed without it; try again")
                 if soft:
                     return deny(*soft)
                 return Decision(True, source, register, old, new, "within static envelope; twin skipped "

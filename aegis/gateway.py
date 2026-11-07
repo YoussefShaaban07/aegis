@@ -66,9 +66,10 @@ def build(plc_host: str, plc_port: int, mode: str = "enforce", plc_unit: int = 1
 
     async def reader_fn():                      # PLC readings + fresh lab values for what the PLC lacks
         lab.reload()
-        return lab.fill(await plc_reader())
+        return lab.fill(await plc_reader(), twin_model)
     has_sensors = all(k in tags.all or k in lab_cfg for k in REQUIRED)
     twin = Twin() if (use_twin and has_sensors) else None
+    twin_model = twin.model if twin else None
     guard = Guard(upstream, reader_fn, tags=tags, audit=audit,
                   alerter=alerter, policy_path=POLICY_PATH, twin=twin, mode=mode, unit_mode=unit_mode,
                   plc_units=plc_units or {plc_unit}, ip_sources=ip_sources)
@@ -113,7 +114,7 @@ async def integrity_loop(guard, twin, poll_s: float = 10.0, printer=print, histo
             st = await poll_state(reader, guard.tags)
             if getattr(guard, "lab", None):
                 guard.lab.reload()
-                st = guard.lab.fill(st)
+                st = guard.lab.fill(st, twin.model if twin else None)
             if history_path:
                 import csv
                 from pathlib import Path

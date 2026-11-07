@@ -240,3 +240,19 @@ Flow: *Aegis sits between the HMI and a MicroLogix (Modbus or EtherNet/IP) → r
 3. **Onboarding** reads `N7:1` / `F8:0` / `B3:0/1` addresses (RSLogix 500 / CCW exports) and drafts `pccc` tags; tags no longer need a Modbus address.
 4. **Measured** with pycomm3 (`scripts/bench_cip.py`): direct 0.05 ms; through Aegis static p50 0.21 / p99 0.55 ms; with the twin p50 12.9 / p99 16 ms. CIP explicit-message timeouts are measured in seconds.
 5. **Re-ran dev seeds with the HMI attacker and safe-hold: 1/40 harmful** (v11 was 4/40); safe-hold undid 12 operator changes, 8 better, 4 neutral, 0 worse; 3 hold refusals in 202 writes.
+
+## Round 12: attacks on Aegis's own judgement
+
+1. **"Make Aegis slow and the twin switches itself off.** Your twin has a 500 ms budget and falls back to static rules when it runs out. Load the box, then send the patient lye attack."
+2. **"Poison the calibration slowly.** You refuse a calibration that moves a parameter more than 25%. Move it 20% a week."
+3. **"Your new lab-input feature is a steering wheel.** Type a high alkalinity and the twin decides more lye is harmless."
+4. **"You priced a $300 box. Have you run the twin on one, under load?"**
+5. **"At 3 AM the operator gets a text that says 'safe-hold'. What are they supposed to do? Where's the procedure?"**
+
+### What we did about it (v15)
+
+1. Twin timeout: **unnamed writers are refused** ("changes from unnamed writers are never allowed without the twin"); named operators keep the static fallback and an alert. Loading the box can no longer downgrade the guard for the attacker's own writes. Test: `tests/test_round12.py`.
+2. **Commissioned baseline** (`process.json "_commissioned"`, `python -m aegis.calibrate --commission` after an on-site check): any calibration more than 40% from the commissioned values needs an engineer on site, on top of the 25% per-step limit. Boiling-frog test: 1.0 → 1.2 accepted, 1.2 → 1.44 refused (+44% from commissioning). `--write` refuses while warnings stand; the dashboard already did.
+3. **Lab alkalinity is checked against the plant's own chemistry**: the finished pH and the lye dose imply a range of raw alkalinity; an unconfirmed entry outside it isn't used, the twin pauses, and the operator is told who entered it. The check needs 90 steady minutes (steady-state chemistry): the first version rejected 26/360 true values during storms and blooms; with the steadiness gate, **0/432 true values rejected**, and **573/864** fake values (×3 or ×0.4) caught at the hour they were checked (the rest are judged later, once steady). Until then, a big unverified jump keeps the previous value. Shown in the test: with a fake 300 mg/L the twin would allow lye 200; with the real 77 it blocks it.
+4. Measured (`scripts/bench_lowpower.py`, pinned to one core of the cloud VM): twin-checked write p50 12.7 / p99 20 ms idle; **p50 49 / p99 78 ms with three busy processes on the same core**. A Raspberry-Pi-class core is several times slower, which puts p99 under load in the low hundreds of ms, uncomfortably close to the 500 ms budget. Recommendation in the README: an x86 mini PC, not a Pi. Not measured on real low-power hardware.
+5. **`docs/RUNBOOK.md`**: one printable page for the shift: what each text means and what to do, the three modes, what to do if the box dies (break-glass cable), and what Aegis will never do on its own.

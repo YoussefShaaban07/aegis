@@ -99,6 +99,8 @@ Every write is checked in this order; the first failure blocks it:
 - **Bypass check** (`python -m aegis.exposure <plc-ip>`, run from any other machine): is the PLC reachable around Aegis? Probes Modbus, EtherNet/IP (44818, which MicroLogix runs alongside Modbus), S7, DNP3, OPC UA, web, telnet, FTP.
 - **Read-only unknown hosts**: in the gateway, `"unknown_writers": "block"` makes every host not named in `--sources` read-only.
 - **Guided demo**: one button walks through the whole story with what to say at each step; fast-forwards slow chemistry.
+- **Operator runbook** (`docs/RUNBOOK.md`): one printable page: what each text means, what to do, what to do if the box fails.
+- **Defending its own judgement**: unnamed writers are refused if the twin runs out of time (slowing the box can't switch the twin off for an attacker); calibrations can't drift more than 40% from the commissioned values without an engineer on site; typed-in lab alkalinity is checked against what the plant's own pH implies.
 - **Resilience**: per-request errors fail closed without taking the server down; a supervisor restarts the gateway; `/health` endpoint; systemd unit with least privilege (`deploy/aegis.service`); soak-tested with 20 concurrent HMIs.
 
 ## Run it
@@ -172,6 +174,8 @@ The previous held-out run (seeds 100000+, before Round 7) had the twin blocking 
 | Integrity monitor, 20 × 10 h runs per simulator | 0 false alarms; hidden lye attack caught 20/20, 77–84 sim-min | `docs/ARCHITECTURE.md` |
 | Alert load: a simulated year (233 calm days, 131 storm/bloom days), noisy plant, operator who acknowledges in 10 min | **9.6 texts/week**; **0.05 per calm day** (12 in a year); 3.7 per storm/bloom day; safe-hold never overrode the engaged operator | `python -m aegis.alertload --weeks 52` |
 | Twin with **raw alkalinity from a once-a-day lab sample** instead of an online analyzer (dev seeds 0–39, twin, no safe-hold) | 6/40 harmful vs 5/40 with online analyzers (static rules: 21/40). With turbidity *also* from the lab: 9/40, mostly clearwell drains (7/8 vs 4/8). Keep turbidity online | `python -m aegis.evaluate --episodes 40 --lab-hours 24 [--lab-keys raw_alkalinity,raw_turbidity]` |
+| Twin-checked write on ONE core, idle / with 3 busy processes on that core | p50 12.7 / 49 ms, p99 20 / 78 ms (budget 500 ms). Use an x86 mini PC; a Pi-class CPU would sit close to the budget under load (not measured) | `taskset -c 0 python scripts/bench_lowpower.py 3` |
+| Lab alkalinity plausibility check, 432 hourly checks across storms/blooms | 0 true values rejected; 66% of fake values (×3, ×0.4) caught at the first check, the rest once the plant is steady | `tests/test_round12.py` |
 | Latency added on the EtherNet/IP path (pycomm3 write round trip) | direct 0.05 ms; through Aegis, static p50 0.21 ms / p99 0.55 ms; with twin p50 12.9 ms / p99 16 ms | `python scripts/bench_cip.py` |
 | Random-traffic safety invariants | 20,000 random requests, 0 violations | `AEGIS_FUZZ_N=20000 pytest tests/test_invariants.py` |
 | Parser robustness | 50,000 random PDUs, 200 malformed frames | `tests/test_protocol.py` |

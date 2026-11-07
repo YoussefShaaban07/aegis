@@ -25,7 +25,7 @@ from .alerts import Alerter
 from .attacks import INJECTION
 from .audit import AuditLog
 from .auth import Auth, allowed
-from .calibrate import fit as calibrate_fit
+from .calibrate import calibration_warnings as _cal_warnings, commissioned as _commissioned, fit as calibrate_fit, FIELDS as CAL_FIELDS
 from .config import POLICY_PATH, PolicyError, verify_policy_file
 from .copilot import Copilot
 from .guard import MODES, Guard
@@ -162,6 +162,7 @@ async def lifespan(app: FastAPI):
              integrity=IntegrityMonitor(ProcessModel(twin.model.params), alerter=alerter, audit=audit),
              forewarn=ForecastWatch(alerter, audit))
     S["safehold"] = SafeHold(guard)
+    S["commissioned"] = _commissioned() or {k: twin.model.params[k] for k in CAL_FIELDS if k in twin.model.params}
     S["copilot"] = Copilot(plant, GUARD_PORT, orders, proposals=props, mode_getter=lambda: S["autonomy"], twin=twin,
                            context=lambda: {"guard_log": [d.as_dict() for d in list(S["guard"].log)[:30]],
                                             "integrity": {**S["integrity"].status,
@@ -429,16 +430,8 @@ def calibrate_preview(who: dict = Depends(role("engineer"))):
 
 
 def calibration_warnings(cur: dict, new: dict, integrity) -> list[str]:
-    """Calibrating on data recorded during an attack would teach the twin that the attack is normal."""
-    w = []
-    if integrity.events or not integrity.status.get("ok", True):
-        w.append("Integrity alarms are active: the history may include an attack or a failed instrument. "
-                 "Calibrating now could teach the twin that the attack is normal. Resolve the alarm first.")
-    for k, v in new.items():
-        if cur.get(k) and abs(v - cur[k]) / cur[k] > 0.25:
-            w.append(f"{k} would change by {100 * (v - cur[k]) / cur[k]:+.0f}%. Physical plants don't drift that "
-                     "fast; check the chemical feed and the instruments before accepting.")
-    return w
+    return _cal_warnings(cur, new, not (integrity.events or not integrity.status.get("ok", True)),
+                         S.get("commissioned"))
 
 
 class PinIn(BaseModel):
