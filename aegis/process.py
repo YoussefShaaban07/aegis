@@ -56,7 +56,7 @@ def ct_from_ph_alk(ph: float, alk: float, pk1=6.35, pk2=10.33, pkw=14.0) -> floa
 def ph_from_alk(alk: float, ct: float, pk1=6.35, pk2=10.33, pkw=14.0) -> float:
     """Solve the charge balance for pH (bisection; alkalinity rises monotonically with pH)."""
     lo, hi = 2.0, 13.5
-    for _ in range(48):
+    for _ in range(34):          # 11.5 / 2^34 < 1e-9 pH units
         mid = (lo + hi) / 2
         if alk_from_ph(mid, ct, pk1, pk2, pkw) > alk:
             hi = mid

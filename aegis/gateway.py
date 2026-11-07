@@ -25,6 +25,7 @@ from .alerts import Alerter
 from .audit import AuditLog
 from .config import POLICY_PATH, Tags
 from .guard import MODES, Guard, read_plc_state
+from .integrity import IntegrityMonitor
 from .twin import REQUIRED, Twin
 
 
@@ -52,8 +53,69 @@ def build(plc_host: str, plc_port: int, mode: str = "enforce", plc_unit: int = 1
     return guard, audit, twin
 
 
-async def run(plc_host, plc_port, listen_host, listen_port, mode, plc_unit, use_twin):
+async def integrity_loop(guard, twin, poll_s: float = 10.0, printer=print, history_path: str | None = None):
+    """Poll the PLC, check the process matches what Aegis approved, and record history for calibration."""
+    mon = IntegrityMonitor(twin.model if twin else None, alerter=guard.alerter, audit=guard.audit)
+    reader = modbus.Client(guard.upstream.host, guard.upstream.port, unit=guard.upstream.unit)
+    seen = 0
+    writer = None
+    while True:
+        try:
+            st = await read_plc_state(reader, guard.tags)
+            if history_path:
+                import csv
+                from pathlib import Path
+                if writer is None:
+                    Path(history_path).parent.mkdir(parents=True, exist_ok=True)
+                    new = not Path(history_path).exists()
+                    fh = open(history_path, "a", newline="")
+                    writer = csv.DictWriter(fh, ["t"] + list(guard.tags.all))
+                    if new:
+                        writer.writeheader()
+                writer.writerow({"t": round(time.time(), 1), **{k: st.get(k) for k in guard.tags.all}})
+                fh.flush()
+            guard.sync_commanded(st)
+            mon.update(st, time.time(), guard.commanded)
+            if len(mon.events) > seen:
+                for ev in list(mon.events)[:len(mon.events) - seen]:
+                    printer(f"{time.strftime('%H:%M:%S')} INTEGRITY {ev['severity'].upper()}: {ev['message']}")
+                seen = len(mon.events)
+        except Exception as e:     # PLC unreachable etc.; the guard already fails safe on writes
+            printer(f"{time.strftime('%H:%M:%S')} integrity poll failed: {e}")
+        await asyncio.sleep(poll_s)
+
+
+async def health_server(guard, audit, port: int, host: str = "127.0.0.1"):
+    """Minimal HTTP health endpoint for monitoring: GET /health -> JSON."""
+    import json
+    started = time.time()
+
+    async def on(reader, writer):
+        try:
+            await asyncio.wait_for(reader.readline(), 5)
+            ok = True
+            try:
+                await asyncio.wait_for(guard.upstream.read_holding(0, 1), 2)
+            except Exception:
+                ok = False
+            body = json.dumps({"status": "ok" if ok else "plc_unreachable", "mode": guard.mode,
+                               "uptime_s": round(time.time() - started), "counts": dict(guard.counts),
+                               "latency": guard.latency(), "audit_ok": audit.verify()["ok"]}).encode()
+            code = "200 OK" if ok else "503 Service Unavailable"
+            writer.write(f"HTTP/1.1 {code}\r\nContent-Type: application/json\r\nContent-Length: {len(body)}\r\n"
+                         f"Connection: close\r\n\r\n".encode() + body)
+            await writer.drain()
+        finally:
+            writer.close()
+    return await asyncio.start_server(on, host, port)
+
+
+async def run(plc_host, plc_port, listen_host, listen_port, mode, plc_unit, use_twin, health_port=None):
     guard, audit, twin = build(plc_host, plc_port, mode, plc_unit, use_twin=use_twin)
+    if health_port:
+        await health_server(guard, audit, health_port)
+        print(f"Health: http://127.0.0.1:{health_port}/health")
+    asyncio.create_task(integrity_loop(guard, twin, history_path="data/history.csv"))
     srv = await modbus.serve(guard.handle, listen_host, listen_port)
     print(f"Aegis gateway [{mode}]: listening on {listen_host}:{listen_port} -> PLC {plc_host}:{plc_port} "
           f"(unit {plc_unit})")
@@ -73,8 +135,10 @@ def main():
     p.add_argument("--listen-port", type=int, default=5502)
     p.add_argument("--mode", choices=MODES, default="enforce")
     p.add_argument("--no-twin", action="store_true", help="static checks only")
+    p.add_argument("--health-port", type=int, default=None, help="serve GET /health on 127.0.0.1:PORT")
     a = p.parse_args()
-    asyncio.run(run(a.plc_host, a.plc_port, a.listen_host, a.listen_port, a.mode, a.plc_unit, not a.no_twin))
+    asyncio.run(run(a.plc_host, a.plc_port, a.listen_host, a.listen_port, a.mode, a.plc_unit, not a.no_twin,
+                    a.health_port))
 
 
 if __name__ == "__main__":

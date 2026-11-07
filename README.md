@@ -71,6 +71,10 @@ Every write is checked in this order; the first failure blocks it:
 - **Operator alerts**: SMS, plus a phone call for critical events, via Twilio, throttled per attacker IP. Honest "not configured" otherwise.
 - **Gateway mode** for a real PLC: guard-only, with the twin on if the PLC exposes the needed sensors.
 - **What-if** on the dashboard: ask the twin before you touch anything; the forecast is drawn on the trend chart.
+- **Robust twin**: every forecast runs across an uncertainty ensemble (lye feed ±10%, chlorine decay ±30%, demand ±25%) plus the long-run steady state; the worst case decides. Found necessary by our own evaluation (see below).
+- **Process integrity: is the PLC lying?** (`aegis/integrity.py`) A compromised PLC (Stuxnet-style) can change dosing itself and never send a command through Aegis. Aegis runs the chemistry alongside the plant using only setpoints *it approved*, and alerts when the water stops matching; it flags any setpoint changed behind its back; and it compares **lab grab samples** (the one reading that doesn't come through the PLC) with what the PLC reports.
+- **Twin calibration** (`aegis/calibrate.py`): fits lye feed strength and chlorine decay/demand from the plant's own history. Refuses to apply while integrity alarms are active or when a parameter jumps >25%, so an attack can't be "learned" as normal.
+- **Resilience**: per-request errors fail closed without taking the server down; a supervisor restarts the gateway; `/health` endpoint; systemd unit with least privilege (`deploy/aegis.service`); soak-tested with 20 concurrent HMIs.
 
 ## Run it
 
@@ -143,6 +147,8 @@ Point the HMI and AI at the gateway instead of the PLC, and firewall the PLC so 
 
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md): how each part works, and the chemistry.
 - [`docs/JUDGE_ROUNDS.md`](docs/JUDGE_ROUNDS.md): adversarial review rounds: brutal judge questions and what changed in response.
+- [`docs/BUSINESS.md`](docs/BUSINESS.md): why now (July 2026 FBI/EPA alert on water PLC attacks in 7 states), who pays, competitors, honest gaps.
+- [`docs/eval/`](docs/eval/): full results of the evaluation harness.
 
 ## Credits
 

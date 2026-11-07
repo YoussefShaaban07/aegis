@@ -16,3 +16,13 @@ can't be fixed in software or in a hackathon are recorded as limitations, not hi
 | "Your hash chain can be recomputed by whoever owns the DB." | HMAC-keyed chain + head-hash checkpoints in reports. |
 | "How slow is it?" | Measured: +0.17 ms static, +2.8 ms with twin, per write. |
 | "Does it work with anything but your own code?" | Gateway tested between pymodbus client and pymodbus server. |
+
+## Round 1 (against v3)
+
+**Judge:** "I'm not convinced. Five reasons this doesn't work:"
+
+1. **"Your twin trusts the sensors. A compromised PLC (Stuxnet) changes the dosing itself and reports normal values. Your predictions are computed from lies, and the guard never even sees the command."**
+2. **"Your twin is calibrated to a plant you made up. At a real utility nobody knows the feed strength or decay rate. If the model is 20% off, you either block the operator's legitimate work (they turn you off on day two) or you miss attacks. Show me that it can be calibrated and how often it would block real operators."**
+3. **"One cherry-picked example (lye 150 → 200) doesn't prove the twin matters. Prove it: how many attacks get through static rules that the twin stops, and does anything get past both?"**
+4. **"You put a Python process inline between the operators and the PLC. If it crashes, the plant is blind. Utilities will never accept a new single point of failure."**
+5. **"Who pays? Small utilities have no money, Tofino already exists, and the EPA rule you mention was withdrawn, so nobody is forced to buy."**

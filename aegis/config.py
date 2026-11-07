@@ -103,8 +103,9 @@ def validate_policy(p: dict, tags: Tags) -> dict:
         if not isinstance(pred.get("horizon_min"), (int, float)) or not 5 <= pred["horizon_min"] <= 24 * 60:
             raise PolicyError("prediction.horizon_min must be between 5 and 1440")
         for var, band in (pred.get("limits") or {}).items():
-            if (not isinstance(band, list) or len(band) != 2 or band[0] >= band[1]):
-                raise PolicyError(f"prediction limit for {var} must be [low, high]")
+            if (not isinstance(band, list) or len(band) not in (2, 3) or band[0] >= band[1]
+                    or (len(band) == 3 and not 5 <= band[2] <= 24 * 60)):
+                raise PolicyError(f"prediction limit for {var} must be [low, high] or [low, high, horizon_min]")
     w = p.get("max_writes_per_min_per_source", 20)
     if not isinstance(w, int) or w < 1:
         raise PolicyError("max_writes_per_min_per_source must be a positive integer")

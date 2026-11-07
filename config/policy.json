@@ -73,7 +73,17 @@
       "chlorine_residual": [
         0.2,
         4.0
+      ],
+      "tank_level": [
+        5,
+        100,
+        180
       ]
+    },
+    "uncertainty": {
+      "naoh_feed_strength": 0.1,
+      "chlorine_decay_per_hr": 0.3,
+      "chlorine_demand": 0.25
     }
   }
 }

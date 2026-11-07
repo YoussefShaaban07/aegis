@@ -24,9 +24,12 @@ from . import attacks, modbus
 from .alerts import Alerter
 from .attacks import INJECTION
 from .audit import AuditLog
+from .calibrate import fit as calibrate_fit
 from .config import POLICY_PATH, PolicyError
 from .copilot import Copilot
 from .guard import MODES, Guard
+from .integrity import IntegrityMonitor
+from .process import ProcessModel
 from .learn import observations_from_audit, simulated_week, suggest
 from .plant import HOLDING, SCENARIOS, TAGS, Plant
 from .proposals import Proposals
@@ -107,12 +110,14 @@ async def lifespan(app: FastAPI):
     guard = Guard(upstream, plant.snapshot, tags=TAGS, audit=audit, alerter=alerter, policy_path=POLICY_PATH,
                   twin=twin)
     guard.trusted_ips = {"127.0.0.1"}   # HMI + AI live here; demo attackers come from 127.0.0.66
+    guard.sync_commanded(plant.snapshot())
     gsrv = await modbus.serve(guard.handle, "0.0.0.0", GUARD_PORT)
     orders = list(BASE_ORDERS)
     props = Proposals(guard, GUARD_PORT, audit=audit, alerter=alerter)
     S.update(plant=plant, guard=guard, audit=audit, alerter=alerter, orders=orders, proposals=props, twin=twin,
              autonomy="propose", verify={"ok": True, "entries": 0, "message": "", "t": 0},
-             accuracy=Accuracy(), forecast=None, attack_log=deque(maxlen=30), patient=None)
+             accuracy=Accuracy(), forecast=None, attack_log=deque(maxlen=30), patient=None,
+             integrity=IntegrityMonitor(ProcessModel(twin.model.params), alerter=alerter, audit=audit))
     S["copilot"] = Copilot(plant, GUARD_PORT, orders, proposals=props, mode_getter=lambda: S["autonomy"], twin=twin)
     audit.append("startup", {"guard_port": GUARD_PORT, "plc_port": PLC_PORT, "plant": PLANT_NAME})
 
@@ -133,6 +138,8 @@ async def lifespan(app: FastAPI):
                 if n % 25 == 0:      # every 5 s: new accuracy sample
                     S["accuracy"].predict(twin, plant)
                 S["accuracy"].score(plant)
+                if n % 5 == 0:       # every simulated minute: is the process what the PLC claims?
+                    S["integrity"].update(plant.snapshot(), plant.sim_time, guard.commanded)
             except Exception as e:   # the sim loop must never die silently
                 print("tick error:", e)
             n += 1
@@ -168,6 +175,8 @@ def state():
             "alerts": list(S["alerter"].recent)[:20], "alerts_configured": S["alerter"].configured(),
             "proposals": S["proposals"].items[:15], "autonomy": S["autonomy"], "audit": S["verify"],
             "latency": g.latency(), "counts": dict(g.counts), "accuracy": S["accuracy"].summary(),
+            "integrity": {**S["integrity"].status, "events": list(S["integrity"].events)[:10]},
+            "truth": p.truth() if p.compromise else None,
             "attack_log": list(S["attack_log"]), "patient_running": bool(S["patient"] and not S["patient"].done()),
             "tags": {n: {"unit": t.unit, "label": t.label, "table": t.table} for n, t in TAGS.holding.items()},
             "llm": bool(os.getenv("GROQ_API_KEY") or os.getenv("AEGIS_LLM_KEY"))}
@@ -284,6 +293,54 @@ def learn(hours: float = 168, simulated: bool = False):
     return {**suggest(obs, S["guard"].policy), "source": label}
 
 
+@app.get("/api/calibrate")
+def calibrate_preview():
+    """Fit the twin to the plant's recent history (doesn't change anything yet)."""
+    hist = list(S["plant"].history)
+    try:
+        r = calibrate_fit(hist, S["twin"].model.params)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    cur = {k: S["twin"].model.params[k] for k in r["params"]}
+    r["warnings"] = calibration_warnings(cur, r["params"], S["integrity"])
+    S["calibration"] = r
+    return {k: r[k] for k in ("params", "before", "after", "rows", "warnings")} | {"current": cur}
+
+
+def calibration_warnings(cur: dict, new: dict, integrity) -> list[str]:
+    """Calibrating on data recorded during an attack would teach the twin that the attack is normal."""
+    w = []
+    if integrity.events or not integrity.status.get("ok", True):
+        w.append("Integrity alarms are active: the history may include an attack or a failed instrument. "
+                 "Calibrating now could teach the twin that the attack is normal. Resolve the alarm first.")
+    for k, v in new.items():
+        if cur.get(k) and abs(v - cur[k]) / cur[k] > 0.25:
+            w.append(f"{k} would change by {100 * (v - cur[k]) / cur[k]:+.0f}%. Physical plants don't drift that "
+                     "fast; check the chemical feed and the instruments before accepting.")
+    return w
+
+
+class PinIn(BaseModel):
+    pin: str | None = None
+
+
+@app.post("/api/calibrate/apply")
+def calibrate_apply(body: PinIn):
+    need_pin(body.pin, "apply twin calibration")
+    r = S.get("calibration")
+    if not r:
+        raise HTTPException(409, "run a calibration first")
+    if r.get("warnings"):
+        raise HTTPException(409, "not applied: " + " ".join(r["warnings"]))
+    old = {k: S["twin"].model.params[k] for k in r["params"]}
+    S["twin"].model.params.update(r["params"])
+    S["twin"].set_uncertainty(S["twin"].uncertainty)        # rebuild the ensemble around the new values
+    S["integrity"].model.params.update(r["params"])
+    S["audit"].append("twin_calibration", {"old": old, "new": r["params"], "before": r["before"],
+                                           "after": r["after"], "by": "engineer (dashboard)"})
+    return {"ok": True, "params": r["params"]}
+
+
 class WhatIf(BaseModel):
     name: str
     value: float
@@ -317,6 +374,8 @@ def reset():
     S["orders"][:] = BASE_ORDERS
     S["attack_log"].clear()
     S["accuracy"].pending.clear()
+    g.commanded.clear(); g.sync_commanded(p.snapshot()); g.permits.clear()
+    S["integrity"] = IntegrityMonitor(ProcessModel(S["twin"].model.params), alerter=S["alerter"], audit=S["audit"])
     if S.get("patient"):
         S["patient"].cancel()
     S["audit"].append("demo_reset", {"note": "plant + dashboard reset; audit history kept"})
@@ -380,6 +439,29 @@ async def attack_patient():
     S["patient"] = asyncio.create_task(run())
     return _alog("patient attacker (+50 lye every 61 s)",
                  "started: each step passes range, step and ramp rules; next step in 61 s")
+
+
+class Compromise(BaseModel):
+    freeze_sensors: bool = False
+
+
+@app.post("/api/attack/plc-compromise")
+def plc_compromise(body: Compromise):
+    """Simulator only: malware inside the PLC doses lye 200 ppm while the registers keep saying 100."""
+    S["plant"].compromise_plc({"naoh_dose": 200}, freeze_sensors=body.freeze_sensors)
+    what = "and replays frozen normal pH/chlorine readings" if body.freeze_sensors else "(sensors left alone)"
+    return _alog("compromised PLC (Stuxnet-style)", f"PLC now doses lye 200 ppm while reporting 100 {what}. "
+                 "No command passed through Aegis.")
+
+
+class Grab(BaseModel):
+    ph: float | None = None
+    chlorine: float | None = None
+
+
+@app.post("/api/grab")
+def grab(g: Grab):
+    return S["integrity"].grab_sample(S["plant"].snapshot(), g.ph, g.chlorine, by="operator (dashboard)")
 
 
 @app.post("/api/attack/plant-work-order")

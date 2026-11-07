@@ -142,6 +142,15 @@ a{color:var(--blue)}code{font-size:11.5px}
       <div id="wi-out"></div>
     </div>
     <div class="panel">
+      <h2>Process integrity: is the PLC telling the truth? <span class="sp"></span><span id="intst" style="text-transform:none;letter-spacing:0"></span></h2>
+      <div class="trace" style="margin-top:0">Aegis runs the chemistry alongside the plant using only the setpoints it approved. If the water stops matching, the dosing isn't what the PLC claims. A lab grab sample is the one reading that doesn't come through the PLC.</div>
+      <div class="btns" style="margin-top:8px;align-items:center">Lab grab sample: pH <input id="g-ph" class="f" style="width:70px" type="number" step="0.01">
+        chlorine <input id="g-cl" class="f" style="width:70px" type="number" step="0.01"> mg/L <button onclick="grab()">Compare with PLC</button>
+        <button onclick="grabSim()" title="demo: fill in what a lab would measure (simulator ground truth)">🧪 Take sample (sim)</button></div>
+      <div id="grabout"></div>
+      <div id="intev" class="log" style="max-height:160px;margin-top:8px"></div>
+    </div>
+    <div class="panel">
       <h2>Operator alerts <span class="sp"></span><span id="alcfg" style="text-transform:none;letter-spacing:0"></span></h2>
       <div id="alerts" class="log" style="max-height:220px"><div class="trace">No alerts.</div></div>
     </div>
@@ -162,6 +171,12 @@ a{color:var(--blue)}code{font-size:11.5px}
         <button class="red" onclick="atk('flood')">🌊 Flood, rotating IDs</button>
         <button class="red" onclick="atk('patient')" title="+50 lye every 61 s; each step passes every static rule">⏳ Patient attacker</button>
       </div>
+      <div class="grp">Inside the PLC (bypasses Aegis entirely)</div>
+      <div class="btns">
+        <button class="red" onclick="comp(false)" title="malware in the PLC doses lye 200 while the registers still say 100">🦠 Compromised PLC: hidden dosing</button>
+        <button class="red" onclick="comp(true)" title="same, plus it replays frozen normal readings (Stuxnet)">🎭 + replays fake readings</button>
+      </div>
+      <div id="truth" class="trace"></div>
       <div class="grp">AI</div>
       <div class="btns"><button class="purple" onclick="post('/api/attack/plant-work-order').then(load)">🧪 Plant poisoned work order</button></div>
       <div id="alog" class="trace"></div>
@@ -194,6 +209,12 @@ a{color:var(--blue)}code{font-size:11.5px}
     </div>
   </section>
   <section>
+    <div class="panel">
+      <h2>Calibrate the digital twin from plant history</h2>
+      <div class="trace" style="margin-top:0">Fits lye feed strength, chlorine decay and chlorine demand so the twin matches how <i>this</i> plant actually behaves (replays the recorded history in 60-min windows). The gateway records history to <code>data/history.csv</code>.</div>
+      <div class="btns" style="margin-top:8px;align-items:center"><button onclick="calib()">Fit to recent history</button><span class="err" id="calerr"></span></div>
+      <div id="calout"></div>
+    </div>
     <div class="panel">
       <h2>Learn normal operations → suggested rules</h2>
       <div class="trace" style="margin-top:0">Run Aegis in MONITOR mode for a trial period; it watches every write and suggests rules from what normal looks like. Statistics, not AI: reproducible. An engineer reviews and applies.</div>
@@ -248,6 +269,21 @@ async function setAutonomy(){if(!await postChk('/api/settings',{autonomy:$('auto
 async function decide(id,a){await post(`/api/proposals/${id}/${a}`);load();}
 async function atk(n){$('alog').textContent='…';const r=await post('/api/attack/'+n);$('alog').textContent=r.result||'';load();}
 async function scen(n){await post('/api/scenario/'+n);load();}
+
+async function comp(freeze){const r=await post('/api/attack/plc-compromise',{freeze_sensors:freeze});$('alog').textContent=r.result||'';load();}
+async function grab(){const ph=parseFloat($('g-ph').value),cl=parseFloat($('g-cl').value);
+  const r=await post('/api/grab',{ph:isNaN(ph)?null:ph,chlorine:isNaN(cl)?null:cl});
+  $('grabout').innerHTML=`<div class="verdict ${r.ok?'good':'bad'}">${r.ok?'✔ Lab and PLC agree.':'✖ Lab and PLC DISAGREE: '+esc(r.notes.join('; '))+'. The PLC is not telling the truth.'}</div>`;load();}
+function grabSim(){if(!S)return;const t=S.truth||{ph:S.plant.ph,chlorine_residual:S.plant.chlorine_residual};
+  $('g-ph').value=(t.ph+(Math.random()-.5)*.06).toFixed(2);$('g-cl').value=(t.chlorine_residual+(Math.random()-.5)*.04).toFixed(2);}
+let calRes=null;
+async function calib(){$('calerr').textContent='fitting…';const r=await fetch('/api/calibrate');const j=await r.json();
+  if(!r.ok){$('calerr').textContent=j.detail||'error';return;}$('calerr').textContent='';calRes=j;
+  $('calout').innerHTML=`<table class="t" style="margin-top:6px"><tr><th>parameter</th><th>current</th><th>fitted</th></tr>${Object.keys(j.params).map(k=>`<tr><td>${esc(k)}</td><td>${fmt(j.current[k])}</td><td><b>${fmt(j.params[k])}</b></td></tr>`).join('')}</table>
+  ${(j.warnings||[]).map(w=>`<div class="verdict bad">⚠ ${esc(w)}</div>`).join('')}
+  <div class="trace">${j.rows} history rows, ${j.after.windows} windows · 60-min forecast error: pH ${j.before.ph_mae} → <b>${j.after.ph_mae}</b>, chlorine ${j.before.cl_mae} → <b>${j.after.cl_mae}</b> mg/L</div>
+  <div class="btns" style="margin-top:6px;align-items:center"><button onclick="calApply()">Apply (needs PIN)</button><span class="err" id="calap"></span></div>`;}
+async function calApply(){if(await postChk('/api/calibrate/apply',{pin:pin()},'calap'))$('calap').innerHTML='<span class="okm">Applied ✓ (audited)</span>';}
 
 /* ---------- what-if ---------- */
 async function whatif(){const n=$('wi-n').value,v=parseFloat($('wi-v').value);if(isNaN(v))return;
@@ -356,6 +392,9 @@ async function load(){let s;try{s=await (await fetch('/api/state')).json();}catc
   $('log').innerHTML=s.log.length?s.log.map(d=>{const cls=d.would_block?'wb':(d.allowed?(d.check==='unusual'?'un':'ok'):'no'),tg=d.would_block?'<span class="tag wb">WOULD BLOCK</span>':(d.allowed?'<span class="tag ok">ALLOWED</span>':'<span class="tag no">BLOCKED</span>');
     return `<div class="ev ${cls}"><div class="h"><span>${esc(d.source)} → ${esc(d.register)} = ${fmt(d.new)} ${esc(d.unit)}<span class="chk ${d.check}">${esc(d.check)}</span>${d.fc?`<span class="chk">FC ${d.fc}</span>`:''}${(d.techniques||[]).map(t=>`<span class="tech" title="${esc(t[1])}">${esc(t[0])}</span>`).join('')}</span>${tg}</div>
     <div class="m">${esc(d.reason)} · was ${fmt(d.old)} · from ${esc(d.peer)} · ${new Date(d.t*1000).toLocaleTimeString()}</div></div>`;}).join(''):'<div class="trace">No writes yet.</div>';
+  const I=s.integrity;$('intst').innerHTML=I.ok?'<span class="okm">✔ consistent</span>':'<span class="err">✖ MISMATCH</span>';
+  $('intev').innerHTML=(I.events||[]).map(e=>`<div class="al critical">${esc(e.message)}</div>`).join('')+(I.ph_err!=null?`<div class="trace">model vs measured right now: pH ${I.ph_err>=0?'+':''}${I.ph_err}, chlorine ${I.cl_err>=0?'+':''}${I.cl_err} mg/L · ${esc(I.message)}</div>`:'');
+  $('truth').innerHTML=s.truth?`<span style="color:var(--warn)">Simulator truth (an operator can't see this): real pH <b>${s.truth.ph}</b>, real lye feed <b>${s.truth.naoh_dose_actual}</b> ppm${s.truth.sensors_frozen?' · PLC is replaying frozen readings':''}</span>`:'';
   const au=s.audit;$('audit').innerHTML=au.ok?`<span class="audit-ok">✔ Chain intact</span> · ${au.entries} entries verified${au.keyed?' · keyed (HMAC)':' · unkeyed (set AEGIS_AUDIT_KEY)'}<div class="trace">head <code>${esc((au.head||'').slice(0,32))}…</code></div>`:`<span class="audit-bad">✖ ${esc(au.message)}</span>`;
   const L=s.latency,f=v=>v==null?'–':v.toFixed(2)+' ms';
   $('lat').innerHTML=[['decide p50',f(L.check_p50_ms)],['decide p99',f(L.check_p99_ms)],['total p50',f(L.total_p50_ms)],['total p99',f(L.total_p99_ms)]].map(([l,v])=>`<div class="kpi"><div class="l">${l}</div><div class="v" style="font-size:18px">${v}</div><div class="r">${L.n} writes</div></div>`).join('');

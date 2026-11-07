@@ -75,6 +75,7 @@ class Plant:
         self.raw = Raw(**SCENARIOS["normal"].__dict__)
         self._raw_target = Raw(**self.raw.__dict__)
         self.demand_drift = 0.0
+        self.compromise: dict | None = None
         self.reset()
 
     # ---- setpoints ----
@@ -91,9 +92,25 @@ class Plant:
         regs[a] = to_raw(name, value)
 
     def setpoints(self) -> dict:
+        """What the PLC's registers say (and report over Modbus)."""
         return {k: self.setpoint(k) for k in HOLDING}
 
+    def physical_setpoints(self) -> dict:
+        """What the pumps actually do. Differs only when the PLC is compromised."""
+        sp = self.setpoints()
+        if self.compromise:
+            sp.update(self.compromise.get("actual", {}))
+        return sp
+
+    def compromise_plc(self, actual: dict, freeze_sensors: bool = False):
+        """Stuxnet-style demo: the PLC doses `actual` while its registers keep reporting
+        the old setpoints; optionally it also replays frozen 'normal' sensor values."""
+        s = self.sensors()
+        self.compromise = {"actual": dict(actual), "freeze": freeze_sensors,
+                           "frozen": {"ph": s["ph"], "chlorine_residual": s["chlorine_residual"]}}
+
     def reset(self):
+        self.compromise = None
         for k, v in NORMAL.items():
             self.set(k, v)
         self.set_scenario("normal", immediate=True)
@@ -142,7 +159,7 @@ class Plant:
         demand = self.model.demand(self.raw) + self.demand_drift
         sub = max(1, int(dt // 30))
         for _ in range(sub):
-            self.model.step(self.state, self.raw, self.setpoints(), dt / sub, demand)
+            self.model.step(self.state, self.raw, self.physical_setpoints(), dt / sub, demand)
         self.history.append({"t": time.time(), "sim_t": self.sim_time, **self.snapshot(values_only=True)})
 
     def _noise(self, sd: float) -> float:
@@ -159,10 +176,13 @@ class Plant:
         return out
 
     def sensors(self) -> dict:
-        """What the instruments report (with a little noise)."""
+        """What the instruments report through the PLC (with a little noise)."""
+        fz = self.compromise["frozen"] if (self.compromise and self.compromise.get("freeze")) else None
+        ph = fz["ph"] if fz else self.ph
+        cl = fz["chlorine_residual"] if fz else self.chlorine
         return {"tank_level": round(self.tank_level + self._noise(0.05), 1),
-                "chlorine_residual": round(max(0.0, self.chlorine + self._noise(0.01)), 2),
-                "ph": round(self.ph + self._noise(0.01), 2),
+                "chlorine_residual": round(max(0.0, cl + self._noise(0.01)), 2),
+                "ph": round(ph + self._noise(0.01), 2),
                 "flow_out": round(self.flow_out),
                 "raw_ph": round(self.raw.ph + self._noise(0.01), 2),
                 "raw_alkalinity": round(self.raw.alkalinity),
@@ -173,18 +193,35 @@ class Plant:
         regs = [0] * 16
         for n, t in TAGS.table("input").items():
             if n == "alarms":
-                regs[t.address] = sum(1 << ALARMS.index(a) for a in self.alarms())
+                regs[t.address] = sum(1 << ALARMS.index(a) for a in self.reported_alarms())
             elif n in s:
                 regs[t.address] = max(0, min(65535, t.to_raw(s[n])))
         return regs
 
     def snapshot(self, values_only: bool = False) -> dict:
         d = self.sensors()
-        d["hocl_pct"] = round(100 * hocl_fraction(self.ph), 1)
+        d["hocl_pct"] = round(100 * hocl_fraction(d["ph"]), 1)
         d.update(self.setpoints())
         if values_only:
             return d
-        return {**d, "alarms": self.alarms(), "scenario": self.scenario}
+        return {**d, "alarms": self.reported_alarms(), "scenario": self.scenario}
+
+    def reported_alarms(self) -> list[str]:
+        """Alarms as the PLC reports them (a compromised PLC computes them from its fake readings)."""
+        if not (self.compromise and self.compromise.get("freeze")):
+            return self.alarms()
+        fz = self.compromise["frozen"]
+        out = []
+        if fz["ph"] > 8.5: out.append("pH HIGH")
+        if fz["ph"] < 6.5: out.append("pH LOW")
+        return out
+
+    def truth(self) -> dict:
+        """Simulator ground truth (for the demo only; a real operator can't see this)."""
+        return {"ph": round(self.ph, 2), "chlorine_residual": round(self.chlorine, 2),
+                "naoh_dose_actual": self.physical_setpoints()["naoh_dose"],
+                "chlorine_dose_actual": self.physical_setpoints()["chlorine_dose"],
+                "compromised": bool(self.compromise), "sensors_frozen": bool(self.compromise and self.compromise.get("freeze"))}
 
     # ---- PLC: Modbus handler ----
     async def handle(self, req: modbus.Request, peer) -> bytes:

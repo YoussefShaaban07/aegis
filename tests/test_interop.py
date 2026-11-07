@@ -74,3 +74,23 @@ def test_gateway_twin_uses_live_plc_sensors():
         assert (await guard.dry_run("naoh_dose", 110, "Operator HMI")).allowed
         await srv.shutdown(); task.cancel()
     asyncio.run(run())
+
+
+def test_gateway_integrity_loop_spots_change_made_behind_its_back():
+    """Someone changes the lye setpoint directly on the (third-party) PLC, not through Aegis."""
+    from aegis.gateway import integrity_loop
+
+    async def run():
+        plc_port = 17100 + (id(run) % 90)
+        srv, task, dev = await third_party_plc(plc_port)
+        lines = []
+        guard, audit, twin = build("127.0.0.1", plc_port, audit=AuditLog(":memory:"), printer=lines.append)
+        loop = asyncio.create_task(integrity_loop(guard, twin, poll_s=0.1, printer=lines.append))
+        await asyncio.sleep(0.4)                              # first polls: learns approved values
+        direct = await modbus.Client("127.0.0.1", plc_port).connect()   # straight to the PLC, skipping Aegis
+        await direct.write(TAGS.holding["naoh_dose"].address, 180)
+        await direct.close()
+        await asyncio.sleep(0.5)
+        assert any("INTEGRITY CRITICAL" in l and "naoh_dose = 180" in l for l in lines), lines
+        loop.cancel(); await srv.shutdown(); task.cancel()
+    asyncio.run(run())

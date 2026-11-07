@@ -117,6 +117,7 @@ class Guard:
         # label from these hosts is still counted per IP.
         self.trusted_ips: set[str] = set()
         self.permits: dict[tuple, dict] = {}
+        self.commanded: dict[str, float] = {}   # last value of each setpoint that Aegis let through
 
     @property
     def enabled(self) -> bool:
@@ -225,6 +226,9 @@ class Guard:
         return Decision(True, source, register, old, new, note, peer, "ok", now, u, fc, [], False, forecast)
 
     def _twin_eval(self, state, override: dict, pred: dict):
+        u = pred.get("uncertainty")
+        if u is not None and u != self.twin.uncertainty:
+            self.twin.set_uncertainty(u)
         # evaluate the combined change: apply all but one as part of the "state"
         *rest, last = list(override.items())
         st = dict(state)
@@ -233,8 +237,16 @@ class Guard:
 
     # ------------------------------------------------------------------ bookkeeping
     def _commit(self, d: Decision):
+        if d.allowed:
+            self.commanded[d.register] = d.new
         if d.allowed and d.old is not None and d.new != d.old:
             self._changes[d.register].append((d.t, d.old, d.new))
+
+    def sync_commanded(self, state: dict):
+        """Seed the approved-setpoint record from the PLC (at startup, before any writes)."""
+        for n in self.tags.holding:
+            if n in state and n not in self.commanded:
+                self.commanded[n] = state[n]
 
     def _record(self, d: Decision):
         self.log.appendleft(d)

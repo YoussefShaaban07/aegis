@@ -1,0 +1,20 @@
+# systemd unit: sudo cp deploy/aegis.service /etc/systemd/system/ && sudo systemctl enable --now aegis
+[Unit]
+Description=Aegis Modbus safety gateway
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+WorkingDirectory=/opt/aegis
+EnvironmentFile=/opt/aegis/.env
+ExecStart=/opt/aegis/.venv/bin/python -m aegis.supervisor -- --plc-host 192.168.1.50 --plc-port 502 --listen-port 502 --health-port 8081
+Restart=always
+RestartSec=2
+# least privilege: binding port 502 needs this capability instead of root
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target
