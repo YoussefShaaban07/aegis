@@ -394,3 +394,19 @@ Flow: *Aegis sits between the HMI and a MicroLogix (Modbus or EtherNet/IP) → r
 3. pymodbus's RTU framer on both sides: pymodbus client (RTU over TCP) → Aegis → pymodbus server as the PLC (RTU over TCP). Allowed trim goes through; 11,100 via FC 6, 9,000 via FC 16 and via FC 22 are blocked; the PLC holds only the safe value.
 4. Yes: the framing is unwrapped before the guard, so every check (rules, twin, lockdown, safe-hold) is the same code path. Same test.
 5. Not built. Aegis would need a serial port and to sit on the RS-485 line itself. Today the answer is a serial device server (about $100) between Aegis and the PLC with `--plc-framing rtu`. Not tested on real radio or serial hardware.
+
+## Round 21: the venue
+
+1. **"The venue Wi-Fi dies. Does your demo?"**
+2. **"Your laptop goes to sleep twenty minutes into the booth loop."**
+3. **"A visitor clicks the screen, the loop stops, and nobody notices for an hour."**
+4. **"Someone presses Booth loop twice, quickly. Now two loops fight over the same plant."**
+5. **"The booth caption says what's happening. Can anyone read it from the aisle?"**
+
+### What we did about it (v25)
+
+1. Checked: the dashboard loads nothing from the internet (no CDNs, no web fonts), and the copilot falls back to the labelled scripted model with no key. Ran the whole pitch demo in a browser that **blocks every non-local request**: 4 steps, 8 seconds of machine time, 0 page errors, 0 outside requests.
+2. The booth loop now asks the browser to keep the screen on (Wake Lock) and lets go when it stops. Still set the laptop's power plan to "never sleep" before the expo; the browser can't override that everywhere.
+3. A click pauses the loop; after **3 minutes with no mouse, keyboard or scroll** it starts again by itself. It never restarts while the Pitch or Guided demo is open.
+4. Each loop has a generation number; starting a new one retires the old one at its next check, so only one loop drives the plant. Tested by stopping and restarting mid-scene.
+5. 30-pixel bold captions over a dark bar across the full width; checked at 1280×720 (a common projector size).

@@ -476,7 +476,7 @@ let gi=-1, ran=false, ORDER=null;
 const PITCH=[1,2,3,4];      // the deck's live demo: guard off, guard on, the twin, the AI (step 0 runs silently first)
 function guideShow(){const s=STEPS[ORDER[gi]];ran=false;$('g-n').textContent=(ORDER.length<STEPS.length?'Pitch step ':'Step ')+`${gi+1} of ${ORDER.length}`;$('g-t').textContent=s.t;
   $('g-d').textContent=s.d;$('g-say').textContent=s.say;$('g-st').textContent='';$('g-next').textContent='Run step ▶';}
-async function guideStart(mode){stopBooth();ORDER=mode==='pitch'?PITCH:STEPS.map((_,i)=>i);gi=0;$('guide').classList.toggle('pitch',mode==='pitch');$('guide').style.display='block';guideShow();
+async function guideStart(mode){stopBooth();boothWanted=false;ORDER=mode==='pitch'?PITCH:STEPS.map((_,i)=>i);gi=0;$('guide').classList.toggle('pitch',mode==='pitch');$('guide').style.display='block';guideShow();
   if(mode==='pitch'){$('g-st').textContent='preparing: plant reset…';try{await STEPS[0].run();$('g-st').textContent='Ready. Space or → runs each step.';}catch(e){$('g-st').textContent='Error: '+(e.message||e);}}}
 addEventListener('keydown',e=>{if($('guide').style.display!=='block'||/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName))return;
   if(e.key===' '||e.key==='ArrowRight'){e.preventDefault();if(!$('g-next').disabled)guideGo(1);}else if(e.key==='ArrowLeft'){e.preventDefault();guideGo(-1);}});
@@ -489,25 +489,31 @@ async function guideGo(dir){const b=$('g-next');
   catch(e){$('g-st').textContent='Error: '+(e.message||e);b.disabled=false;return;}
   b.disabled=false;ran=true;b.textContent=gi<ORDER.length-1?'Next step ▶':(ORDER.length<STEPS.length?'Done: back to the slides':'Finished');}
 // ---- Booth loop (expo table): the three blocked attacks on repeat, captions big enough to read from the aisle
-let booth=false;
+let booth=false,boothGen=0,boothWanted=false,wakeLock=null,lastInput=Date.now();
 function bcap(t,sub){$('booth-t').textContent=t;$('booth-s').textContent=sub||'';}
-function stopBooth(){if(!booth)return;booth=false;$('booth').style.display='none';speed(60);}
+function stopBooth(){if(!booth)return;booth=false;boothGen++;$('booth').style.display='none';speed(60);
+  try{wakeLock&&wakeLock.release();}catch(e){}wakeLock=null;}
+// a visitor's click stops the loop; after 3 minutes with nobody touching the laptop it starts again
+['pointerdown','keydown','wheel'].forEach(ev=>addEventListener(ev,()=>{lastInput=Date.now();},{passive:true}));
+setInterval(()=>{if(boothWanted&&!booth&&$('guide').style.display!=='block'&&Date.now()-lastInput>180000)boothStart();},15000);
 async function boothStart(){
   if(!pin()){alert('Type the engineer PIN in the header first (the loop switches the guard on).');return;}
-  $('guide').style.display='none';booth=true;$('booth').style.display='block';
+  $('guide').style.display='none';booth=true;boothWanted=true;const my=++boothGen;$('booth').style.display='block';
+  try{wakeLock=await navigator.wakeLock.request('screen');}catch(e){}   // keep the laptop screen on
   setTimeout(()=>addEventListener('pointerdown',stopBooth,{once:true}),300);
+  const on=()=>booth&&boothGen===my;      // a restarted loop retires the old one
   const scenes=[
     ['Attack 1: a hacker sets lye from 100 to 11,100 ppm (the Oldsmar attack)','Aegis checks every command before the controller sees it',STEPS[2]],
     ['Attack 2: algae bloom + a small, legal-looking lye change','Every rule says OK. Aegis forecasts the water 6 hours ahead and blocks it',STEPS[3]],
     ['Attack 3: a poisoned work order tricks the AI assistant into raising lye to 9,000','The AI can only propose. Aegis blocks it like any other command',STEPS[4]]];
-  while(booth){
-    for(const [t,sub,step] of scenes){if(!booth)break;bcap(t,sub);
+  while(on()){
+    for(const [t,sub,step] of scenes){if(!on())break;bcap(t,sub);
       try{await step.run();}catch(e){}
-      if(!booth)break;await load();
+      if(!on())break;await load();
       const why=step===STEPS[4]?((S.proposals||[]).find(x=>x.status==='blocked')||{}).guard
                :((S.log||[]).slice(0,4).find(x=>!x.allowed)||{}).reason;
       bcap('BLOCKED: '+t.split(': ')[1], why?why.slice(0,150):sub);await sleep(9000);}
-    if(booth){bcap('Aegis: a safety guard for the old computers that run small-town drinking water','Ask me how it works · click anywhere to stop the loop');await sleep(7000);}
+    if(on()){bcap('Aegis: a safety guard for the old computers that run small-town drinking water','Ask me how it works · click anywhere to pause (it restarts after 3 quiet minutes)');await sleep(7000);}
   }}
 
 /* ---------- login ---------- */
