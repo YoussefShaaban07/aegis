@@ -1,0 +1,2 @@
+-r requirements.txt
+phreeqpython     # PHREEQC (USGS): tests/test_phreeqc.py checks the twin's chemistry against it

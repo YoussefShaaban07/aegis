@@ -1,0 +1,830 @@
+{
+ "summary": {
+  "cases": 100,
+  "mean_abs_diff": 0.053,
+  "max_abs_diff": 0.32,
+  "mean_abs_diff_pH_7_to_9.5": 0.057,
+  "max_abs_diff_pH_7_to_9.5": 0.32,
+  "safe_unsafe_disagreements": 2,
+  "disagreements": [
+   {
+    "water": "storm (low alkalinity)",
+    "alkali": "soda_ash",
+    "mg_l": 60,
+    "aegis": 8.379,
+    "phreeqc": 8.537,
+    "diff": -0.158
+   },
+   {
+    "water": "soft cold groundwater",
+    "alkali": "soda_ash",
+    "mg_l": 60,
+    "aegis": 8.472,
+    "phreeqc": 8.705,
+    "diff": -0.233
+   }
+  ]
+ },
+ "rows": [
+  {
+   "water": "normal river water",
+   "alkali": "naoh",
+   "mg_l": 0,
+   "aegis": 6.9,
+   "phreeqc": 6.9,
+   "diff": 0.0
+  },
+  {
+   "water": "normal river water",
+   "alkali": "naoh",
+   "mg_l": 5,
+   "aegis": 7.068,
+   "phreeqc": 7.073,
+   "diff": -0.006
+  },
+  {
+   "water": "normal river water",
+   "alkali": "naoh",
+   "mg_l": 10,
+   "aegis": 7.292,
+   "phreeqc": 7.312,
+   "diff": -0.02
+  },
+  {
+   "water": "normal river water",
+   "alkali": "naoh",
+   "mg_l": 15,
+   "aegis": 7.671,
+   "phreeqc": 7.739,
+   "diff": -0.068
+  },
+  {
+   "water": "normal river water",
+   "alkali": "naoh",
+   "mg_l": 20,
+   "aegis": 8.662,
+   "phreeqc": 8.762,
+   "diff": -0.099
+  },
+  {
+   "water": "normal river water",
+   "alkali": "naoh",
+   "mg_l": 30,
+   "aegis": 9.548,
+   "phreeqc": 9.518,
+   "diff": 0.03
+  },
+  {
+   "water": "normal river water",
+   "alkali": "naoh",
+   "mg_l": 40,
+   "aegis": 9.877,
+   "phreeqc": 9.829,
+   "diff": 0.048
+  },
+  {
+   "water": "normal river water",
+   "alkali": "lime",
+   "mg_l": 0,
+   "aegis": 6.9,
+   "phreeqc": 6.9,
+   "diff": 0.0
+  },
+  {
+   "water": "normal river water",
+   "alkali": "lime",
+   "mg_l": 5,
+   "aegis": 7.083,
+   "phreeqc": 7.089,
+   "diff": -0.006
+  },
+  {
+   "water": "normal river water",
+   "alkali": "lime",
+   "mg_l": 10,
+   "aegis": 7.337,
+   "phreeqc": 7.359,
+   "diff": -0.022
+  },
+  {
+   "water": "normal river water",
+   "alkali": "lime",
+   "mg_l": 15,
+   "aegis": 7.822,
+   "phreeqc": 7.909,
+   "diff": -0.087
+  },
+  {
+   "water": "normal river water",
+   "alkali": "lime",
+   "mg_l": 20,
+   "aegis": 8.937,
+   "phreeqc": 8.892,
+   "diff": 0.045
+  },
+  {
+   "water": "normal river water",
+   "alkali": "lime",
+   "mg_l": 30,
+   "aegis": 9.644,
+   "phreeqc": 9.5,
+   "diff": 0.144
+  },
+  {
+   "water": "normal river water",
+   "alkali": "lime",
+   "mg_l": 40,
+   "aegis": 9.956,
+   "phreeqc": 9.789,
+   "diff": 0.167
+  },
+  {
+   "water": "normal river water",
+   "alkali": "soda_ash",
+   "mg_l": 0,
+   "aegis": 6.9,
+   "phreeqc": 6.9,
+   "diff": 0.0
+  },
+  {
+   "water": "normal river water",
+   "alkali": "soda_ash",
+   "mg_l": 10,
+   "aegis": 7.047,
+   "phreeqc": 7.05,
+   "diff": -0.003
+  },
+  {
+   "water": "normal river water",
+   "alkali": "soda_ash",
+   "mg_l": 20,
+   "aegis": 7.216,
+   "phreeqc": 7.226,
+   "diff": -0.01
+  },
+  {
+   "water": "normal river water",
+   "alkali": "soda_ash",
+   "mg_l": 40,
+   "aegis": 7.752,
+   "phreeqc": 7.815,
+   "diff": -0.063
+  },
+  {
+   "water": "normal river water",
+   "alkali": "soda_ash",
+   "mg_l": 60,
+   "aegis": 8.971,
+   "phreeqc": 8.978,
+   "diff": -0.007
+  },
+  {
+   "water": "normal river water",
+   "alkali": "soda_ash",
+   "mg_l": 80,
+   "aegis": 9.415,
+   "phreeqc": 9.368,
+   "diff": 0.047
+  },
+  {
+   "water": "storm (low alkalinity)",
+   "alkali": "naoh",
+   "mg_l": 0,
+   "aegis": 6.6,
+   "phreeqc": 6.6,
+   "diff": -0.0
+  },
+  {
+   "water": "storm (low alkalinity)",
+   "alkali": "naoh",
+   "mg_l": 5,
+   "aegis": 6.764,
+   "phreeqc": 6.768,
+   "diff": -0.004
+  },
+  {
+   "water": "storm (low alkalinity)",
+   "alkali": "naoh",
+   "mg_l": 10,
+   "aegis": 6.958,
+   "phreeqc": 6.969,
+   "diff": -0.011
+  },
+  {
+   "water": "storm (low alkalinity)",
+   "alkali": "naoh",
+   "mg_l": 15,
+   "aegis": 7.22,
+   "phreeqc": 7.249,
+   "diff": -0.03
+  },
+  {
+   "water": "storm (low alkalinity)",
+   "alkali": "naoh",
+   "mg_l": 20,
+   "aegis": 7.7,
+   "phreeqc": 7.82,
+   "diff": -0.119
+  },
+  {
+   "water": "storm (low alkalinity)",
+   "alkali": "naoh",
+   "mg_l": 30,
+   "aegis": 9.507,
+   "phreeqc": 9.504,
+   "diff": 0.003
+  },
+  {
+   "water": "storm (low alkalinity)",
+   "alkali": "naoh",
+   "mg_l": 40,
+   "aegis": 9.949,
+   "phreeqc": 9.916,
+   "diff": 0.033
+  },
+  {
+   "water": "storm (low alkalinity)",
+   "alkali": "lime",
+   "mg_l": 0,
+   "aegis": 6.6,
+   "phreeqc": 6.6,
+   "diff": -0.0
+  },
+  {
+   "water": "storm (low alkalinity)",
+   "alkali": "lime",
+   "mg_l": 5,
+   "aegis": 6.779,
+   "phreeqc": 6.782,
+   "diff": -0.003
+  },
+  {
+   "water": "storm (low alkalinity)",
+   "alkali": "lime",
+   "mg_l": 10,
+   "aegis": 6.994,
+   "phreeqc": 7.005,
+   "diff": -0.011
+  },
+  {
+   "water": "storm (low alkalinity)",
+   "alkali": "lime",
+   "mg_l": 15,
+   "aegis": 7.302,
+   "phreeqc": 7.338,
+   "diff": -0.036
+  },
+  {
+   "water": "storm (low alkalinity)",
+   "alkali": "lime",
+   "mg_l": 20,
+   "aegis": 8.029,
+   "phreeqc": 8.215,
+   "diff": -0.185
+  },
+  {
+   "water": "storm (low alkalinity)",
+   "alkali": "lime",
+   "mg_l": 30,
+   "aegis": 9.644,
+   "phreeqc": 9.516,
+   "diff": 0.128
+  },
+  {
+   "water": "storm (low alkalinity)",
+   "alkali": "lime",
+   "mg_l": 40,
+   "aegis": 10.046,
+   "phreeqc": 9.891,
+   "diff": 0.155
+  },
+  {
+   "water": "storm (low alkalinity)",
+   "alkali": "soda_ash",
+   "mg_l": 0,
+   "aegis": 6.6,
+   "phreeqc": 6.6,
+   "diff": -0.0
+  },
+  {
+   "water": "storm (low alkalinity)",
+   "alkali": "soda_ash",
+   "mg_l": 10,
+   "aegis": 6.761,
+   "phreeqc": 6.763,
+   "diff": -0.002
+  },
+  {
+   "water": "storm (low alkalinity)",
+   "alkali": "soda_ash",
+   "mg_l": 20,
+   "aegis": 6.927,
+   "phreeqc": 6.932,
+   "diff": -0.005
+  },
+  {
+   "water": "storm (low alkalinity)",
+   "alkali": "soda_ash",
+   "mg_l": 40,
+   "aegis": 7.337,
+   "phreeqc": 7.364,
+   "diff": -0.027
+  },
+  {
+   "water": "storm (low alkalinity)",
+   "alkali": "soda_ash",
+   "mg_l": 60,
+   "aegis": 8.379,
+   "phreeqc": 8.537,
+   "diff": -0.158
+  },
+  {
+   "water": "storm (low alkalinity)",
+   "alkali": "soda_ash",
+   "mg_l": 80,
+   "aegis": 9.341,
+   "phreeqc": 9.317,
+   "diff": 0.023
+  },
+  {
+   "water": "algae bloom (high pH)",
+   "alkali": "naoh",
+   "mg_l": 0,
+   "aegis": 8.2,
+   "phreeqc": 8.2,
+   "diff": -0.0
+  },
+  {
+   "water": "algae bloom (high pH)",
+   "alkali": "naoh",
+   "mg_l": 5,
+   "aegis": 9.142,
+   "phreeqc": 9.093,
+   "diff": 0.05
+  },
+  {
+   "water": "algae bloom (high pH)",
+   "alkali": "naoh",
+   "mg_l": 10,
+   "aegis": 9.48,
+   "phreeqc": 9.42,
+   "diff": 0.06
+  },
+  {
+   "water": "algae bloom (high pH)",
+   "alkali": "naoh",
+   "mg_l": 15,
+   "aegis": 9.688,
+   "phreeqc": 9.622,
+   "diff": 0.066
+  },
+  {
+   "water": "algae bloom (high pH)",
+   "alkali": "naoh",
+   "mg_l": 20,
+   "aegis": 9.844,
+   "phreeqc": 9.774,
+   "diff": 0.07
+  },
+  {
+   "water": "algae bloom (high pH)",
+   "alkali": "naoh",
+   "mg_l": 30,
+   "aegis": 10.084,
+   "phreeqc": 10.008,
+   "diff": 0.076
+  },
+  {
+   "water": "algae bloom (high pH)",
+   "alkali": "naoh",
+   "mg_l": 40,
+   "aegis": 10.276,
+   "phreeqc": 10.196,
+   "diff": 0.08
+  },
+  {
+   "water": "algae bloom (high pH)",
+   "alkali": "lime",
+   "mg_l": 0,
+   "aegis": 8.2,
+   "phreeqc": 8.2,
+   "diff": -0.0
+  },
+  {
+   "water": "algae bloom (high pH)",
+   "alkali": "lime",
+   "mg_l": 5,
+   "aegis": 9.179,
+   "phreeqc": 9.102,
+   "diff": 0.077
+  },
+  {
+   "water": "algae bloom (high pH)",
+   "alkali": "lime",
+   "mg_l": 10,
+   "aegis": 9.518,
+   "phreeqc": 9.414,
+   "diff": 0.105
+  },
+  {
+   "water": "algae bloom (high pH)",
+   "alkali": "lime",
+   "mg_l": 15,
+   "aegis": 9.729,
+   "phreeqc": 9.606,
+   "diff": 0.123
+  },
+  {
+   "water": "algae bloom (high pH)",
+   "alkali": "lime",
+   "mg_l": 20,
+   "aegis": 9.888,
+   "phreeqc": 9.751,
+   "diff": 0.137
+  },
+  {
+   "water": "algae bloom (high pH)",
+   "alkali": "lime",
+   "mg_l": 30,
+   "aegis": 10.133,
+   "phreeqc": 9.98,
+   "diff": 0.154
+  },
+  {
+   "water": "algae bloom (high pH)",
+   "alkali": "lime",
+   "mg_l": 40,
+   "aegis": 10.331,
+   "phreeqc": 10.171,
+   "diff": 0.16
+  },
+  {
+   "water": "algae bloom (high pH)",
+   "alkali": "soda_ash",
+   "mg_l": 0,
+   "aegis": 8.2,
+   "phreeqc": 8.2,
+   "diff": -0.0
+  },
+  {
+   "water": "algae bloom (high pH)",
+   "alkali": "soda_ash",
+   "mg_l": 10,
+   "aegis": 8.991,
+   "phreeqc": 8.944,
+   "diff": 0.047
+  },
+  {
+   "water": "algae bloom (high pH)",
+   "alkali": "soda_ash",
+   "mg_l": 20,
+   "aegis": 9.298,
+   "phreeqc": 9.238,
+   "diff": 0.06
+  },
+  {
+   "water": "algae bloom (high pH)",
+   "alkali": "soda_ash",
+   "mg_l": 40,
+   "aegis": 9.602,
+   "phreeqc": 9.528,
+   "diff": 0.074
+  },
+  {
+   "water": "algae bloom (high pH)",
+   "alkali": "soda_ash",
+   "mg_l": 60,
+   "aegis": 9.777,
+   "phreeqc": 9.693,
+   "diff": 0.084
+  },
+  {
+   "water": "algae bloom (high pH)",
+   "alkali": "soda_ash",
+   "mg_l": 80,
+   "aegis": 9.899,
+   "phreeqc": 9.807,
+   "diff": 0.092
+  },
+  {
+   "water": "soft cold groundwater",
+   "alkali": "naoh",
+   "mg_l": 0,
+   "aegis": 6.4,
+   "phreeqc": 6.4,
+   "diff": -0.0
+  },
+  {
+   "water": "soft cold groundwater",
+   "alkali": "naoh",
+   "mg_l": 5,
+   "aegis": 6.605,
+   "phreeqc": 6.609,
+   "diff": -0.004
+  },
+  {
+   "water": "soft cold groundwater",
+   "alkali": "naoh",
+   "mg_l": 10,
+   "aegis": 6.83,
+   "phreeqc": 6.842,
+   "diff": -0.013
+  },
+  {
+   "water": "soft cold groundwater",
+   "alkali": "naoh",
+   "mg_l": 15,
+   "aegis": 7.116,
+   "phreeqc": 7.151,
+   "diff": -0.035
+  },
+  {
+   "water": "soft cold groundwater",
+   "alkali": "naoh",
+   "mg_l": 20,
+   "aegis": 7.632,
+   "phreeqc": 7.788,
+   "diff": -0.156
+  },
+  {
+   "water": "soft cold groundwater",
+   "alkali": "naoh",
+   "mg_l": 30,
+   "aegis": 9.741,
+   "phreeqc": 9.753,
+   "diff": -0.012
+  },
+  {
+   "water": "soft cold groundwater",
+   "alkali": "naoh",
+   "mg_l": 40,
+   "aegis": 10.215,
+   "phreeqc": 10.197,
+   "diff": 0.018
+  },
+  {
+   "water": "soft cold groundwater",
+   "alkali": "lime",
+   "mg_l": 0,
+   "aegis": 6.4,
+   "phreeqc": 6.4,
+   "diff": -0.0
+  },
+  {
+   "water": "soft cold groundwater",
+   "alkali": "lime",
+   "mg_l": 5,
+   "aegis": 6.622,
+   "phreeqc": 6.626,
+   "diff": -0.004
+  },
+  {
+   "water": "soft cold groundwater",
+   "alkali": "lime",
+   "mg_l": 10,
+   "aegis": 6.869,
+   "phreeqc": 6.883,
+   "diff": -0.013
+  },
+  {
+   "water": "soft cold groundwater",
+   "alkali": "lime",
+   "mg_l": 15,
+   "aegis": 7.204,
+   "phreeqc": 7.248,
+   "diff": -0.043
+  },
+  {
+   "water": "soft cold groundwater",
+   "alkali": "lime",
+   "mg_l": 20,
+   "aegis": 8.013,
+   "phreeqc": 8.333,
+   "diff": -0.32
+  },
+  {
+   "water": "soft cold groundwater",
+   "alkali": "lime",
+   "mg_l": 30,
+   "aegis": 9.885,
+   "phreeqc": 9.775,
+   "diff": 0.11
+  },
+  {
+   "water": "soft cold groundwater",
+   "alkali": "lime",
+   "mg_l": 40,
+   "aegis": 10.324,
+   "phreeqc": 10.194,
+   "diff": 0.13
+  },
+  {
+   "water": "soft cold groundwater",
+   "alkali": "soda_ash",
+   "mg_l": 0,
+   "aegis": 6.4,
+   "phreeqc": 6.4,
+   "diff": -0.0
+  },
+  {
+   "water": "soft cold groundwater",
+   "alkali": "soda_ash",
+   "mg_l": 10,
+   "aegis": 6.618,
+   "phreeqc": 6.62,
+   "diff": -0.002
+  },
+  {
+   "water": "soft cold groundwater",
+   "alkali": "soda_ash",
+   "mg_l": 20,
+   "aegis": 6.82,
+   "phreeqc": 6.826,
+   "diff": -0.006
+  },
+  {
+   "water": "soft cold groundwater",
+   "alkali": "soda_ash",
+   "mg_l": 40,
+   "aegis": 7.277,
+   "phreeqc": 7.309,
+   "diff": -0.032
+  },
+  {
+   "water": "soft cold groundwater",
+   "alkali": "soda_ash",
+   "mg_l": 60,
+   "aegis": 8.472,
+   "phreeqc": 8.705,
+   "diff": -0.233
+  },
+  {
+   "water": "soft cold groundwater",
+   "alkali": "soda_ash",
+   "mg_l": 80,
+   "aegis": 9.513,
+   "phreeqc": 9.5,
+   "diff": 0.013
+  },
+  {
+   "water": "hard groundwater",
+   "alkali": "naoh",
+   "mg_l": 0,
+   "aegis": 7.4,
+   "phreeqc": 7.4,
+   "diff": 0.0
+  },
+  {
+   "water": "hard groundwater",
+   "alkali": "naoh",
+   "mg_l": 5,
+   "aegis": 7.55,
+   "phreeqc": 7.558,
+   "diff": -0.009
+  },
+  {
+   "water": "hard groundwater",
+   "alkali": "naoh",
+   "mg_l": 10,
+   "aegis": 7.759,
+   "phreeqc": 7.785,
+   "diff": -0.026
+  },
+  {
+   "water": "hard groundwater",
+   "alkali": "naoh",
+   "mg_l": 15,
+   "aegis": 8.103,
+   "phreeqc": 8.164,
+   "diff": -0.061
+  },
+  {
+   "water": "hard groundwater",
+   "alkali": "naoh",
+   "mg_l": 20,
+   "aegis": 8.636,
+   "phreeqc": 8.669,
+   "diff": -0.033
+  },
+  {
+   "water": "hard groundwater",
+   "alkali": "naoh",
+   "mg_l": 30,
+   "aegis": 9.24,
+   "phreeqc": 9.196,
+   "diff": 0.044
+  },
+  {
+   "water": "hard groundwater",
+   "alkali": "naoh",
+   "mg_l": 40,
+   "aegis": 9.518,
+   "phreeqc": 9.453,
+   "diff": 0.065
+  },
+  {
+   "water": "hard groundwater",
+   "alkali": "lime",
+   "mg_l": 0,
+   "aegis": 7.4,
+   "phreeqc": 7.4,
+   "diff": 0.0
+  },
+  {
+   "water": "hard groundwater",
+   "alkali": "lime",
+   "mg_l": 5,
+   "aegis": 7.564,
+   "phreeqc": 7.572,
+   "diff": -0.008
+  },
+  {
+   "water": "hard groundwater",
+   "alkali": "lime",
+   "mg_l": 10,
+   "aegis": 7.802,
+   "phreeqc": 7.827,
+   "diff": -0.025
+  },
+  {
+   "water": "hard groundwater",
+   "alkali": "lime",
+   "mg_l": 15,
+   "aegis": 8.22,
+   "phreeqc": 8.258,
+   "diff": -0.038
+  },
+  {
+   "water": "hard groundwater",
+   "alkali": "lime",
+   "mg_l": 20,
+   "aegis": 8.783,
+   "phreeqc": 8.724,
+   "diff": 0.059
+  },
+  {
+   "water": "hard groundwater",
+   "alkali": "lime",
+   "mg_l": 30,
+   "aegis": 9.321,
+   "phreeqc": 9.174,
+   "diff": 0.147
+  },
+  {
+   "water": "hard groundwater",
+   "alkali": "lime",
+   "mg_l": 40,
+   "aegis": 9.583,
+   "phreeqc": 9.405,
+   "diff": 0.178
+  },
+  {
+   "water": "hard groundwater",
+   "alkali": "soda_ash",
+   "mg_l": 0,
+   "aegis": 7.4,
+   "phreeqc": 7.4,
+   "diff": 0.0
+  },
+  {
+   "water": "hard groundwater",
+   "alkali": "soda_ash",
+   "mg_l": 10,
+   "aegis": 7.518,
+   "phreeqc": 7.523,
+   "diff": -0.005
+  },
+  {
+   "water": "hard groundwater",
+   "alkali": "soda_ash",
+   "mg_l": 20,
+   "aegis": 7.662,
+   "phreeqc": 7.677,
+   "diff": -0.014
+  },
+  {
+   "water": "hard groundwater",
+   "alkali": "soda_ash",
+   "mg_l": 40,
+   "aegis": 8.131,
+   "phreeqc": 8.183,
+   "diff": -0.053
+  },
+  {
+   "water": "hard groundwater",
+   "alkali": "soda_ash",
+   "mg_l": 60,
+   "aegis": 8.829,
+   "phreeqc": 8.818,
+   "diff": 0.011
+  },
+  {
+   "water": "hard groundwater",
+   "alkali": "soda_ash",
+   "mg_l": 80,
+   "aegis": 9.186,
+   "phreeqc": 9.13,
+   "diff": 0.055
+  }
+ ]
+}
