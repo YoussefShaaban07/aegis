@@ -202,3 +202,17 @@ def test_lockdown_does_not_trigger_in_monitor_mode_or_on_dry_runs():
     for _ in range(10):
         g.check("naoh_dose", 11100, plant.snapshot(), "Operator HMI", "h")
     assert g.lockdowns == {}
+
+
+# ---------------- round 16 ----------------
+def test_approval_needs_headroom_not_just_a_forecast_inside_the_limit():
+    """Held-out episode 300078: chlorine cut to 0.69 mg/L dose, long-run residual ~0.24 against a 0.2 limit.
+    The twin used to approve it; ordinary demand drift made the water unsafe 7 hours later."""
+    plant = Plant(noise=False)
+    g = Guard(None, plant.snapshot, twin=Twin())
+    g.policy["limits"]["chlorine_dose"].update(max_step=None, max_change_per_min=None)
+    d = g.check("chlorine_dose", 0.69, plant.snapshot(), "Operator HMI", "h:1", dry_run=True)
+    assert not d.allowed and d.check == "predict"
+    assert g.check("chlorine_dose", 1.3, plant.snapshot(), "Operator HMI", "h:1", dry_run=True).allowed
+    g.policy["prediction"]["approval_margin"] = {}
+    assert g.check("chlorine_dose", 0.69, plant.snapshot(), "Operator HMI", "h:1", dry_run=True).allowed   # old behaviour

@@ -85,6 +85,8 @@
       "chlorine_decay_per_hr": 0.3,
       "chlorine_demand": 0.25
     },
+    "approval_margin": {"chlorine_residual": 0.15, "ph": 0.15},
+    "_doc_approval_margin": "A change is approved only if its forecast stays this far inside the limits (chlorine >= 0.35 mg/L, pH 6.65-8.35). Warnings and safe-hold use the real limits; corrective changes only need to beat doing nothing.",
     "budget_ms": 500,
     "on_timeout": "static",
     "margin": 0.01,

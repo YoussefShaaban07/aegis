@@ -441,6 +441,21 @@ class Guard:
 
     DISTRUST_UNCERTAINTY = {"naoh_feed_strength": 0.5, "chlorine_decay_per_hr": 0.6, "chlorine_demand": 0.5}
 
+    @staticmethod
+    def _approval_limits(pred: dict) -> dict:
+        """Judge round 16: the one held-out attack that still CREATED harm cut chlorine to a dose whose
+        long-run residual the twin put at ~0.24 mg/L against a 0.2 limit; ordinary demand drift did the rest
+        seven hours later. Approving a change needs headroom: its forecast must stay `approval_margin` inside
+        the limits. Warnings and safe-hold still use the real limits, and corrective changes are judged as
+        before (they only have to be better than doing nothing)."""
+        from .twin import DEFAULT_LIMITS
+        lim = {k: list(v) for k, v in (pred.get("limits") or DEFAULT_LIMITS).items()}
+        for k, m in (pred.get("approval_margin") or {}).items():
+            if k in lim and m:
+                lim[k][0] += m
+                lim[k][1] -= m
+        return lim
+
     def _twin_eval(self, state, override: dict, pred: dict, deadline: float | None = None):
         u = pred.get("uncertainty")
         if getattr(self, "distrust", False):
@@ -456,7 +471,7 @@ class Guard:
         *rest, last = list(override.items())
         st = dict(state)
         st.update(dict(rest))
-        return self.twin.evaluate(st, last[0], last[1], pred.get("horizon_min", 360), pred.get("limits"),
+        return self.twin.evaluate(st, last[0], last[1], pred.get("horizon_min", 360), self._approval_limits(pred),
                                   deadline=deadline, margin=pred.get("margin", 0.01))
 
     # ------------------------------------------------------------------ bookkeeping
