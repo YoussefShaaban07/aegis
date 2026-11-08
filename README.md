@@ -12,8 +12,14 @@ Inspired by [Control Seat (YC S26)](https://www.ycombinator.com/launches/RJ6-con
 |---|---|
 | ![](docs/copilot-blocked.png) | ![](docs/operator-view.png) |
 
+**At a glance**
+- **200 held-out simulated attacks:** plain rules let 45% make the water unsafe; Aegis 10%, and none of those 10% created the harm (the same storm did it without the attacker). Details in [Measured numbers](#measured-numbers-this-repo-not-marketing).
+- **60-second demo video:** [docs/video/pitch-demo-backup.mp4](docs/video/pitch-demo-backup.mp4). Run it yourself: `run.bat` (Windows) or `python -m aegis.server`, then *Pitch demo*.
+- **Not yet done:** never tested on a real plant or real PLC hardware.
+
 ## The problem
 
+- **July 2026:** attackers targeted more than 100 US water systems (CISA). FBI and EPA confirmed incidents in at least seven states on Allen-Bradley **MicroLogix** controllers, with IP addresses, passwords and programs changed. Aegis refuses each of those actions over EtherNet/IP (`tests/test_cip.py`).
 - Water utilities run on PLCs that speak **Modbus** (1979) or Rockwell's **EtherNet/IP + PCCC** (the MicroLogix / SLC family), with **no authentication**: any device that can reach the controller can change a setpoint.
 - In May 2024 the EPA said **over 70%** of the water systems it inspected did not fully comply with basic cybersecurity requirements. The EPA's 2023 rule requiring cyber checks in sanitary surveys was withdrawn after a lawsuit by states and industry groups.
 - In 2023, CISA warned after Iran-linked hackers compromised a Unitronics PLC at the Municipal Water Authority of Aliquippa, PA.
