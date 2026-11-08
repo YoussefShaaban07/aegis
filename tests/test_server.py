@@ -329,3 +329,22 @@ def test_model_that_writes_a_proposal_as_text_is_told_once_and_then_really_submi
     assert r["reply"] == "Submitted." and len(seen) == 3
     assert [t["tool"] for t in r["trace"]] == ["propose_setpoint"]
     assert client.server.S["proposals"].items[0]["value"] == 1.8
+
+
+def test_send_test_text_button(client, monkeypatch):
+    import httpx
+    al = client.server.S["alerter"]
+    monkeypatch.delenv("ALERT_TO", raising=False)
+    r = client.post("/api/alerts/test", json={"pin": "2468"})
+    assert r.status_code == 400 and "ALERT_TO" in r.json()["detail"]
+    monkeypatch.setenv("ALERT_TO", "+16015550100")
+    for k in ("PHOTON_URL", "PHOTON_TOKEN", "TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_FROM"):
+        monkeypatch.delenv(k, raising=False)
+    assert "PHOTON_URL" in client.post("/api/alerts/test", json={"pin": "2468"}).json()["detail"]
+    monkeypatch.setenv("PHOTON_URL", "https://photon.example")
+    monkeypatch.setenv("PHOTON_TOKEN", "tok")
+    monkeypatch.setattr(al, "transport", httpx.MockTransport(lambda req: httpx.Response(200, json={})))
+    assert client.post("/api/alerts/test", json={"pin": "0000"}).status_code == 403
+    r = client.post("/api/alerts/test", json={"pin": "2468"}).json()
+    assert r == {"ok": True, "result": "iMessage sent", "to": "+16015550100"}
+    assert client.get("/api/state").json()["alert_channels"] == ["iMessage (Photon)"]

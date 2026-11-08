@@ -81,7 +81,7 @@ Every write is checked in this order; the first failure blocks it:
 - **Learn normal** (`aegis/learn.py`): run in monitor mode, then get suggested rules from observed traffic (alert bands, tighter step/ramp/flood limits). Statistics, not AI; the engineer reviews and applies.
 - **Tamper-evident audit log**: SQLite, hash-chained, HMAC-keyed if `AEGIS_AUDIT_KEY` is set. Head hash printed in reports so later rewrites are detectable. CSV export.
 - **Incident report** (`aegis/report.py`): timeline, sources, MITRE ATT&CK for ICS techniques, AI proposals, config changes, evidence integrity, and a "what this report does not establish" section.
-- **Operator alerts**: SMS, plus a phone call for critical events, via Twilio, throttled per attacker IP. Honest "not configured" otherwise.
+- **Operator alerts**: iMessage through [Photon](https://photon.codes) (works with an iPhone, no Mac needed) and/or SMS plus a phone call for critical events through Twilio; a *Send test text* button on the dashboard. Honest "not configured" otherwise.
 - **Gateway mode** for a real PLC: guard-only, with the twin on if the PLC exposes the needed sensors.
 - **What-if** on the dashboard: ask the twin before you touch anything; the forecast is drawn on the trend chart.
 - **Robust twin**: every forecast runs across an uncertainty ensemble (lye feed ±10%, chlorine decay ±30%, demand ±25%) plus the long-run steady state; the worst case decides. Found necessary by our own evaluation (see below).
@@ -216,6 +216,7 @@ The previous held-out run (seeds 100000+, before Round 7) had the twin blocking 
 | Propose → approve AI flow with twin forecasts, re-check at apply time | ✅ tested with scripted fake LLMs |
 | AI copilot against a real model (Groq) | ⚠️ **not yet run with a real key** |
 | Twilio SMS/call | ⚠️ request format tested against a mock; **not yet sent to a real phone** |
+| Photon iMessage | ⚠️ request captured from Photon's own SDK (`@photon-ai/advanced-imessage` 2.5.0, HTTP client) and tested against a mock server; **not yet sent through Photon's real service** |
 | OpenPLC / real hardware | ⚠️ **not tested** (the sandbox this was built in blocked OpenPLC's installer). pymodbus is the third-party stand-in |
 | Modbus RTU over TCP (radio bridges, serial device servers) | ✅ `--framing rtu` / `--plc-framing rtu`; tested with pymodbus's RTU framer on both sides. Bad CRC or a function code whose length isn't known closes the connection. ⚠️ Native RS-485 (a serial port on the Aegis box) not built: use a serial device server |
 | EtherNet/IP + PCCC (MicroLogix / SLC) | ✅ built + tested with pycomm3 against our simulated MicroLogix. ⚠️ **not tested against a real MicroLogix**. Not covered: UDP implicit I/O, CIP Security (TLS), Logix symbolic writes (refused, not judged) |

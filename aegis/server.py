@@ -284,6 +284,7 @@ def state(who: dict = Depends(role("viewer"))):
             "guard_mode": g.mode, "guard_enabled": g.enabled,
             "log": log, "work_orders": S["orders"], "policy": g.policy,
             "alerts": list(S["alerter"].recent)[:20], "alerts_configured": S["alerter"].configured(),
+            "alert_channels": S["alerter"].channels(), "alert_to": len(S["alerter"].contacts()),
             "incidents": [i for i in S["alerter"].incidents if i["closed"] is None][:5],
             "notifications_sent": len(S["alerter"].notifications),
             "proposals": S["proposals"].items[:15], "autonomy": S["autonomy"], "audit": S["verify"],
@@ -710,6 +711,21 @@ def clear_lockdown(body: SourceIn, who: dict = Depends(role("operator"))):
     if not S["guard"].clear_lockdown(body.source, by=_by(who)):
         raise HTTPException(404, f"{body.source} is not locked down")
     return {"cleared": body.source}
+
+
+@app.post("/api/alerts/test")
+async def alert_test(body: PinIn, who: dict = Depends(role("engineer"))):
+    """Send one test text to the first number in ALERT_TO, through every configured channel."""
+    need_pin(body.pin, "send a test text")
+    al = S["alerter"]
+    if not al.contacts():
+        raise HTTPException(400, "ALERT_TO is empty: put your phone number in .env, e.g. ALERT_TO=+16015551234")
+    if not al.channels():
+        raise HTTPException(400, "no text channel set up: add PHOTON_URL + PHOTON_TOKEN (iMessage) or the TWILIO_ "
+                                 "settings to .env, then restart")
+    alert = {"key": "test", "severity": "info", "message": "Test from Aegis: alerts reach this phone."}
+    result = await al._deliver(alert, al.contacts()[0], alert["message"])
+    return {"ok": not any(w in result for w in ("failed", "error")), "result": result, "to": al.contacts()[0]}
 
 
 class TicketIn(BaseModel):

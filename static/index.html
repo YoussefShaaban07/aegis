@@ -50,6 +50,7 @@ button.wx.on{background:var(--ink);color:var(--onink);border-color:var(--ink)}
 .chk.predict{border-color:var(--blue);color:var(--blue)}
 .tech{font-size:10.5px;padding:0 5px;border:1px solid var(--line);border-radius:2px;color:var(--muted);margin-left:4px;font-family:var(--mono)}
 .chat{display:flex;gap:8px}.chat input{flex:1;font:inherit;background:var(--input);color:var(--ink);border:1px solid var(--btnline);border-radius:3px;padding:7px 9px}
+button.mini{padding:2px 8px;font-size:11.5px;margin-left:8px}
 .reply .mdpre{white-space:pre-wrap;margin:6px 0;font-size:12px}.reply .mdt{margin:6px 0}.reply .mdul{margin:4px 0 4px 18px;padding:0}.reply .mdgap{height:6px}.reply code{font-size:12px}
 .reply{margin-top:10px;white-space:normal;background:var(--panel2);border:1px solid var(--line);border-radius:2px;padding:10px;min-height:44px}
 .trace{margin-top:6px;font-size:12.5px;color:var(--muted)}.trace b{color:var(--ink)}
@@ -358,6 +359,8 @@ function md(src){
     if(/^\s*(---+|\*\*\*+)\s*$/.test(l)){i++;continue;}
     const h=l.match(/^\s*#{1,6}\s+(.*)$/);out+=h?`<div><b>${inl(h[1])}</b></div>`:(l.trim()?`<div>${inl(l)}</div>`:'<div class="mdgap"></div>');i++;}
   return out;}
+async function testText(){const r=await post('/api/alerts/test',{pin:pin()});
+  alert(r.ok?`Sent to ${r.to}: ${r.result}`:(r.result?`Problem sending to ${r.to}: ${r.result}`:(r.detail||'Failed')));}
 async function loadEval(){try{const r=await fetch('/api/evaluation');if(!r.ok)return;const rows=await r.json();
   const pct=(a,n)=>`${a}/${n} (${Math.round(100*a/n)}%)`;
   $('evalt').innerHTML=rows.length?`<table class="t"><tr><th>Run</th><th>Plain rules: water made unsafe</th><th>Aegis</th><th>Aegis: harm created</th><th>Operator false blocks</th></tr>`+
@@ -573,7 +576,7 @@ async function load(){let s;try{const r=await fetch('/api/state');if(r.status===
   policy=s.policy;renderRules(false);
   if(document.activeElement!==$('auto'))$('auto').value=s.autonomy;
   $('llm').textContent=s.llm?'model connected':s.llm_scripted?'scripted demo model (no API key)':'offline: add GROQ_API_KEY';
-  $('alcfg').textContent=s.alerts_configured?'SMS + phone call enabled':'SMS not configured (dashboard only)';
+  $('alcfg').innerHTML=s.alerts_configured?`texts on: ${esc((s.alert_channels||[]).join(' + '))} <button class="mini" onclick="testText()">Send test text</button>`:'texts not configured (dashboard only)';
   $('incidents').innerHTML=(s.incidents||[]).map(i=>`<div class="verdict ${i.severity==='critical'&&!i.acked_by?'bad':''}" style="margin:0 0 8px">
     <b>Incident #${i.id}</b> · ${esc(i.severity)} · ${i.count} event${i.count>1?'s':''} grouped (one text sent${i.level?`, escalated to contact ${i.level+1}`:''})<br>${esc(i.title)}
     <div style="margin-top:6px">${i.acked_by?`<span class="okm">Acknowledged by ${esc(i.acked_by)}</span>`:`<button onclick="post('/api/incidents/${i.id}/ack').then(load)">Acknowledge</button> <span class="trace">unacknowledged critical incidents escalate to the next contact every 10 min</span>`}</div></div>`).join('');

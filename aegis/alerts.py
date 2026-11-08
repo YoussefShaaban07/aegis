@@ -4,9 +4,12 @@ At 3 AM nobody is watching the dashboard. When the guard blocks a dangerous
 command or the process goes out of range, the on-call operator gets an SMS,
 and for critical events a phone call that reads the alert out loud.
 
-Uses Twilio if configured (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM,
-ALERT_TO). Without it, alerts still appear on the dashboard and in the audit log,
-marked "SMS not configured", never pretending to have been sent.
+Delivery channels (either or both; ALERT_TO lists the phone numbers):
+- Photon (iMessage, works with an iPhone): PHOTON_URL + PHOTON_TOKEN from app.photon.codes.
+  Aegis calls Photon's HTTP API directly (POST /v1/messages:sendText); no Node needed.
+- Twilio (SMS, plus a phone call for critical alerts): TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM.
+Without either, alerts still appear on the dashboard and in the audit log, marked "not configured",
+never pretending to have been sent.
 
 Alert fatigue is how real incidents get missed, so alerts are grouped into
 INCIDENTS: everything within 15 minutes of the last related alert joins the
@@ -43,8 +46,20 @@ class Alerter:
         self.recent: deque[dict] = deque(maxlen=50)
         self._last: dict[str, float] = {}
 
+    @staticmethod
+    def twilio_configured() -> bool:
+        return all(os.getenv(k) for k in ("TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_FROM"))
+
+    @staticmethod
+    def photon_configured() -> bool:
+        return all(os.getenv(k) for k in ("PHOTON_URL", "PHOTON_TOKEN"))
+
+    def channels(self) -> list[str]:
+        return [n for n, ok in (("iMessage (Photon)", self.photon_configured()),
+                                ("SMS (Twilio)", self.twilio_configured())) if ok]
+
     def configured(self) -> bool:
-        return all(os.getenv(k) for k in ("TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_FROM", "ALERT_TO"))
+        return bool(os.getenv("ALERT_TO")) and bool(self.channels())
 
     def contacts(self) -> list[str]:
         return [c.strip() for c in os.getenv("ALERT_TO", "").split(",") if c.strip()]
@@ -87,7 +102,7 @@ class Alerter:
         inc["count"] += 1
         inc["last"] = now
         alert = {"t": now, "key": key, "severity": severity, "message": message, "incident": inc["id"],
-                 "delivery": ("sending" if self.configured() else "SMS not configured (dashboard only)") if notify
+                 "delivery": ("sending" if self.configured() else "texts not configured (dashboard only)") if notify
                  else f"grouped into incident #{inc['id']} (no new text)"}
         self.recent.appendleft(alert)
         if self.audit:
@@ -138,10 +153,35 @@ class Alerter:
                                  contact_index=nxt, text=text)
 
     async def _deliver(self, alert: dict, to: str | None = None, text: str | None = None):
-        sid, token = os.environ["TWILIO_ACCOUNT_SID"], os.environ["TWILIO_AUTH_TOKEN"]
-        frm = os.environ["TWILIO_FROM"]
         to = to or self.contacts()[0]
         body = f"AEGIS {alert['severity'].upper()}: {text or alert['message']}"[:1500]
+        results = []
+        if self.photon_configured():
+            results.append(await self._photon(to, body))
+        if self.twilio_configured():
+            results += await self._twilio(alert, to, body)
+        alert["delivery"] = ", ".join(results)
+        if self.audit:
+            self.audit.append("alert_delivery", {"key": alert["key"], "result": alert["delivery"]})
+        return alert["delivery"]
+
+    async def _photon(self, to: str, body: str) -> str:
+        """iMessage through Photon's HTTP API (same request as their SDK's createHttpClient().messages.sendText)."""
+        url = os.environ["PHOTON_URL"].rstrip("/") + "/v1/messages:sendText"
+        chat = to if to.startswith(("any;-;", "any;+;")) else "any;-;" + to.replace(" ", "")
+        try:
+            async with httpx.AsyncClient(timeout=15, transport=self.transport) as c:
+                r = await c.post(url, json={"chatGuid": chat, "text": body},
+                                 headers={"Authorization": f"Bearer {os.environ['PHOTON_TOKEN']}"})
+            if r.status_code < 300:
+                return "iMessage sent"
+            return f"iMessage failed ({r.status_code}: {r.text[:120]})"
+        except Exception as e:  # never let alerting crash the guard
+            return f"iMessage error: {type(e).__name__}: {e}"
+
+    async def _twilio(self, alert: dict, to: str, body: str) -> list[str]:
+        sid, token = os.environ["TWILIO_ACCOUNT_SID"], os.environ["TWILIO_AUTH_TOKEN"]
+        frm = os.environ["TWILIO_FROM"]
         results = []
         try:
             async with httpx.AsyncClient(timeout=15, auth=(sid, token), transport=self.transport) as c:
@@ -153,7 +193,5 @@ class Alerter:
                     r = await c.post(TWILIO.format(sid=sid, what="Calls"), data={"From": frm, "To": to, "Twiml": twiml})
                     results.append("call placed" if r.status_code < 300 else f"call failed ({r.status_code})")
         except Exception as e:  # never let alerting crash the guard
-            results.append(f"delivery error: {e}")
-        alert["delivery"] = ", ".join(results)
-        if self.audit:
-            self.audit.append("alert_delivery", {"key": alert["key"], "result": alert["delivery"]})
+            results.append(f"SMS error: {e}")
+        return results
