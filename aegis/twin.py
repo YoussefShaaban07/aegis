@@ -214,10 +214,16 @@ class Twin:
         return None
 
     def evaluate(self, state: dict, register: str, value: float, horizon_min: float = 360,
-                 limits: dict | None = None, deadline: float | None = None, margin: float = 0.01) -> Verdict:
+                 limits: dict | None = None, deadline: float | None = None, margin: float = 0.01,
+                 real_limits: dict | None = None) -> Verdict:
         """deadline: time.perf_counter() value; if passed before all model variants are done,
         returns timed_out=True instead of a partial (possibly optimistic) answer."""
         limits = limits or DEFAULT_LIMITS
+        real = real_limits or limits
+
+        def edge(var, which):           # "8.35 (the 8.5 limit less a 0.15 safety margin)"
+            v, r = limits[var][which], real.get(var, limits[var])[which]
+            return f"{v:g}" if abs(v - r) < 1e-9 else f"{v:g} (the {r:g} limit less a {abs(r - v):g} safety margin)"
         if not self.available(state):
             return Verdict(True, "prediction unavailable (missing sensor tags)")
         override = {register: value}
@@ -260,7 +266,7 @@ class Twin:
             worst = (min if direction == "below" else max)(pts, key=lambda p: p[var]) if pts else None
             cross = self._first_cross(fc["without"], var, limits)
             detail = (f" (without any change it reaches {worst[var]:.2f}{unit}"
-                      + (f", crossing {lo if direction == 'below' else hi:g} in about {cross:g} min" if cross else "")
+                      + (f", crossing {edge(var, 0 if direction == 'below' else 1)} in about {cross:g} min" if cross else "")
                       + ")") if worst else ""
             return Verdict(False, f"{name} is already forecast to go {direction} its safe limit{detail}; this "
                                   f"change pushes it further that way", var, None, None, fc)
@@ -270,7 +276,8 @@ class Twin:
             lo, hi = limits[var][0], limits[var][1]
             t = f"about {when:g} min after this change" if when is not None else "once the tank settles (beyond the forecast window)"
             case = "" if i == 0 else " in the worst case of the model's uncertainty range"
-            return Verdict(False, f"twin predicts {name} reaches {val:.2f}{unit} (safe {lo:g}-{hi:g}) {t}{case}",
+            safe = f"{lo:g}-{hi:g}" if real is limits else f"{real[var][0]:g}-{real[var][1]:g}, approved with a margin: {lo:g}-{hi:g}"
+            return Verdict(False, f"twin predicts {name} reaches {val:.2f}{unit} (safe {safe}) {t}{case}",
                            var, val, when, fc)
         if worst_b > 0 and worst_c < worst_b - 1e-6:
             return Verdict(True, "corrective: improves an unsafe forecast", forecast=fc)

@@ -471,8 +471,10 @@ class Guard:
         *rest, last = list(override.items())
         st = dict(state)
         st.update(dict(rest))
+        from .twin import DEFAULT_LIMITS
         return self.twin.evaluate(st, last[0], last[1], pred.get("horizon_min", 360), self._approval_limits(pred),
-                                  deadline=deadline, margin=pred.get("margin", 0.01))
+                                  deadline=deadline, margin=pred.get("margin", 0.01),
+                                  real_limits=pred.get("limits") or DEFAULT_LIMITS)
 
     # ------------------------------------------------------------------ bookkeeping
     def _is_big(self, register, old, new) -> bool:
