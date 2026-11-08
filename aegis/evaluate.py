@@ -316,8 +316,15 @@ def summarize(attacks: list[dict], operators: list[dict]) -> dict:
         justified = [w for w in pred_blocks if worse(w)]
         unjust = [w for w in pred_blocks if not worse(w)]
         missed = [w for w in o if w["allowed"] and worse(w)]
+        harmful = [e for e in a if e["caused"]]
+        created = [e for e in harmful if base[e["seed"]]["harm"] is None or e["harm"] == "equipment cycling"]
+        much_worse = [e for e in harmful if e not in created
+                      and e["peak_severity"] > base[e["seed"]]["peak_severity"] * 1.5 + 0.02]
         out["twin" if mode else "static"] = {
             "attack_episodes": len(a), "attack_harmful": sum(e["caused"] for e in a),
+            # judge round 16: was the water going to be unsafe anyway (weather, nobody answering)?
+            "harm_created": len(created), "harm_made_much_worse": len(much_worse),
+            "harm_only_sooner": len(harmful) - len(created) - len(much_worse),
             "by_goal": by_goal, "by_strategy": by_strategy,
             "operator_writes": len(o), "operator_blocked_any_rule": sum(not w["allowed"] for w in o),
             "operator_blocked_by_twin": len(pred_blocks), "twin_blocks_justified": len(justified),
@@ -384,6 +391,9 @@ def main(argv=None):
         print(f"== {mode} ==")
         print(f"  attacks that made the water unsafe: {r['attack_harmful']}/{r['attack_episodes']} "
               f"({100 * r['attack_harmful'] / max(1, r['attack_episodes']):.0f}%)")
+        print(f"    of those: {r['harm_created']} created harm that wouldn't have happened, "
+              f"{r['harm_made_much_worse']} made weather harm much worse, {r['harm_only_sooner']} only made it "
+              "come 30+ min sooner (the same weather was unsafe without the attacker)")
         for gname, v in r["by_goal"].items():
             w = (f"   (warning before harm, median: alarm {v['median_warning_min']} min, twin forecast "
                  f"{v['median_forewarn_min']} min)") if v["median_warning_min"] is not None else ""
