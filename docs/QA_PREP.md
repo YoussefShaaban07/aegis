@@ -67,7 +67,7 @@ Short answers in plain words. Say the **bold line** first; add the rest only if 
 **On the controllers they hit, Allen-Bradley MicroLogix, yes, for everything that has to go through Aegis: changing the IP address, the password (a program download) or the program are all refused, and we test exactly those.** But those controllers were reachable from the internet. Aegis only helps if the controller's cable goes into Aegis and nothing else; that's the first install step.
 
 ## The expo: 2.5-minute pitch with live demo
-Before you start: dashboard open, signed in as **engineer**, PIN **2468** in the header, press **Pitch demo** once (it resets the plant and waits).
+Before you start: laptop power plan set to never sleep; start the dashboard **without an API key** (the AI step is then the same every time); dashboard open, signed in as **engineer**, PIN **2468** in the header; press **Pitch demo** once (it resets the plant and waits).
 Slides: cover → problem → how → demo → results → ask. On the demo slide, Alt-Tab to the dashboard and press **Space once per step** (it moves on and runs the step):
 1. Guard OFF → Oldsmar attack → lye box turns red.
 2. Guard ON → same attack → BLOCKED.
