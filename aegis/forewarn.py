@@ -47,13 +47,13 @@ def _fmt(mins: float) -> str:
 # high-service pump can drop distribution pressure, pull contaminated water in and leave hydrants dry), so the
 # message gives the twin's recovery time and puts the pump decision in front of a person.
 RECOVERY_TEXT = {
-    "ph:above": "pH is {now:.1f}, above {limit:g}, in water already made. It can't be un-dosed; check the lye feed "
-                "is back to normal.",
-    "ph:below": "pH is {now:.1f}, below {limit:g}, in water already made: corrosive, can pick up lead from old "
-                "pipes. Check the lye feed.",
-    "chlorine_residual:below": "Chlorine residual is {now:.2f} mg/L, below {limit:g}: the water isn't being "
-                               "disinfected. Check the chlorine feed.",
-    "chlorine_residual:above": "Chlorine residual is {now:.2f} mg/L, above {limit:g}. Check the chlorine feed.",
+    "ph:above": "pH is above {limit:g} in water already made. It can't be un-dosed; check the lye feed is back to "
+                "normal.",
+    "ph:below": "pH is below {limit:g} in water already made: corrosive, can pick up lead from old pipes. Check the "
+                "lye feed.",
+    "chlorine_residual:below": "Chlorine residual is below {limit:g} mg/L: the water isn't being disinfected. "
+                               "Check the chlorine feed.",
+    "chlorine_residual:above": "Chlorine residual is above {limit:g} mg/L. Check the chlorine feed.",
 }
 PUMP_TEXT = (" Until then, decide whether to stop P-2 to town or send the clearwell to waste. Aegis won't stop "
              "pumps on its own: stopping one can drop pipe pressure and pull dirty water in.")

@@ -1,0 +1,26 @@
+52 simulated weeks (233 calm days, 131 storm/bloom days), operator acknowledges after 10 min
+  messages sent: 502 (9.7 per week); escalations 52
+  on calm days: 24 (0.1 per calm day)  <- nuisance
+  on storm/bloom days: 3.65 per day
+  by cause: {'forecast': 336, 'process alarm': 140, 'other': 26}
+  operator writes: {'allowed': 2383, 'blocked:predict': 1}; safe-hold actions: 0
+    calm-day text: Twin forecast: clearwell level will go below 10% in about 176 min at current settings (now
+    calm-day text: Twin forecast: clearwell level will go below 10% in about 180 min at current settings (now
+    calm-day text: Twin forecast still unsafe (tank_level below limit in ~106 min) 60 min after it was acknow
+    calm-day text: Twin forecast still unsafe (tank_level below limit in ~30 min) 60 min after it was acknowl
+    calm-day text: Process alarm TANK LOW
+    calm-day text: Twin forecast still unsafe (tank_level below limit in ~0 min) 60 min after it was acknowle
+    calm-day text: Twin forecast: clearwell level will go below 10% in about 176 min at current settings (now
+    calm-day text: Process alarm TANK HIGH
+    calm-day text: Twin forecast: clearwell level will go below 10% in about 180 min at current settings (now
+    calm-day text: Twin forecast: clearwell level will go below 10% in about 180 min at current settings (now
+    calm-day text: Twin forecast: clearwell level will go below 10% in about 180 min at current settings (now
+    calm-day text: Process alarm TANK LOW
+    calm-day text: Twin forecast: clearwell level will go below 10% in about 180 min at current settings (now
+    calm-day text: Twin forecast: clearwell level will go below 10% in about 180 min at current settings (now
+    calm-day text: Twin forecast: clearwell level will go below 10% in about 176 min at current settings (now
+    calm-day text: Twin forecast still unsafe (tank_level below limit in ~106 min) 60 min after it was acknow
+    calm-day text: Twin forecast still unsafe (tank_level below limit in ~26 min) 60 min after it was acknowl
+    calm-day text: Process alarm TANK LOW
+    calm-day text: Twin forecast still unsafe (tank_level below limit in ~0 min) 60 min after it was acknowle
+    calm-day text: Twin forecast still unsafe (tank_level below limit in ~0 min) 60 min after it was acknowle

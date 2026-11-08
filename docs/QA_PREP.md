@@ -32,7 +32,7 @@ Short answers in plain words. Say the **bold line** first; add the rest only if 
 **In simulation, 9 wrong blocks out of 514 operator changes, about 1 in 57.** When it blocks, it says why and what *is* safe. Changes that fix a problem are always allowed. It starts in watch-only mode for weeks before it blocks anything. And if it's wrong at 3 a.m., the operator taps **Allow this value once** on their phone: that one value goes through, everyone on call is told, hard limits still apply.
 
 **10. Won't it spam texts?**
-**We simulated a full year: about 9 texts a week, and only 24 on calm days in the whole year, about one every two weeks.**
+**We simulated a full year: about 10 texts a week, almost all on storm or algae days, and only 24 on calm days in the whole year, about one every two weeks.**
 
 **11. What if the Aegis box breaks?**
 **The plant keeps running on its last settings; the PLC doesn't need Aegis.** It restarts itself in seconds. If it stays down, there's a labelled break-glass cable that connects the screens straight to the PLC.
