@@ -444,3 +444,19 @@ Sources: [TechRadar on CISA's July count](https://techradar.com/pro/security/cis
 3. That's the honest case and the step says so: "you can't count on the model refusing, which is why the guard exists". For the 2.5-minute pitch, run **without** a key so the step is the same every time; use the real model at the booth, where there's time to explain either outcome.
 4. It isn't silent: every fallback reply starts with why ("can't reach the model provider (ConnectError)" or "model provider answered 401") and that the scripted stand-in is answering, and the panel already labels the scripted model.
 5. No. The fallback only exists with `AEGIS_DEMO=1`. A real deployment shows the provider's error and keeps the 40-second timeout.
+
+## Round 24: is the twin grading its own homework?
+
+1. **"In the algae-bloom demo, does the twin get told about the bloom? If it reads the scenario's future, the 'forecast' is fake."**
+2. **"Your evaluation plant is your twin's own equations with a 3% and a 20% parameter change. Of course the twin predicts it."**
+3. **"You ran the high-fidelity simulator once, at v6. Ten versions later, does your headline survive it?"**
+4. **"What does the twin cost operators when the plant doesn't match it?"**
+5. **"Why should anyone believe the 10% will hold at a real plant?"**
+
+### What we checked and found (v27)
+
+1. Checked the code: the twin gets only the plant's measured readings (raw-water pH, alkalinity, turbidity and the finished-water sensors) and estimates the raw-water trend itself from the last 30 minutes of those readings, levelling it off over an hour. It never sees the scenario or the simulator's future.
+2. Fair, for the standard runs. That's why the high-fidelity simulator exists: it has physics the twin doesn't model at all (a second mixing stage in the clearwell, CO2 exchange with air) and lagged pH/chlorine analyzers, on top of the parameter errors.
+3. Re-ran the current version on held-out seeds 300000–300199, attacker on the operator's HMI, safe-hold on, **high-fidelity plant**: static rules **91/200 (46%)**, Aegis **19/200 (10%)**. Of Aegis's 19: **0 created harm**, 1 made storm harm much worse, 18 only made it come sooner. Same headline as the standard simulator. Output: `docs/eval/v27_heldout_hmi_safehold_highfi.{txt,json}`.
+4. 508 simulated operator writes: the twin blocked 19, **14 justified and 5 false** (standard simulator: 4 false in 382). Safe-hold undid 21 operator changes: 16 helped, 4 no difference, 1 made things worse.
+5. They shouldn't yet. Both simulators are ours; the high-fidelity one is a stricter test, not a real plant. That's why the next step on the last slide is a real controller and a pilot plant, and why Aegis starts in watch-only mode: a week of real logs shows how often the twin would have blocked before it's allowed to.

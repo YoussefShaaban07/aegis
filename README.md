@@ -163,6 +163,7 @@ Point the HMI and AI at the gateway instead of the PLC, and firewall the PLC so 
 | Rules + twin + lockdown, attacker on the **operator's HMI PC** (no safe-hold) | 36/200 (18%); clearwell drain 24/27 |
 | Rules + twin + lockdown + **safe-hold**, attacker on the HMI PC | **19/200 (10%)**; clearwell drain **10/27**; pump cycling 0/41 |
 | Rules + twin + lockdown + safe-hold, attacker elsewhere on the network | **19/200 (10%)** |
+| Same as the HMI row, on the **high-fidelity simulator** (physics the twin gets wrong: an extra mixing stage, CO2 off-gassing, lagged analyzers) | static **91/200 (46%)** → Aegis **19/200 (10%)**; 0 created harm, 1 made weather harm much worse. Operators: 5 false twin blocks in 508 writes |
 
 **Were they going to be unsafe anyway?** Every episode is also run with the same weather and *no attacker*. With static rules, 52 of the 90 harmful attacks created harm that wouldn't otherwise have happened (and 12 made it much worse). **With Aegis: 0 of the 19.** All 19 are storms or blooms that made the water unsafe *without* the attacker too (nobody answers an alarm in this test); the attacker made it happen 30+ minutes sooner. The evaluation prints this split.
 
