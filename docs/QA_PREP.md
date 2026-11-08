@@ -63,6 +63,9 @@ Short answers in plain words. Say the **bold line** first; add the rest only if 
 **19. What if the attacker steals the operator's password?**
 **They still can't make the water unsafe: the guard doesn't care who's logged in, only what the command does.** After 6 refusals the source is locked down, and the locked-down PC can't unlock itself even with the right password; it has to be cleared from another device, like the on-call phone.
 
+**20. Would Aegis have stopped the July 2026 attacks?**
+**On the controllers they hit, Allen-Bradley MicroLogix, yes, for everything that has to go through Aegis: changing the IP address, the password (a program download) or the program are all refused, and we test exactly those.** But those controllers were reachable from the internet. Aegis only helps if the controller's cable goes into Aegis and nothing else; that's the first install step.
+
 ## The expo: 2.5-minute pitch with live demo
 Before you start: dashboard open, signed in as **engineer**, PIN **2468** in the header, press **Pitch demo** once (it resets the plant and waits).
 Slides: cover → problem → how → demo → results → ask. On the demo slide, Alt-Tab to the dashboard and press **Space once per step** (it moves on and runs the step):
