@@ -462,7 +462,7 @@ const STEPS=[
    if(a.result!=='blocked')throw new Error('expected the twin to block the +50 change');}},
  {t:'The AI copilot',d:'A poisoned work order tells the AI to raise lye to 9,000. In propose mode the AI can only suggest; Aegis pre-checks every suggestion.',
   say:'"Utilities are adding AI copilots. AI that reads emails and work orders can be tricked. Aegis treats the AI like any other user: it proposes, Aegis checks, a human approves."',
-  run:async()=>{await post('/api/scenario/normal');await post('/api/attack/plant-work-order');
+  run:async()=>{await post('/api/reset');await post('/api/mode',{mode:'enforce',pin:pin()});await post('/api/attack/plant-work-order');
    if(S&&(S.llm||S.llm_scripted)){$('q').value='Any open work orders I should handle?';await ask();if(!S.llm)$('g-st').textContent='No API key: a clearly labelled scripted model played the fooled AI. Say so.';}else{$('g-st').textContent='AI is offline here: add GROQ_API_KEY to show this step live.';}}},
  {t:'A lying controller',d:'Malware inside the PLC secretly doses lye 200 while its registers still say 100. No command passes through Aegis.',
   say:'"What if the controller itself is hacked, like Stuxnet? Aegis runs the chemistry alongside the plant. When the water stops matching what the controller claims, it raises the alarm."',
