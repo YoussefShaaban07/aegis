@@ -75,7 +75,11 @@ class Plant:
     def __post_init__(self):
         self.model = HiFiModel(_true_params("high")) if self.fidelity == "high" else ProcessModel(_true_params())
         self._lag = None                # analyzer readings (high fidelity: first-order lag)
-        self.rng = random.Random(self.seed)
+        self.rng = random.Random(self.seed)                    # the process: demand drift, weather noise
+        # Sensor noise has its own stream (judge round 15): reading the sensors must not change the physics.
+        # With one shared stream, every extra reading (an attacker's tries, safe-hold's forecasts) shifted the
+        # simulated demand, so attack and no-attack runs of the "same" episode drifted apart.
+        self.sensor_rng = random.Random(self.seed * 7919 + 1)
         self.raw = Raw(**SCENARIOS["normal"].__dict__)
         self._raw_target = Raw(**self.raw.__dict__)
         self.demand_drift = 0.0
@@ -174,7 +178,7 @@ class Plant:
         self.history.append({"t": time.time(), "sim_t": self.sim_time, **self.snapshot(values_only=True)})
 
     def _noise(self, sd: float) -> float:
-        return self.rng.gauss(0, sd) if self.noise else 0.0
+        return self.sensor_rng.gauss(0, sd) if self.noise else 0.0
 
     def alarms(self) -> list[str]:
         out = []

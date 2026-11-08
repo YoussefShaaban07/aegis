@@ -100,7 +100,7 @@ def test_grab_sample_catches_replay_early():
 def test_stuck_analyzer_is_named_not_blamed_on_plc():
     plant, mon, cmd = fresh()
     run(plant, mon, 15, cmd)
-    plant.noise = False                    # the analyzer freezes: identical readings from now on
+    # only the pH analyzer freezes (identical readings from now on); every other instrument keeps its noise
     stuck_at = 7.31
     orig = plant.sensors
     plant.sensors = lambda: {**orig(), "ph": stuck_at}
