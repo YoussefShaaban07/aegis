@@ -66,6 +66,41 @@ Short answers in plain words. Say the **bold line** first; add the rest only if 
 **20. Would Aegis have stopped the July 2026 attacks?**
 **On the controllers they hit, Allen-Bradley MicroLogix, yes, for everything that has to go through Aegis: changing the IP address, the password (a program download) or the program are all refused, and we test exactly those.** But those controllers were reachable from the internet. Aegis only helps if the controller's cable goes into Aegis and nothing else; that's the first install step.
 
+## The 2.5-minute script (same as the slide notes)
+
+Practise it out loud with a timer; the parts add up to 2:30 exactly, so aim for 2:20.
+
+**Cover** (10 seconds)
+
+> Hi, I’m Youssef. This is Aegis: a safety guard for the old computers that run small-town drinking water.
+
+**The controller obeys anyone** (20 seconds)
+
+> In 2021, someone set the lye at a Florida water plant from 100 to 11,100 parts per million. Hacker or mistake, the controller just obeyed: it takes commands from anyone. This July, attackers targeted more than a hundred water systems and got in across seven states, on Allen-Bradley MicroLogix controllers, the kind Aegis speaks. Most of these utilities have no security team.
+
+**Every command passes through Aegis** (20 seconds)
+
+> Aegis is a small box between the plant’s screens and its old controller. Every command passes through it: from the operator, an AI assistant, or an attacker. It checks the rules, and it runs a chemistry model of the plant six hours ahead. If nobody answers an alarm, it puts back the last safe setting.
+
+**Live demo** (55 seconds)
+
+Setup: BEFORE the pitch: dashboard open, logged in as engineer, PIN 2468 in the header, plant reset, laptop set to never sleep. Start the dashboard WITHOUT an API key so the AI step is the same every time. Press "Pitch demo" once so it sits on its first step.
+
+- Alt-Tab to the dashboard. Press Space once per step (it moves on and runs the step):
+- Space 1 (guard OFF): "Without Aegis, the 11,100 attack goes straight through: the lye box turns red." (12 s)
+- Space 2 (guard ON): "Same attack with Aegis: blocked. Rules can do that." (8 s)
+- Space 3 (algae bloom): "Now a small, legal-looking +50 lye change. Every rule says yes. The twin says the pH crosses the limit in under two hours: blocked. Cutting lye is still allowed." (20 s)
+- Space 4 (AI): "A work order tells the AI to raise lye to 9,000. The AI falls for it; Aegis blocks it like any other command." (15 s)
+- The last button says "Done: back to the slides". Alt-Tab back. IF THE LAPTOP OR SERVER FAILS: play docs/video/pitch-demo-backup.mp4 and say the same lines. After the pitch, press "Booth loop" so the screen keeps demoing for visitors.
+
+**200 attacks it had never seen** (25 seconds)
+
+> We attacked it 200 times with cases it was never tuned on. Plain rules let 45 percent make the water unsafe. Aegis: 10 percent, even with the attacker on the operator’s own PC, and in every one of those, the same storm made the water unsafe anyway. It blocked 4 operator changes in 382 by mistake. This is simulation; the next step is a real plant.
+
+**Cheap enough for a three-person utility** (20 seconds)
+
+> It’s built for small towns: about a hundred dollars a month, no rewiring, and it starts in watch-only mode. We reach utilities through the Rural Water Association and the integrators who already service their controllers. Next: a real controller on my bench, then a pilot plant here in Mississippi. The controller will still obey anyone. Aegis decides what reaches it. Thank you.
+
 ## The expo: 2.5-minute pitch with live demo
 Before you start: laptop power plan set to never sleep; start the dashboard **without an API key** (the AI step is then the same every time); dashboard open, signed in as **engineer**, PIN **2468** in the header; press **Pitch demo** once (it resets the plant and waits).
 Slides: cover → problem → how → demo → results → ask. On the demo slide, Alt-Tab to the dashboard and press **Space once per step** (it moves on and runs the step):
