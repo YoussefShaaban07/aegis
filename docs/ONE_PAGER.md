@@ -15,13 +15,13 @@ Speaks **Modbus TCP and EtherNet/IP (Allen-Bradley MicroLogix/SLC)**, the PLC fa
 
 | | Attacks that made water unsafe (200 held-out episodes, nobody answering alarms) |
 |---|---|
-| Static rules only | 49% |
-| Aegis | **12%**, including attackers sitting on the operator's own HMI |
+| Static rules only | 45% |
+| Aegis | **10%**, including attackers sitting on the operator's own HMI |
 
-- Operator cost: 2 false twin blocks in 380 simulated operator writes.
+- Operator cost: 4 false twin blocks in 382 simulated operator writes; no operator was ever locked down.
 - A simulated year: **9.6 texts a week**, 12 on calm days in the whole year.
 - Adds ~0.2 ms per command (static rules), ~13 ms with the twin.
-- 191 automated tests; tested against independent Modbus and EtherNet/IP clients (pymodbus, libmodbus, pycomm3).
+- 197 automated tests; tested against independent Modbus and EtherNet/IP clients (pymodbus, libmodbus, pycomm3).
 
 **Not yet done (said plainly).** Not tested on a real plant or real PLC hardware; the twin is validated against simulators, not real plant data; no utility has used it yet.
 

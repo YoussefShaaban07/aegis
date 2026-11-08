@@ -151,12 +151,14 @@ Point the HMI and AI at the gateway instead of the PLC, and firewall the PLC so 
 
 | | Attacks that made the water unsafe |
 |---|---|
-| Static rules only | 98/200 (49%) |
-| Rules + twin, attacker on the **operator's HMI PC** (no safe-hold) | 40/200 (20%); clearwell drain 25/27 |
-| Rules + twin + **safe-hold**, attacker on the HMI PC | **25/200 (12%)**; clearwell drain **10/27** |
-| Rules + twin + safe-hold, attacker elsewhere on the network | **25/200 (12%)** |
+| Static rules only | 90/200 (45%) |
+| Rules + twin + lockdown, attacker on the **operator's HMI PC** (no safe-hold) | 36/200 (18%); clearwell drain 24/27 |
+| Rules + twin + lockdown + **safe-hold**, attacker on the HMI PC | **20/200 (10%)**; clearwell drain **10/27**; pump cycling 0/41 |
+| Rules + twin + lockdown + safe-hold, attacker elsewhere on the network | **20/200 (10%)** |
 
-Cost to a (simulated) operator, 380 writes in 30 sessions: 12 blocked by the twin (10 justified, **2 false**), **4 refused by safe-hold holds**. Safe-hold undid 19 operator changes: 15 made the true outcome better, 3 no difference, **1 slightly worse** (a storm where the water was unsafe either way). An earlier version of this run found a hole: an HMI attacker could cycle pumps through the "advice" path; fixed in Round 9 (`docs/JUDGE_ROUNDS.md`).
+Cost to a (simulated) operator, 382 writes in 30 sessions: 13 blocked by the twin (9 justified, **4 false**), 3 refused by safe-hold holds, never locked down. Safe-hold undid 18 operator changes: 14 made the true outcome better, 3 no difference, **1 slightly worse**.
+
+*Correction (Round 15):* earlier versions of this table (49% static, 12% with safe-hold) came from a simulator in which reading the sensors advanced the same random stream as the plant's demand, so attack and no-attack runs of an episode drifted apart and some weather-only harm was counted against the attacker. Fixed (`aegis/plant.py`); all rows above are from the corrected simulator. Older tables below are kept as they were measured.
 
 **Earlier version** (before safe-hold), for comparison:
 

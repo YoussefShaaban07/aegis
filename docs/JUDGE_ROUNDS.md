@@ -288,3 +288,30 @@ Flow: *Aegis sits between the HMI and a MicroLogix (Modbus or EtherNet/IP) → r
 3. Onboarding matches lime / soda ash / Na2CO3 / alkali / pH-adjust feed tags.
 4. One gateway per PLC (each its own port, own tag map). Over Modbus, a TCP-to-serial gateway's unit IDs are routed (`--plc-unit`), already tested. A single box can run several gateways; documented, not yet a single multi-PLC process.
 5. Checked: the dashboard loads nothing from the internet (no CDNs or web fonts); with the scripted model the whole demo runs offline.
+
+## Round 15: what still gets through, and is the scorekeeping honest?
+
+1. **"12% still succeed. Which ones, and what did they look like?"** The successful attacks were refused 15 to 1,800 times before they got through. A real operator was refused at most 3 times in a 12-hour shift. Aegis saw the probing and did nothing with it.
+2. **"Your chemistry was validated against your own simulator. Circular."**
+3. **"One of your 'successful attacks' had zero accepted writes. How?"** (Episode 300087: 15 tries, all blocked, counted as harm caused by the attacker.)
+4. **"Your HMI-attacker can now trigger lockdown on purpose and lock the real operators out."**
+5. **"Your README screenshot is from the old design."**
+
+### What we did about it (v19)
+
+1. **Lockdown** (`policy.lockdown`): 6 refusals from one source within 60 min and that source may only make changes the twin forecasts as corrective, until an operator clears it on the console or dashboard (login, audited; survives restarts; not in monitor mode; dry runs don't count). Critical alert names the source.
+2. **PHREEQC check** (`scripts/validate_phreeqc.py`, `tests/test_phreeqc.py`): the twin's carbonate chemistry against the USGS reference code for 5 waters × NaOH, lime, soda ash: **mean 0.05 pH difference over 100 cases**, max 0.32; two cases disagree about the 8.5 limit (soda ash in low-alkalinity water; Aegis 0.16–0.23 pH low, the unsafe direction). A Davies activity correction made it worse (0.067), so it wasn't adopted.
+3. **An evaluation bug, found and fixed.** The simulator's sensor noise and its demand drift shared one random stream, so every extra sensor read (attacker tries, safe-hold forecasts) changed the physics; "the same episode without the attacker" wasn't the same. Sensor noise now has its own stream (verified: reading the sensors any number of times leaves the true plant identical). One test that relied on the old behaviour was itself wrong (it switched off noise on *every* analyzer while claiming to freeze only pH) and was fixed. All held-out numbers re-run:
+
+| held-out seeds 300000–300199 | before the fix | corrected |
+|---|---|---|
+| Static rules | 98/200 | **90/200 (45%)** |
+| Twin + lockdown, HMI attacker, no safe-hold | (40 without lockdown) | **36/200 (18%)** |
+| Twin + lockdown + safe-hold, HMI attacker | 21/200 | **20/200 (10%)** |
+| Twin + lockdown + safe-hold, stranger | 21/200 | **20/200 (10%)** |
+
+   Lockdown's own effect (old simulator, same seeds): 25 → 21. Operators: 382 writes, 13 twin blocks (9 justified, 4 false; the noise stream changed which ones), never locked down.
+4. True: an attacker on the HMI can trigger lockdown deliberately. What they get: the operator can still make every *corrective* change, the console shows a critical "possible intrusion" alert naming the source, and one login clears it. We judged a loud, recoverable denial of convenience better than letting a prober keep probing; it's in the README as a known trade-off.
+5. New screenshot: the scripted demo model falling for the poisoned work order, Aegis blocking it.
+
+**What's left:** clearwell drains (10/27) are now most of the remaining harm. The drain itself is hydraulic and slow, and the harm comes when storms or blooms hit a half-empty clearwell. That's the next round.
