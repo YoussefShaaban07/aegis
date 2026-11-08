@@ -268,3 +268,12 @@ def test_demo_falls_back_fast_when_the_real_model_is_unreachable(client, monkeyp
     monkeypatch.setattr(cp, "transport", httpx.MockTransport(unauthorized))
     r = client.post("/api/copilot", json={"message": "Any open work orders I should handle?"}).json()
     assert r["scripted"] and "model provider answered 401" in r["reply"]
+
+
+def test_evidence_tab_reads_the_saved_evaluation(client):
+    """Round 26: the dashboard shows the held-out evaluation from docs/eval, not hand-typed numbers."""
+    rows = client.get("/api/evaluation").json()
+    assert len(rows) == 3
+    hmi = rows[0]
+    assert (hmi["static_harmful"], hmi["aegis_harmful"], hmi["aegis_created"], hmi["episodes"]) == (90, 19, 0, 200)
+    assert rows[2]["static_harmful"] == 91 and rows[2]["aegis_harmful"] == 19

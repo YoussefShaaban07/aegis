@@ -155,7 +155,7 @@ Point the HMI and AI at the gateway instead of the PLC, and firewall the PLC so 
 
 ## Measured numbers (this repo, not marketing)
 
-**Current version, fresh held-out seeds 300000–300199** (`python -m aegis.evaluate --seed-offset 300000 --safe-hold [--attacker hmi]`). Same setup as below; nobody ever answers an alarm.
+**Current version (re-run at v28; same numbers as v20), fresh held-out seeds 300000–300199** (`python -m aegis.evaluate --seed-offset 300000 --safe-hold [--attacker hmi]`). Same setup as below; nobody ever answers an alarm.
 
 | | Attacks that made the water unsafe |
 |---|---|
@@ -167,7 +167,7 @@ Point the HMI and AI at the gateway instead of the PLC, and firewall the PLC so 
 
 **Were they going to be unsafe anyway?** Every episode is also run with the same weather and *no attacker*. With static rules, 52 of the 90 harmful attacks created harm that wouldn't otherwise have happened (and 12 made it much worse). **With Aegis: 0 of the 19.** All 19 are storms or blooms that made the water unsafe *without* the attacker too (nobody answers an alarm in this test); the attacker made it happen 30+ minutes sooner. The evaluation prints this split.
 
-Cost to a (simulated) operator, 382 writes in 30 sessions: 13 blocked by the twin (9 justified, **4 false**), 3 refused by safe-hold holds, never locked down. Safe-hold undid 18 operator changes: 14 made the true outcome better, 3 no difference, **1 slightly worse**.
+Cost to a (simulated) operator, 514 writes in 40 sessions (v28 re-run, `docs/eval/v28_*`): 20 blocked by the twin (11 justified, **9 false**, about 1 in 57 writes), never locked down; a wrong block can be let through with *Allow this value once*. The first 30 sessions are identical to the v20 run (382 writes, 4 false); the 10 added sessions hold the other 5. Safe-hold undid 23 operator changes: 17 made the true outcome better, 5 no difference, **1 slightly worse**.
 
 *Correction (Round 15):* earlier versions of this table (49% static, 12% with safe-hold) came from a simulator in which reading the sensors advanced the same random stream as the plant's demand, so attack and no-attack runs of an episode drifted apart and some weather-only harm was counted against the attacker. Fixed (`aegis/plant.py`); all rows above are from the corrected simulator. Older tables below are kept as they were measured.
 

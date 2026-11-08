@@ -477,3 +477,19 @@ Sources: [TechRadar on CISA's July count](https://techradar.com/pro/security/cis
 5. Issuing one texts everyone on call with the person's name; issuing and using it are both in the signed audit log. Runbook: use it from your phone, resend from the HMI, acknowledge the warning so safe-hold doesn't undo it, and tell the engineer so the twin can be checked.
 
 Tests: `tests/test_round18.py` (other value, stranger, dry run, single use, expiry, hard limit) and a browser check of the button on the phone page.
+
+## Round 26: one set of numbers
+
+1. **"I clicked the Evidence tab at your booth. Where's the 45% → 10%? It's only on your slides."**
+2. **"Your 'none of them created harm' isn't in the saved evaluation file. Where does it come from?"**
+3. **"You've changed the code ten times since v20. Are the slide numbers from this version?"**
+4. **"How many operator sessions is your false-block rate from? Thirty is small."**
+5. **"If your new number is worse, which one goes on the slide?"**
+
+### What we did and found (v28)
+
+1. The Evidence tab now has a table of the held-out runs, **read from the saved files in `docs/eval/`** by a new endpoint, so the dashboard can't drift from the evidence. Test: `test_evidence_tab_reads_the_saved_evaluation`.
+2. Right: at v20 the created/sooner split was printed but not saved in the JSON. Re-ran so it is.
+3. Re-ran both standard-simulator evaluations on the current code (v28), seeds 300000–300199: static rules **90/200 (45%)**; Aegis **19/200 (10%)** with the attacker on the HMI PC and elsewhere; **0 created harm, 0 made much worse**, all 19 only sooner. Same as v20. Files: `docs/eval/v28_heldout_{hmi,unknown}_safehold.{txt,json}`.
+4. The evaluator now runs 40 operator sessions, not 30. The first 30 are identical to v20 (382 writes, 13 twin blocks, 4 false); the 10 new ones add 132 writes and 5 more false blocks: **9 false in 514, about 1 in 57**. (High-fidelity simulator: 5 in 508.)
+5. The newer, larger one. The results slide now says **1 in 57**, with "one tap on the phone lets it through" (round 25). README, one-pager, Q&A and runbook updated to match.
