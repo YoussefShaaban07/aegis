@@ -16,7 +16,7 @@ Speaks **Modbus TCP and EtherNet/IP (Allen-Bradley MicroLogix/SLC)**, the PLC fa
 | | Attacks that made water unsafe (200 held-out episodes, nobody answering alarms) |
 |---|---|
 | Static rules only | 45% |
-| Aegis | **10%**, including attackers sitting on the operator's own HMI |
+| Aegis | **10%**, including attackers sitting on the operator's own HMI, and **none** of those created harm: in every one, the same storm or bloom made the water unsafe without the attacker too (the attacker only made it sooner). Static rules: 52 attacks created harm. |
 
 - Operator cost: 4 false twin blocks in 382 simulated operator writes; no operator was ever locked down.
 - A simulated year: **9.6 texts a week**, 12 on calm days in the whole year.

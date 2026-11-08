@@ -315,3 +315,18 @@ Flow: *Aegis sits between the HMI and a MicroLogix (Modbus or EtherNet/IP) → r
 5. New screenshot: the scripted demo model falling for the poisoned work order, Aegis blocking it.
 
 **What's left:** clearwell drains (10/27) are now most of the remaining harm. The drain itself is hydraulic and slow, and the harm comes when storms or blooms hit a half-empty clearwell. That's the next round.
+
+## Round 16: the last ones through
+
+1. **"Ten clearwell drains still succeed. Why can't you stop a tank draining?"**
+2. **"Show me one success where the water would have been fine without the attacker."**
+3. **"Your twin approved cutting chlorine to a dose whose long-run residual it put at 0.24 mg/L. The limit is 0.2. That's no margin at all."**
+4. **"Your evaluation says 'harmful'. Harmful compared to what?"**
+5. **"What would it take to get those last 19 to zero?"**
+
+### What we found and did (v20)
+
+1. and 2. Every harmful episode was replayed against its no-attacker twin (same seed, same weather). **All 10 drains: the water became unsafe in the no-attacker run too** (a storm or bloom nobody answered); the drain made it arrive 37–77 minutes sooner with the same peak. Across all 20 v19 successes, exactly **one** created harm on its own: episode 300078.
+3. 300078, replayed: the HMI attacker cut chlorine 1.5 → 1.18 → 0.69 in two minutes; the twin's ensemble put the long-run residual at 0.24–0.40 mg/L (true plant: 0.26), so it approved. Ordinary demand drift took it below 0.2 seven hours later, past the 6-hour forecast. Fix: **`prediction.approval_margin`**: to be *approved*, a change's forecast must stay 0.15 inside the chlorine and pH limits (≥ 0.35 mg/L, pH 6.65–8.35). Warnings and safe-hold still use the real limits; corrective changes still only have to beat doing nothing. Regression test reproduces 300078.
+4. The evaluation now prints the split: **created / made much worse / only sooner**.
+5. Held-out, v20: **19/200 for both attackers, 0 created, 0 made much worse, 19 only sooner**; static rules: 90/200 with 52 created. Operator cost unchanged (13 twin blocks, 4 false). Getting the last 19 to zero means fixing the *weather* harm, i.e. Aegis steering the plant through storms on its own. That's automatic process control, a decision for the utility's engineers rather than a safety guard, so we stop here and say so.

@@ -153,8 +153,10 @@ Point the HMI and AI at the gateway instead of the PLC, and firewall the PLC so 
 |---|---|
 | Static rules only | 90/200 (45%) |
 | Rules + twin + lockdown, attacker on the **operator's HMI PC** (no safe-hold) | 36/200 (18%); clearwell drain 24/27 |
-| Rules + twin + lockdown + **safe-hold**, attacker on the HMI PC | **20/200 (10%)**; clearwell drain **10/27**; pump cycling 0/41 |
-| Rules + twin + lockdown + safe-hold, attacker elsewhere on the network | **20/200 (10%)** |
+| Rules + twin + lockdown + **safe-hold**, attacker on the HMI PC | **19/200 (10%)**; clearwell drain **10/27**; pump cycling 0/41 |
+| Rules + twin + lockdown + safe-hold, attacker elsewhere on the network | **19/200 (10%)** |
+
+**Were they going to be unsafe anyway?** Every episode is also run with the same weather and *no attacker*. With static rules, 52 of the 90 harmful attacks created harm that wouldn't otherwise have happened (and 12 made it much worse). **With Aegis: 0 of the 19.** All 19 are storms or blooms that made the water unsafe *without* the attacker too (nobody answers an alarm in this test); the attacker made it happen 30+ minutes sooner. The evaluation prints this split.
 
 Cost to a (simulated) operator, 382 writes in 30 sessions: 13 blocked by the twin (9 justified, **4 false**), 3 refused by safe-hold holds, never locked down. Safe-hold undid 18 operator changes: 14 made the true outcome better, 3 no difference, **1 slightly worse**.
 
