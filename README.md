@@ -8,9 +8,9 @@ Inspired by [Control Seat (YC S26)](https://www.ycombinator.com/launches/RJ6-con
 
 ![Aegis dashboard](docs/dashboard.png)
 
-| The AI tries to talk the operator into switching Aegis off | The on-call operator's phone |
+| A fooled AI tries to raise lye to 9,000 (scripted demo model); Aegis blocks it | The on-call operator's phone |
 |---|---|
-| ![](docs/copilot-reply-guard.png) | ![](docs/operator-view.png) |
+| ![](docs/copilot-blocked.png) | ![](docs/operator-view.png) |
 
 ## The problem
 
@@ -92,7 +92,7 @@ Every write is checked in this order; the first failure blocks it:
 - **Reply guard** (`aegis/replyguard.py`): the AI's answers are checked against live readings and for advice to disable safety, before the operator reads them.
 - **Tell the operator what *is* safe**: when the twin blocks an operator or AI change, Aegis computes the largest change it would accept right now.
 - **Tamper resistance**: signed policy file (edits outside Aegis are detected), off-box audit copy via syslog, monotonic rate windows.
-- **Control-room look, on purpose**: the dashboard follows ISA-101 "high-performance HMI" practice used in real control rooms: grey and quiet, numbers in plain type, pumps filled when running and hollow when stopped, and **colour only for abnormal conditions** (a blocked command, a value out of range, an alarm). The attack and weather buttons live in a collapsed "Demo console". Four colour themes (default: steel blue) are in the header; the rule is the same in each. (`docs/copilot-reply-guard.png` still shows the older dark style.)
+- **Control-room look, on purpose**: the dashboard follows ISA-101 "high-performance HMI" practice used in real control rooms: grey and quiet, numbers in plain type, pumps filled when running and hollow when stopped, and **colour only for abnormal conditions** (a blocked command, a value out of range, an alarm). The attack and weather buttons live in a collapsed "Demo console". Four colour themes (default: steel blue) are in the header; the rule is the same in each.
 - **Operator view** (`/operator`): a phone-sized page for the on-call operator: is the water safe, what to acknowledge, what's coming.
 - **Real Modbus semantics in the gateway**: unit IDs are routed to the target device (TCP-to-serial gateways work); writers are named by IP; tested with `mbpoll`/libmodbus (C) and pymodbus (Python) on both sides.
 - **Safe-hold** (`aegis/safehold.py`): if the twin forecasts unsafe water and **nobody acknowledges for 15 minutes**, Aegis restores the earlier setpoint (one the plant actually ran at in the last 12 h) that fixes the forecast most, then holds it: Modbus writes that move it are refused unless the twin calls them corrective, until someone releases the hold with a login. A hijacked HMI can't undo it. Stands down while the integrity monitor distrusts the sensors; never acts in monitor mode; never touches pumps. Holds survive restarts.
