@@ -57,6 +57,12 @@ Short answers in plain words. Say the **bold line** first; add the rest only if 
 
 ---
 
+**18. Our wells are on serial radios, not Ethernet. Does it work?**
+**Yes, if the radio link ends in an Ethernet bridge or serial device server: Aegis speaks Modbus RTU over TCP on either side.** Tested with a third-party library (pymodbus) on both sides. A PLC with only an RS-485 port needs a serial device server (about $100); native serial isn't built.
+
+**19. What if the attacker steals the operator's password?**
+**They still can't make the water unsafe: the guard doesn't care who's logged in, only what the command does.** After 6 refusals the source is locked down, and the locked-down PC can't unlock itself even with the right password; it has to be cleared from another device, like the on-call phone.
+
 ## The expo: 2.5-minute pitch with live demo
 Before you start: dashboard open, signed in as **engineer**, PIN **2468** in the header, press **Pitch demo** once (it resets the plant and waits).
 Slides: cover → problem → how → demo → results → ask. On the demo slide, Alt-Tab to the dashboard and press **Space once per step** (it moves on and runs the step):
