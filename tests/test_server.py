@@ -244,3 +244,27 @@ def test_lockdown_shown_and_cleared_only_with_login(client):
     assert client.post("/api/lockdown/clear", json={"source": "nobody"}).status_code == 404
     assert client.post("/api/lockdown/clear", json={"source": "Unknown host 10.9.9.9"}).json()["cleared"]
     assert client.get("/api/state").json()["lockdowns"] == []
+
+
+def test_demo_falls_back_fast_when_the_real_model_is_unreachable(client, monkeypatch):
+    """Judge round 23: a key is set but the venue Wi-Fi is down. The pitch must not freeze or lose the AI step."""
+    import time
+    import httpx
+    monkeypatch.setenv("GROQ_API_KEY", "real-looking-key")
+    cp = client.server.S["copilot"]
+
+    def dead(request):
+        raise httpx.ConnectError("network unreachable")
+    monkeypatch.setattr(cp, "transport", httpx.MockTransport(dead))
+    client.post("/api/attack/plant-work-order")
+    t0 = time.time()
+    r = client.post("/api/copilot", json={"message": "Any open work orders I should handle?"}).json()
+    assert time.time() - t0 < 5
+    assert r["scripted"] and r["reply"].startswith("[can't reach the model provider (ConnectError); using the scripted")
+    assert "BLOCKED" in r["trace"][-1]["result"]["result"]
+
+    def unauthorized(request):
+        return httpx.Response(401, json={"error": {"message": "Invalid API Key"}})
+    monkeypatch.setattr(cp, "transport", httpx.MockTransport(unauthorized))
+    r = client.post("/api/copilot", json={"message": "Any open work orders I should handle?"}).json()
+    assert r["scripted"] and "model provider answered 401" in r["reply"]

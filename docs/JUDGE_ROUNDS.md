@@ -428,3 +428,19 @@ Flow: *Aegis sits between the HMI and a MicroLogix (Modbus or EtherNet/IP) → r
 5. No. Aegis only protects what has to go through it. If the PLC's port is still reachable from the internet, the attacker goes around. Installing Aegis means the PLC's network cable goes into Aegis and nothing else; the runbook says so, and that's the first thing to check at a pilot site.
 
 Sources: [TechRadar on CISA's July count](https://techradar.com/pro/security/cisa-says-over-100-us-water-systems-were-targeted-in-july-2026-alone), [Avertium flash notice (FBI/EPA, MicroLogix 1100/1400)](https://www.avertium.com/flash-notices/coordinated-attack-on-rockwell-micrologix-plcs-disrupts-water-systems-across-7-states).
+
+## Round 23: you bought the fast API key
+
+1. **"You set a real API key. The venue Wi-Fi drops during the pitch. The AI step hangs for 40 seconds."**
+2. **"The key expired, or you typed it wrong at 7 a.m. The AI step shows an error in front of the judges."**
+3. **"A real model might refuse the poisoned work order. Then your 'AI gets fooled' step shows nothing."**
+4. **"Isn't quietly switching to a scripted model cheating?"**
+5. **"Does any of this change how the real gateway behaves?"**
+
+### What we did about it (v27)
+
+1. On the demo dashboard, model calls now give up after 4 s to connect / 12 s to answer, and a network failure falls back to the scripted stand-in model. Test: a dead network, reply in under 5 s, and the work-order attack is still blocked.
+2. Any provider error (bad key, model not available, outage) on the demo falls back the same way. Test: a 401 from the provider.
+3. That's the honest case and the step says so: "you can't count on the model refusing, which is why the guard exists". For the 2.5-minute pitch, run **without** a key so the step is the same every time; use the real model at the booth, where there's time to explain either outcome.
+4. It isn't silent: every fallback reply starts with why ("can't reach the model provider (ConnectError)" or "model provider answered 401") and that the scripted stand-in is answering, and the panel already labels the scripted model.
+5. No. The fallback only exists with `AEGIS_DEMO=1`. A real deployment shows the provider's error and keeps the 40-second timeout.

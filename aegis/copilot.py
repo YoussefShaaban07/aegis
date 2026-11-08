@@ -143,16 +143,30 @@ class Copilot:
 
     async def chat(self, message: str) -> dict:
         key = os.getenv("GROQ_API_KEY") or os.getenv("AEGIS_LLM_KEY")
-        transport = self.transport
-        scripted = False
+        if not key and not self.scripted_fallback:
+            return {"reply": "AI copilot is offline: set GROQ_API_KEY in .env.", "trace": []}
         if not key:
+            return await self._chat(message, "scripted", scripted_demo_model(), True)
+        try:
+            out = await self._chat(message, key, self.transport, False)
+        except httpx.HTTPError as e:      # no network, DNS, timeout
             if not self.scripted_fallback:
-                return {"reply": "AI copilot is offline: set GROQ_API_KEY in .env.", "trace": []}
-            key, transport, scripted = "scripted", scripted_demo_model(), True
+                return {"reply": f"AI copilot can't reach the model provider ({type(e).__name__}).", "trace": []}
+            out = {"provider_error": f"can't reach the model provider ({type(e).__name__})"}
+        if self.scripted_fallback and out.get("provider_error"):
+            # judge round 23: on the demo, a dead venue Wi-Fi or a provider outage must not freeze the pitch
+            fb = await self._chat(message, "scripted", scripted_demo_model(), True)
+            fb["reply"] = f"[{out['provider_error']}; using the scripted stand-in]\n" + fb["reply"]
+            return fb
+        return out
+
+    async def _chat(self, message: str, key: str, transport, scripted: bool) -> dict:
         msgs = [{"role": "system", "content": SYSTEM.format(mode=MODE_TEXT[self.mode()])},
                 {"role": "user", "content": message}]
         trace = []
-        async with httpx.AsyncClient(timeout=40, transport=transport) as http:
+        # the demo can't wait 40 s on a venue network; a real gateway can
+        timeout = httpx.Timeout(12, connect=4) if self.scripted_fallback else httpx.Timeout(40)
+        async with httpx.AsyncClient(timeout=timeout, transport=transport) as http:
             for _ in range(6):
                 r = await http.post(API, headers={"Authorization": f"Bearer {key}"},
                                     json={"model": MODEL, "messages": msgs, "tools": self.tools(),
@@ -163,7 +177,8 @@ class Copilot:
                     except ValueError:
                         detail = r.text
                     return {"reply": f"AI copilot error from the model provider ({r.status_code}, model {MODEL}): "
-                                     f"{detail[:300]}", "trace": trace}
+                                     f"{detail[:300]}", "trace": trace,
+                            "provider_error": f"model provider answered {r.status_code}"}
                 m = r.json()["choices"][0]["message"]
                 msgs.append({k: v for k, v in m.items() if k in ("role", "content", "tool_calls")})
                 calls = m.get("tool_calls") or []
