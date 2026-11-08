@@ -410,3 +410,21 @@ Flow: *Aegis sits between the HMI and a MicroLogix (Modbus or EtherNet/IP) → r
 3. A click pauses the loop; after **3 minutes with no mouse, keyboard or scroll** it starts again by itself. It never restarts while the Pitch or Guided demo is open.
 4. Each loop has a generation number; starting a new one retires the old one at its next check, so only one loop drives the plant. Tested by stopping and restarting mid-scene.
 5. 30-pixel bold captions over a dark bar across the full width; checked at 1280×720 (a common projector size).
+
+## Round 22: check your own slides
+
+1. **"'7+ states' is from July. What do the agencies say now?"**
+2. **"Which controllers did those attackers actually hit, and could Aegis even talk to them?"**
+3. **"They changed IP addresses, passwords and project files. Your guard judges setpoints. Does it stop any of that?"**
+4. **"If you can't name the model in the July attacks, don't put it on your slide."**
+5. **"Would Aegis have stopped them if the PLC was on the internet anyway?"**
+
+### What we found and did (v26)
+
+1. CISA (August 2026): more than 100 internet-exposed water and wastewater systems were targeted in July 2026. FBI and EPA: incidents in at least 7 states. The slide now says "100+ water systems targeted; incidents in 7+ states" with CISA and FBI/EPA in the sources.
+2. The 7-state campaign hit **Rockwell (Allen-Bradley) MicroLogix 1100/1400**: the controller family Aegis's EtherNet/IP + PCCC guard is built for.
+3. Over EtherNet/IP, each of those is refused: an IP change is a Set Attribute on the TCP/IP Interface object; MicroLogix passwords live in the program, so changing one is a program download; plus reset and mode change. New test (`test_july_2026_micrologix_campaign_actions_are_refused`, pycomm3 as the client): all three refused and logged, the download tagged MITRE T0843.
+4. Agreed. The slide says the *incidents* were on MicroLogix (FBI/EPA via the Avertium notice) and does not claim the 100+ were. We don't name a threat actor; agencies haven't officially attributed the attacks.
+5. No. Aegis only protects what has to go through it. If the PLC's port is still reachable from the internet, the attacker goes around. Installing Aegis means the PLC's network cable goes into Aegis and nothing else; the runbook says so, and that's the first thing to check at a pilot site.
+
+Sources: [TechRadar on CISA's July count](https://techradar.com/pro/security/cisa-says-over-100-us-water-systems-were-targeted-in-july-2026-alone), [Avertium flash notice (FBI/EPA, MicroLogix 1100/1400)](https://www.avertium.com/flash-notices/coordinated-attack-on-rockwell-micrologix-plcs-disrupts-water-systems-across-7-states).

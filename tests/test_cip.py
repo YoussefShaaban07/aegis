@@ -281,3 +281,25 @@ def test_differential_fuzz_no_unjudged_or_mismatched_plc_change():
     import scripts.fuzz_cip as fz
     importlib.reload(fz)
     assert fz.main() == []
+
+
+def test_july_2026_micrologix_campaign_actions_are_refused(rig):
+    """The July 2026 attacks on MicroLogix 1100/1400 at water utilities changed IP addresses, passwords and
+    project files (FBI/EPA). Over EtherNet/IP those are: Set Attribute on the TCP/IP Interface object (IP),
+    a program download (MicroLogix passwords live in the program), and reset / mode change. All refused."""
+    with rig.slc() as plc:
+        ip = plc.generic_message(service=0x10, class_code=0xF5, instance=1, attribute=5,
+                                 request_data=bytes([10, 0, 0, 99]) * 3 + b"\x00" * 8 + b"\x00\x00",
+                                 connected=False, name="set IP address")
+        assert ip.error
+        rst = plc.generic_message(service=0x05, class_code=0x01, instance=1, request_data=b"\x01",
+                                  connected=False, name="identity reset")
+        assert rst.error
+        dl = plc.generic_message(service=0x4B, class_code=0x67, instance=1,
+                                 request_data=bytes([7, 9, 16, 1, 2, 3, 4]) + bytes([0x0F, 0, 2, 0, 0x50]),
+                                 connected=False, name="download all request")
+        assert dl.value[7] == 0x4F and dl.value[8] != 0          # PCCC reply with an error status, as a MicroLogix does
+    blocked = [d for d in rig.guard.log if not d.allowed]
+    assert len(blocked) == 3
+    assert any("Set Attribute Single" in d.register and "0xF5" in d.reason for d in blocked)
+    assert any("download" in d.register.lower() and ("T0843", "Program Download") in d.techniques for d in blocked)

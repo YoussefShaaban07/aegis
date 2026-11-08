@@ -35,3 +35,12 @@ You lose the HMI's connection to the PLC; the plant keeps running on its last se
 - start or stop a pump;
 - set a value the plant hasn't run at in the last 12 hours;
 - act while you've acknowledged, while the sensors look untrustworthy, or in MONITOR mode.
+
+## At installation: make sure nothing can go around Aegis
+
+Aegis only protects commands that pass through it. The July 2026 attacks reached controllers that were open to the internet; Aegis in front of a controller that is *also* still reachable some other way stops nothing.
+
+1. The PLC's network cable goes into the Aegis box's PLC port, and nothing else is plugged into the PLC's network.
+2. From the internet side and from the office network, check that the PLC's ports (502 for Modbus, 44818 for EtherNet/IP) answer only through Aegis. A free port scan from outside (or your integrator) will tell you.
+3. Remote-access tools (TeamViewer, port forwards on the router, a vendor's cellular modem) that reach the PLC directly: remove them, or route them through Aegis.
+4. Run Aegis in **monitor** mode for the first week. Every write it would have blocked shows up in the log without being blocked; read them with the integrator before switching to **enforce**.
