@@ -393,6 +393,34 @@ def audit_csv(who: dict = Depends(role("viewer"))):
                              headers={"Content-Disposition": "attachment; filename=aegis-audit.csv"})
 
 
+EVAL_RUNS = [   # (label, file): the held-out evaluation behind the README and the slides (judge round 26)
+    ("Attacker on the operator's HMI PC", "v28_heldout_hmi_safehold.json"),
+    ("Attacker elsewhere on the network", "v28_heldout_unknown_safehold.json"),
+    ("Attacker on the HMI PC, high-fidelity simulator (physics the twin gets wrong)",
+     "v27_heldout_hmi_safehold_highfi.json"),
+]
+
+
+@app.get("/api/evaluation")
+def evaluation(who: dict = Depends(role("viewer"))):
+    """Summaries read from the saved evaluation output, so the dashboard can't drift from the files."""
+    import json as _json
+    out = []
+    for label, name in EVAL_RUNS:
+        f = ROOT / "docs" / "eval" / name
+        try:
+            sm = _json.loads(f.read_text())["summary"]
+        except (OSError, ValueError, KeyError):
+            continue
+        st, tw = sm["static"], sm["twin"]
+        out.append({"label": label, "file": f"docs/eval/{name}", "episodes": sm["episodes"],
+                    "static_harmful": st["attack_harmful"], "static_created": st.get("harm_created"),
+                    "aegis_harmful": tw["attack_harmful"], "aegis_created": tw.get("harm_created"),
+                    "aegis_much_worse": tw.get("harm_made_much_worse"),
+                    "operator_writes": tw["operator_writes"], "false_blocks": tw["twin_false_blocks"]})
+    return out
+
+
 def _report(minutes: float):
     until = time.time()
     since = until - minutes * 60

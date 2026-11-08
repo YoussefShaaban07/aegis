@@ -297,6 +297,11 @@ details.demo>.in{padding:0 14px 12px}
 <main class="page" id="p-evi">
   <section>
     <div class="panel">
+      <h2>200 held-out attacks (simulated plant, measured offline)</h2>
+      <div id="evalt">…</div>
+      <div class="trace">Read from the saved output in <code>docs/eval/</code>; reproduce with <code>python -m aegis.evaluate --seed-offset 300000 --safe-hold</code>. Nobody answers alarms in these runs. Not yet tested at a real plant.</div>
+    </div>
+    <div class="panel">
       <h2>Tamper-evident audit log</h2>
       <div id="audit">…</div>
       <div class="trace"><a href="/api/audit/export.csv">Export CSV</a> · every decision, alert, rule change, approval and failed PIN is hash-chained</div>
@@ -337,7 +342,11 @@ const H={'Content-Type':'application/json','X-Aegis':'1'};
 async function post(u,b){const r=await fetch(u,{method:'POST',headers:H,body:JSON.stringify(b||{})});if(r.status===401)showLogin();return r.json().catch(()=>({}));}
 async function postChk(u,b,errEl){const r=await fetch(u,{method:'POST',headers:H,body:JSON.stringify(b||{})});if(r.status===401)showLogin();
   const j=await r.json().catch(()=>({}));$(errEl).textContent=r.ok?'':(j.detail||('error '+r.status));return r.ok;}
-function tab(p){document.querySelectorAll('.page').forEach(e=>e.classList.toggle('on',e.id==='p-'+p));document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.p===p));}
+async function loadEval(){try{const r=await fetch('/api/evaluation');if(!r.ok)return;const rows=await r.json();
+  const pct=(a,n)=>`${a}/${n} (${Math.round(100*a/n)}%)`;
+  $('evalt').innerHTML=rows.length?`<table class="t"><tr><th>Run</th><th>Plain rules: water made unsafe</th><th>Aegis</th><th>Aegis: harm created</th><th>Operator false blocks</th></tr>`+
+    rows.map(x=>`<tr><td>${esc(x.label)}</td><td>${pct(x.static_harmful,x.episodes)}</td><td><b>${pct(x.aegis_harmful,x.episodes)}</b></td><td>${x.aegis_created}</td><td>${x.false_blocks} in ${x.operator_writes}</td></tr>`).join('')+'</table>':'<div class="trace">No saved evaluation found.</div>';}catch(e){}}
+function tab(p){document.querySelectorAll('.page').forEach(e=>e.classList.toggle('on',e.id==='p-'+p));document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.p===p));if(p==='evi')loadEval();}
 async function setMode(m){await postChk('/api/mode',{mode:m,pin:pin()},'hdrerr');load();}
 async function setAutonomy(){if(!await postChk('/api/settings',{autonomy:$('auto').value,pin:pin()},'hdrerr'))load();}
 async function decide(id,a){await post(`/api/proposals/${id}/${a}`);load();}
