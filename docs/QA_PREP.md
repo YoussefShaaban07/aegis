@@ -29,7 +29,7 @@ Short answers in plain words. Say the **bold line** first; add the rest only if 
 **We tested exactly that: the attacker sends commands as the real operator. Same 10%.** Aegis still checks every command, and the things that undo protection (releasing a hold, clearing a lockdown) need a login, which a network packet can't do.
 
 **9. Won't it block the operators and annoy them?**
-**In simulation, 4 wrong blocks out of 382 operator changes.** When it blocks, it says why and what *is* safe. Changes that fix a problem are always allowed. It starts in watch-only mode for weeks before it blocks anything.
+**In simulation, 4 wrong blocks out of 382 operator changes.** When it blocks, it says why and what *is* safe. Changes that fix a problem are always allowed. It starts in watch-only mode for weeks before it blocks anything. And if it's wrong at 3 a.m., the operator taps **Allow this value once** on their phone: that one value goes through, everyone on call is told, hard limits still apply.
 
 **10. Won't it spam texts?**
 **We simulated a full year: about 9 texts a week, and only 24 on calm days in the whole year, about one every two weeks.**
