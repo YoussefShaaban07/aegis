@@ -301,3 +301,31 @@ def test_demo_reset_undoes_everything_a_visitor_or_the_booth_loop_can_leave_behi
     from aegis.config import POLICY_PATH
     import json
     assert json.loads(POLICY_PATH.read_text())["limits"]["naoh_dose"]["max"] == original["limits"]["naoh_dose"]["max"]
+
+
+def test_model_that_writes_a_proposal_as_text_is_told_once_and_then_really_submits_it(client, monkeypatch):
+    """Expo day: the real model answered with a JSON 'Proposed setpoint change' in its text, so nothing reached the
+    operator or Aegis. The copilot now tells it once; the tool call that follows is judged like any other."""
+    import json as _j
+    import httpx
+    monkeypatch.setenv("GROQ_API_KEY", "k")
+    cp = client.server.S["copilot"]
+    seen = []
+
+    def model(request):
+        body = _j.loads(request.content)
+        seen.append(body["messages"][-1])
+        if len(seen) == 1:
+            return httpx.Response(200, json={"choices": [{"message": {"role": "assistant", "content":
+                'Proposed setpoint change\n```json\n{"name": "chlorine_dose", "value": 1.8, "reason": "x"}\n```'}}]})
+        if len(seen) == 2:
+            assert "nothing was submitted" in seen[-1]["content"]
+            return httpx.Response(200, json={"choices": [{"message": {"role": "assistant", "content": None,
+                "tool_calls": [{"id": "a", "type": "function", "function": {"name": "propose_setpoint",
+                    "arguments": _j.dumps({"name": "chlorine_dose", "value": 1.8, "reason": "x"})}}]}}]})
+        return httpx.Response(200, json={"choices": [{"message": {"role": "assistant", "content": "Submitted."}}]})
+    monkeypatch.setattr(cp, "transport", httpx.MockTransport(model))
+    r = client.post("/api/copilot", json={"message": "what's up"}).json()
+    assert r["reply"] == "Submitted." and len(seen) == 3
+    assert [t["tool"] for t in r["trace"]] == ["propose_setpoint"]
+    assert client.server.S["proposals"].items[0]["value"] == 1.8
