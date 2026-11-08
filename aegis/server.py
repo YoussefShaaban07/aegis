@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import hmac
+import copy
 import os
 import time
 from collections import deque
@@ -162,6 +163,7 @@ async def lifespan(app: FastAPI):
              integrity=IntegrityMonitor(ProcessModel(twin.model.params), alerter=alerter, audit=audit),
              forewarn=ForecastWatch(alerter, audit))
     S["safehold"] = SafeHold(guard)
+    S["policy0"], S["mode0"] = copy.deepcopy(guard.policy), guard.mode   # what a demo reset goes back to
     S["commissioned"] = _commissioned() or {k: twin.model.params[k] for k in CAL_FIELDS if k in twin.model.params}
     S["copilot"] = Copilot(plant, GUARD_PORT, orders, proposals=props, mode_getter=lambda: S["autonomy"], twin=twin,
                            context=lambda: {"guard_log": [d.as_dict() for d in list(S["guard"].log)[:30]],
@@ -523,6 +525,15 @@ def reset(who: dict = Depends(role("operator", demo_only=True))):
     S["attack_log"].clear()
     S["accuracy"].pending.clear()
     g.commanded.clear(); g.sync_commanded(p.snapshot()); g.permits.clear()
+    # judge round 27: a visitor between pitches (or six booth-loop cycles) must not leave the next demo
+    # different: lockdowns, refusal counts, holds, tickets, rule edits, guard mode and AI autonomy all go back
+    g.lockdowns.clear(); g._refusals.clear(); g.holds.clear(); g.tickets.clear(); g.distrust = False
+    if g.policy != S["policy0"]:
+        g.set_policy(copy.deepcopy(S["policy0"]), by="demo reset")
+    if g.mode != S["mode0"]:
+        g.set_mode(S["mode0"], by="demo reset")
+    S["autonomy"] = "propose"
+    S["safehold"] = SafeHold(g)
     S["integrity"] = IntegrityMonitor(ProcessModel(S["twin"].model.params), alerter=S["alerter"], audit=S["audit"])
     S["forewarn"] = ForecastWatch(S["alerter"], S["audit"])
     if S.get("patient"):

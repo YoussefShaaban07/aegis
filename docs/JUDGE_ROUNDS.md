@@ -493,3 +493,15 @@ Tests: `tests/test_round18.py` (other value, stranger, dry run, single use, expi
 3. Re-ran both standard-simulator evaluations on the current code (v28), seeds 300000–300199: static rules **90/200 (45%)**; Aegis **19/200 (10%)** with the attacker on the HMI PC and elsewhere; **0 created harm, 0 made much worse**, all 19 only sooner. Same as v20. Files: `docs/eval/v28_heldout_{hmi,unknown}_safehold.{txt,json}`.
 4. The evaluator now runs 40 operator sessions, not 30. The first 30 are identical to v20 (382 writes, 13 twin blocks, 4 false); the 10 new ones add 132 writes and 5 more false blocks: **9 false in 514, about 1 in 57**. (High-fidelity simulator: 5 in 508.)
 5. The newer, larger one. The results slide now says **1 in 57**, with "one tap on the phone lets it through" (round 25). README, one-pager, Q&A and runbook updated to match.
+
+## Round 27: the booth between pitches
+
+1. **"Your booth loop blocks the operator's +50 lye change every cycle. After six cycles the Operator HMI is locked down, and your next pitch shows a lockdown message instead of the forecast."**
+2. **"The PIN sits in the header for the demo. A visitor edits the lye limit to 20,000. Your next Oldsmar step goes through."**
+3. **"Someone flips the guard to OFF or the AI to auto-write and walks away."**
+4. **"A rule edit on the demo writes to `config/policy.json`. A visitor can change your repo's rules file."**
+5. **"What does 'reset' actually reset?"**
+
+### What we did about it (v29)
+
+1. to 5. Reset (which every demo step and booth scene starts with) used to restore the plant, the logs and the alerts only. It now also clears **lockdowns, refusal counts, safe-holds, allow-once tickets and distrust mode**, puts the **rules back to what they were at startup** (in memory and in the rules file), sets the **guard mode back to enforce** and the **AI back to propose-only**. Test: `test_demo_reset_undoes_everything_a_visitor_or_the_booth_loop_can_leave_behind` makes every one of those changes through the API, resets, and checks each, including the file on disk. Reset only exists with `AEGIS_DEMO=1`; a real gateway has no reset.

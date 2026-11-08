@@ -277,3 +277,27 @@ def test_evidence_tab_reads_the_saved_evaluation(client):
     hmi = rows[0]
     assert (hmi["static_harmful"], hmi["aegis_harmful"], hmi["aegis_created"], hmi["episodes"]) == (90, 19, 0, 200)
     assert rows[2]["static_harmful"] == 91 and rows[2]["aegis_harmful"] == 19
+
+
+def test_demo_reset_undoes_everything_a_visitor_or_the_booth_loop_can_leave_behind(client):
+    """Round 27: a lockdown from repeated booth-loop blocks, a rule edit, guard OFF or AI autonomy changed by a
+    visitor must not change the next pitch. Reset puts all of it back (and the rules file too)."""
+    import copy
+    S = client.server.S
+    g = S["guard"]
+    original = copy.deepcopy(g.policy)
+    pol = copy.deepcopy(g.policy)
+    pol["limits"]["naoh_dose"]["max"] = 20000
+    assert client.post("/api/policy", json={"policy": pol, "pin": "2468"}).status_code == 200
+    client.post("/api/mode", json={"mode": "off", "pin": "2468"})
+    client.post("/api/settings", json={"autonomy": "auto", "pin": "2468"})
+    g.lockdowns["Operator HMI"] = {"since": g.clock(), "wall": 0, "blocks": 6, "last": "naoh_dose"}
+    g.holds["naoh_dose"] = {"value": 100, "until": g.clock() + 3600, "by": "x", "reason": "t"}
+    g.tickets["naoh_dose"] = {"value": 150, "by": "x", "until": g.clock() + 600, "minutes": 10}
+    assert client.post("/api/reset").json()["ok"]
+    assert g.policy["limits"]["naoh_dose"]["max"] == original["limits"]["naoh_dose"]["max"]
+    assert g.mode == "enforce" and S["autonomy"] == "propose"
+    assert not g.lockdowns and not g.holds and not g.tickets
+    from aegis.config import POLICY_PATH
+    import json
+    assert json.loads(POLICY_PATH.read_text())["limits"]["naoh_dose"]["max"] == original["limits"]["naoh_dose"]["max"]
