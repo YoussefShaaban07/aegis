@@ -23,6 +23,9 @@ def _compact(fc: dict | None) -> dict | None:
     return {"with": pick(fc["with"]), "without": pick(fc["without"])}
 
 
+MAX_KEPT = 300   # proposals kept in memory
+
+
 class Proposals:
     def __init__(self, guard, guard_port: int, audit=None, alerter=None, host: str = "127.0.0.1"):
         self.guard, self.guard_port, self.host = guard, guard_port, host
@@ -48,6 +51,9 @@ class Proposals:
              "decided_by": None, "techniques": d.techniques,
              "forecast": _compact(d.forecast)}
         self.items.insert(0, p)
+        if len(self.items) > MAX_KEPT:   # pending ones always stay; decided ones are in the audit log
+            keep = [x for x in self.items[MAX_KEPT:] if x["status"] == "pending"]
+            self.items[MAX_KEPT:] = keep
         self._log("proposal", {k: v for k, v in p.items() if k != "forecast"})
         if not d.allowed and self.alerter:
             self.alerter.raise_alert(f"proposal_blocked:{name}", "critical",

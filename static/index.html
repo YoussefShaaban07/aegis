@@ -83,6 +83,7 @@ details.demo>.in{padding:0 14px 12px}
 #guide{position:fixed;right:16px;bottom:16px;width:420px;max-width:calc(100vw - 32px);background:var(--panel2);border:1px solid var(--proc);
   border-radius:3px;padding:12px 14px;z-index:40;box-shadow:0 6px 24px rgba(0,0,0,.25);display:none}
 #guide h3{margin:0 0 4px;font-size:15px}#guide .say{background:var(--input);border-left:3px solid var(--blue);padding:8px 10px;margin:8px 0;font-size:13px}
+#guide.pitch{width:360px}#guide.pitch #g-d,#guide.pitch .say{display:none}
 #guide .meta{font-size:11.5px;color:var(--muted)}#guide .gst{font-size:12.5px;color:var(--warn);min-height:16px}
 #login{position:fixed;inset:0;background:var(--bg);display:none;align-items:center;justify-content:center;z-index:50}
 #login .box{background:var(--panel);border:1px solid var(--line);border-radius:3px;padding:24px;width:360px;max-width:calc(100vw - 32px)}
@@ -475,14 +476,14 @@ let gi=-1, ran=false, ORDER=null;
 const PITCH=[1,2,3,4];      // the deck's live demo: guard off, guard on, the twin, the AI (step 0 runs silently first)
 function guideShow(){const s=STEPS[ORDER[gi]];ran=false;$('g-n').textContent=(ORDER.length<STEPS.length?'Pitch step ':'Step ')+`${gi+1} of ${ORDER.length}`;$('g-t').textContent=s.t;
   $('g-d').textContent=s.d;$('g-say').textContent=s.say;$('g-st').textContent='';$('g-next').textContent='Run step ▶';}
-async function guideStart(mode){stopBooth();ORDER=mode==='pitch'?PITCH:STEPS.map((_,i)=>i);gi=0;$('guide').style.display='block';guideShow();
+async function guideStart(mode){stopBooth();ORDER=mode==='pitch'?PITCH:STEPS.map((_,i)=>i);gi=0;$('guide').classList.toggle('pitch',mode==='pitch');$('guide').style.display='block';guideShow();
   if(mode==='pitch'){$('g-st').textContent='preparing: plant reset…';try{await STEPS[0].run();$('g-st').textContent='Ready. Space or → runs each step.';}catch(e){$('g-st').textContent='Error: '+(e.message||e);}}}
 addEventListener('keydown',e=>{if($('guide').style.display!=='block'||/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName))return;
   if(e.key===' '||e.key==='ArrowRight'){e.preventDefault();if(!$('g-next').disabled)guideGo(1);}else if(e.key==='ArrowLeft'){e.preventDefault();guideGo(-1);}});
 function guideStop(){$('guide').style.display='none';speed(60);}
 async function guideGo(dir){const b=$('g-next');
   if(dir<0){gi=Math.max(0,gi-1);guideShow();return;}
-  if(ran){if(gi<ORDER.length-1){gi++;guideShow();}return;}         // second press: move on
+  if(ran){if(gi>=ORDER.length-1)return;gi++;guideShow();if(ORDER!==PITCH)return;}  // next press: move on (pitch mode also runs it: one press per step)
   b.disabled=true;$('g-st').textContent='running…';
   try{await STEPS[ORDER[gi]].run();if(!/offline|Routine/.test($('g-st').textContent))$('g-st').textContent='Done: talk over the result, then go on';}
   catch(e){$('g-st').textContent='Error: '+(e.message||e);b.disabled=false;return;}

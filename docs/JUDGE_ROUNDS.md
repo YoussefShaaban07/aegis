@@ -346,3 +346,19 @@ Flow: *Aegis sits between the HMI and a MicroLogix (Modbus or EtherNet/IP) → r
 3. **`ConnLimiter`** for both fronts: per-address cap (Modbus 8, EtherNet/IP 2), global cap (64 / 8), and **the named operator stations (`--sources`) are always admitted**. Tests: one host can't take every slot; the named HMI still gets in when the box is full.
 4. EtherNet/IP clients are dropped after 120 s idle, like Modbus.
 5. `requirements.lock`: the exact versions this release was tested with, for deployed gateways (`run.bat` keeps the looser list so a newer laptop Python still installs). Hash pinning: not done yet.
+
+## Round 18: the expo table
+
+1. **"Your laptop crashes thirty seconds into the pitch. What do the judges see?"**
+2. **"Two key presses per demo step: run it, then move on. Under pressure you'll press once and stand there."**
+3. **"Your demo panel sits right on top of the guard log, the one thing that proves your point."**
+4. **"Your booth loop runs for hours unattended. Does anything grow without limit?"**
+5. **"Your script says the twin predicts the limit crossing 'in about 90 minutes'. Your dashboard says 80. Which is it?"**
+
+### What we did about it (v22)
+
+1. `docs/video/pitch-demo-backup.mp4`: a 64-second screen recording of the four pitch steps, made by a script against the real dashboard. The deck's demo notes say to play it if the laptop or server fails.
+2. In pitch mode, one press of Space or → moves on **and** runs the next step. Four presses, four steps.
+3. In pitch mode the demo panel drops its description and script (the presenter has those in the slide notes) and narrows, so the guard log and its red BLOCKED entry stay visible.
+4. Checked every list the dashboard keeps: all are capped except AI proposals. On the demo, reset clears them; on a real gateway nothing would. Now capped at 300, and **pending proposals are never dropped** (decided ones are already in the audit log). Test: `tests/test_round18.py`. The booth caption also showed the previous scene's reason for the AI scene; it now shows the blocked proposal's own reason.
+5. Both are right: the forecast depends on that run's weather and sensor noise (80 and 90 minutes in two runs). The script now says "in under two hours", which is true in every run we made.
