@@ -67,7 +67,7 @@ Short answers in plain words. Say the **bold line** first; add the rest only if 
 **On the controllers they hit, Allen-Bradley MicroLogix, yes, for everything that has to go through Aegis: changing the IP address, the password (a program download) or the program are all refused, and we test exactly those.** But those controllers were reachable from the internet. Aegis only helps if the controller's cable goes into Aegis and nothing else; that's the first install step.
 
 **21. You blocked the attack, but the water that already got through is still caustic. Why doesn't Aegis fix it?**
-**Lye already in the tank can't be taken back out; only fresh, normally dosed water flowing through brings pH down.** Aegis puts the dose back (safe-hold) and alarms "caustic water heading to town". Stopping the pump to town stays a person's decision: stopping it can drop pipe pressure, pull dirty water into the pipes and leave hydrants dry.
+**Lye already in the tank can't be taken back out; only fresh, normally dosed water flowing through brings pH down.** Aegis puts the dose back (safe-hold), and a "What now" text and dashboard box give the twin's recovery time (about 2 hours after the demo attack) and put the pump decision to the operator. Stopping the pump to town stays a person's decision: stopping it can drop pipe pressure, pull dirty water into the pipes and leave hydrants dry.
 
 ## The 2.5-minute script (same as the slide notes)
 
