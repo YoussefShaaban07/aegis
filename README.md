@@ -99,6 +99,7 @@ Every write is checked in this order; the first failure blocks it:
 - **Bypass check** (`python -m aegis.exposure <plc-ip>`, run from any other machine): is the PLC reachable around Aegis? Probes Modbus, EtherNet/IP (44818, which MicroLogix runs alongside Modbus), S7, DNP3, OPC UA, web, telnet, FTP.
 - **Read-only unknown hosts**: in the gateway, `"unknown_writers": "block"` makes every host not named in `--sources` read-only.
 - **Guided demo**: one button walks through the whole story with what to say at each step; fast-forwards slow chemistry.
+- **Pitch demo** (four steps, one key press each) and **Booth loop** (the three blocked attacks on repeat with large captions) for live presentations; a recorded backup is in `docs/video/`.
 - **Operator console for real installs** (`--console-port`, `aegis/console.py`): the gateway serves the phone page (acknowledge, release safe-holds) with named accounts and optional built-in HTTPS.
 - **More careful when the model is wrong**: while the integrity monitor says the plant doesn't match the chemistry (stronger lye delivered, failing pump, compromised PLC), the twin judges with a wide uncertainty band.
 - **Hardened front door**: differential fuzzing of the EtherNet/IP path (60,000 mutated attack frames, 0 writes slipped past or applied differently; `scripts/fuzz_cip.py`), dashboard tested against script injection through attacker-controlled names, per-address connection limits with room always kept for the named HMIs, idle timeouts, pinned versions in `requirements.lock`.

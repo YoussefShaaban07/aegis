@@ -57,11 +57,13 @@ Short answers in plain words. Say the **bold line** first; add the rest only if 
 
 ---
 
-## The 3-minute demo, in order
-1. The plant, normal (10 s).
-2. Guard OFF → Oldsmar attack → lye box turns red, pH alarm (30 s).
-3. Guard ON → same attack → BLOCKED (20 s).
-4. Algae bloom → a small, legal-looking lye increase → BLOCKED by the twin, with the forecast on the chart (40 s).
-5. The poisoned AI work order → BLOCKED (30 s).
-6. The numbers: 45% → 10%, none created (30 s).
-7. Ask: a bench PLC, one pilot utility (10 s).
+## The expo: 2.5-minute pitch with live demo
+Before you start: dashboard open, signed in as **engineer**, PIN **2468** in the header, press **Pitch demo** once (it resets the plant and waits).
+Slides: cover → problem → how → demo → results → ask. On the demo slide, Alt-Tab to the dashboard and press **Space once per step** (it moves on and runs the step):
+1. Guard OFF → Oldsmar attack → lye box turns red.
+2. Guard ON → same attack → BLOCKED.
+3. Algae bloom → a small, legal-looking +50 lye change → BLOCKED by the twin's forecast; cutting lye still allowed.
+4. The poisoned AI work order → BLOCKED.
+Alt-Tab back to the slides. If the laptop or server fails, play `docs/video/pitch-demo-backup.mp4` and say the same lines.
+Between pitches: press **Booth loop**. It repeats the three blocked attacks with big captions; any click stops it.
+
