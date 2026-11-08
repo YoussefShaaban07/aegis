@@ -15,8 +15,9 @@ live PLC readings:
   * no setpoint writes, no mode changes and no policy edits from here: those stay on the HMI
     (through the guard) and with the engineer on the box.
 
-Put it behind the plant's VPN or a TLS reverse proxy (set AEGIS_HTTPS=1 for secure cookies); it
-listens on 127.0.0.1 unless --console-host says otherwise.
+Serve it with its own TLS (--console-cert/--console-key) on the plant VPN, not behind a reverse proxy:
+the console refuses actions from locked-down addresses (round 19), and behind a proxy every request
+would carry the proxy's address. It listens on 127.0.0.1 unless --console-host says otherwise.
 """
 from __future__ import annotations
 
