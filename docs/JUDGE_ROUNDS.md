@@ -362,3 +362,19 @@ Flow: *Aegis sits between the HMI and a MicroLogix (Modbus or EtherNet/IP) → r
 3. In pitch mode the demo panel drops its description and script (the presenter has those in the slide notes) and narrows, so the guard log and its red BLOCKED entry stay visible.
 4. Checked every list the dashboard keeps: all are capped except AI proposals. On the demo, reset clears them; on a real gateway nothing would. Now capped at 300, and **pending proposals are never dropped** (decided ones are already in the audit log). Test: `tests/test_round18.py`. The booth caption also showed the previous scene's reason for the AI scene; it now shows the blocked proposal's own reason.
 5. Both are right: the forecast depends on that run's weather and sensor noise (80 and 90 minutes in two runs). The script now says "in under two hours", which is true in every run we made.
+
+## Round 19: the attacker already has the password
+
+1. **"Malware on the operator's PC has keylogged the operator's console password. It gets locked down, then signs in to your console from the same PC and clears its own lockdown."**
+2. **"Same malware acknowledges every alert from that PC, so safe-hold never acts."**
+3. **"You put the console behind a reverse proxy, like your docs suggest. Now every request comes from the proxy's address."**
+4. **"If the real HMI gets locked down by mistake in an emergency and there's no phone signal, are the operators stuck?"**
+5. **"Has this ever run against a real PLC runtime?"**
+
+### What we did about it (v23)
+
+1. The guard now remembers which addresses a locked-down source wrote from (plus its fixed address from `--sources`). The gateway console **refuses to clear a lockdown, release a hold or acknowledge an alert from a locked-down address**, even with a valid password: "use another device, for example the on-call phone". The same operator from another device can clear it. Test: `tests/test_round18.py`, which signs in with the right password from the locked PC (refused) and from a phone address (allowed).
+2. Covered by the same check once the source is locked down. Before lockdown (fewer than 6 refusals), an attacker with a stolen password could still acknowledge alerts from that PC; that delays safe-hold but doesn't let any write through the guard. Stated, not fixed.
+3. Behind a reverse proxy the check would see the proxy's address, and trusting `X-Forwarded-For` would let the attacker forge it. So the console docs now say: use the built-in TLS (`--console-cert/--console-key`) rather than a proxy.
+4. No. A lockdown still allows every change the twin forecasts as making the plant safer, and the console on the Aegis box itself (or any device other than the locked one) can clear it. In the simulated alert year, no operator station was ever locked down.
+5. Not yet. We tried to build the OpenPLC runtime for this round; its installer couldn't be run in our build environment. Still the first item on the "next" list: a real controller on the bench.

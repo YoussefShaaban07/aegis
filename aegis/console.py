@@ -82,6 +82,15 @@ def build_console(guard, auth: Auth | None = None) -> FastAPI:
     def by(who):
         return f"{who['user']} ({who['role']})"
 
+    def not_from_locked(request: Request):
+        """Judge round 19: a locked-down machine can't clear its own lockdown, release holds or acknowledge
+        alerts, even with a valid (perhaps keylogged) password. Use another device, e.g. the on-call phone.
+        Behind a reverse proxy this sees the proxy's address, so use --console-cert/--console-key instead."""
+        ip = request.client.host if request.client else ""
+        if ip in guard.locked_ips():
+            raise HTTPException(403, f"{ip} is locked down: it can't clear, release or acknowledge anything. "
+                                     "Use another device (for example the on-call phone).")
+
     @app.get("/")
     @app.get("/operator")
     def page():
@@ -136,7 +145,8 @@ def build_console(guard, auth: Auth | None = None) -> FastAPI:
         }
 
     @app.post("/api/incidents/{iid}/ack")
-    def ack(iid: int, who: dict = Depends(role("operator"))):
+    def ack(request: Request, iid: int, who: dict = Depends(role("operator"))):
+        not_from_locked(request)
         if not guard.alerter:
             raise HTTPException(404, "alerts are not configured")
         try:
@@ -145,13 +155,15 @@ def build_console(guard, auth: Auth | None = None) -> FastAPI:
             raise HTTPException(404, "no such incident")
 
     @app.post("/api/hold/release")
-    def release(body: HoldIn, who: dict = Depends(role("operator"))):
+    def release(request: Request, body: HoldIn, who: dict = Depends(role("operator"))):
+        not_from_locked(request)
         if not guard.release_hold(body.name, by(who) + " via gateway console"):
             raise HTTPException(404, f"{body.name} is not held")
         return {"ok": True, "released": body.name, "t": time.time()}
 
     @app.post("/api/lockdown/clear")
-    def clear(body: SourceIn, who: dict = Depends(role("operator"))):
+    def clear(request: Request, body: SourceIn, who: dict = Depends(role("operator"))):
+        not_from_locked(request)
         if not guard.clear_lockdown(body.source, by(who) + " via gateway console"):
             raise HTTPException(404, f"{body.source} is not locked down")
         return {"ok": True, "cleared": body.source}

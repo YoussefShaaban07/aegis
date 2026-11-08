@@ -170,7 +170,19 @@ class Guard:
         d = self._check(register, new, state, source, peer, dry_run, together, fc)
         if not dry_run and not d.allowed and source != SAFE_HOLD and self.mode == "enforce":
             self._note_refusal(source, register, d)
+            if source in self.lockdowns:      # remember which machines it came from (round 19)
+                ip = peer.rsplit(":", 1)[0] if peer else ""
+                ips = self.lockdowns[source].setdefault("ips", [])
+                if ip and ip not in ips and len(ips) < 16:
+                    ips.append(ip)
         return d
+
+    def locked_ips(self) -> set:
+        """Addresses of locked-down sources: the console refuses to let them clear or acknowledge anything,
+        so malware on a locked-down HMI can't use a keylogged password to unlock itself."""
+        out = {ip for lk in self.lockdowns.values() for ip in lk.get("ips", [])}
+        out |= {ip for ip, name in self.ip_sources.items() if name in self.lockdowns}
+        return out
 
     def _note_refusal(self, source: str, register: str, d: Decision):
         """Judge round 15: the attacks that still got through were refused 15 to 1,800 times first, while a
