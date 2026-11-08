@@ -20,7 +20,7 @@ Speaks **Modbus TCP, Modbus RTU over TCP (radio links to well sites) and EtherNe
 | Aegis | **10%**, including attackers sitting on the operator's own HMI, and **none** of those created harm: in every one, the same storm or bloom made the water unsafe without the attacker too (the attacker only made it sooner). Static rules: 52 attacks created harm. |
 
 - Operator cost: 9 false twin blocks in 514 simulated operator writes (about 1 in 57), each one can be let through with *Allow this value once*; no operator was ever locked down.
-- A simulated year: **about 9 texts a week**, 24 on calm days in the whole year; 1 of 2,369 operator changes blocked.
+- A simulated year: **about 10 texts a week**, 24 on calm days in the whole year; 1 of 2,384 operator changes blocked.
 - Adds ~0.2 ms per command (static rules), ~13 ms with the twin.
 - 207 automated tests; tested against independent Modbus and EtherNet/IP clients (pymodbus, libmodbus, pycomm3).
 
