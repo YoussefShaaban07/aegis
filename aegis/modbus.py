@@ -94,6 +94,65 @@ def frame(tid: int, unit: int, pdu: bytes) -> bytes:
     return struct.pack(">HHHB", tid, 0, len(pdu) + 1, unit) + pdu
 
 
+# ---- Modbus RTU over TCP (judge round 20) -------------------------------------------------------------
+# Rural plants often reach well sites over serial radios; radio-to-Ethernet bridges and serial device
+# servers carry the raw RTU frame over TCP: unit, PDU, CRC-16, no MBAP header and so no length field.
+# The length has to come from the function code, so only the function codes below are accepted; anything
+# else (or a bad CRC) closes the connection: fail closed rather than guess where a frame ends.
+
+def crc16(data: bytes) -> int:
+    crc = 0xFFFF
+    for b in data:
+        crc ^= b
+        for _ in range(8):
+            crc = (crc >> 1) ^ 0xA001 if crc & 1 else crc >> 1
+    return crc
+
+
+def rtu_frame(unit: int, pdu: bytes) -> bytes:
+    body = bytes([unit]) + pdu
+    return body + struct.pack("<H", crc16(body))
+
+
+async def _rtu_finish(reader, head: bytes, extra: int) -> tuple[int, int, bytes]:
+    body = head + (await reader.readexactly(extra) if extra else b"")
+    crc = await reader.readexactly(2)
+    if struct.unpack("<H", crc)[0] != crc16(body):
+        raise ConnectionError("RTU frame with a bad CRC")
+    return 0, body[0], body[1:]
+
+
+async def read_rtu_request(reader: asyncio.StreamReader) -> tuple[int, int, bytes]:
+    head = await reader.readexactly(2)
+    fc = head[1]
+    if fc in (1, 2, 3, 4, 5, 6):
+        return await _rtu_finish(reader, head, 4)
+    if fc == 22:
+        return await _rtu_finish(reader, head, 6)
+    if fc in (15, 16):
+        head += await reader.readexactly(5)
+        return await _rtu_finish(reader, head, head[-1])
+    if fc == 23:
+        head += await reader.readexactly(9)
+        return await _rtu_finish(reader, head, head[-1])
+    raise ConnectionError(f"RTU function code {fc} not supported over RTU framing")
+
+
+async def read_rtu_response(reader: asyncio.StreamReader) -> tuple[int, int, bytes]:
+    head = await reader.readexactly(2)
+    fc = head[1]
+    if fc & 0x80:
+        return await _rtu_finish(reader, head, 1)
+    if fc in (1, 2, 3, 4, 23):
+        head += await reader.readexactly(1)
+        return await _rtu_finish(reader, head, head[-1])
+    if fc in (5, 6, 15, 16):
+        return await _rtu_finish(reader, head, 4)
+    if fc == 22:
+        return await _rtu_finish(reader, head, 6)
+    raise ConnectionError(f"RTU response with function code {fc}")
+
+
 def pack_bits(bits: list[int]) -> bytes:
     out = bytearray((len(bits) + 7) // 8)
     for i, b in enumerate(bits):
@@ -240,7 +299,8 @@ class ConnLimiter:
 
 
 async def serve(handler: Handler, host: str, port: int, idle_timeout: float = 120.0,
-                max_clients: int = 64, per_ip: int | None = None, reserved=None) -> asyncio.base_events.Server:
+                max_clients: int = 64, per_ip: int | None = None, reserved=None,
+                framing: str = "tcp") -> asyncio.base_events.Server:
     """Generic Modbus TCP server: handler(request, peer) -> response PDU.
 
     Idle connections are dropped after `idle_timeout` seconds; admission is limited per address and
@@ -256,7 +316,8 @@ async def serve(handler: Handler, host: str, port: int, idle_timeout: float = 12
             return
         try:
             while True:
-                tid, unit, pdu = await asyncio.wait_for(read_frame(reader), idle_timeout)
+                tid, unit, pdu = await asyncio.wait_for(
+                    read_rtu_request(reader) if framing == "rtu" else read_frame(reader), idle_timeout)
                 try:
                     req = parse_request(tid, unit, pdu)
                     out = await handler(req, peer)
@@ -264,7 +325,7 @@ async def serve(handler: Handler, host: str, port: int, idle_timeout: float = 12
                     out = exception_pdu(pdu[0] if pdu else 0, e.code)
                 except Exception:     # a handler bug must never kill the server
                     out = exception_pdu(pdu[0] if pdu else 0, DEVICE_FAILURE)
-                writer.write(frame(tid, unit, out))
+                writer.write(rtu_frame(unit, out) if framing == "rtu" else frame(tid, unit, out))
                 await writer.drain()
         except (asyncio.IncompleteReadError, ConnectionError, asyncio.TimeoutError, OSError):
             pass
@@ -283,8 +344,10 @@ class Client:
     Reconnects automatically on the next call if the connection dropped.
     """
 
-    def __init__(self, host: str, port: int, unit: int = 1, timeout: float = 5.0, local_ip: str | None = None):
+    def __init__(self, host: str, port: int, unit: int = 1, timeout: float = 5.0, local_ip: str | None = None,
+                 framing: str = "tcp"):
         self.host, self.port, self.unit, self.timeout = host, port, unit, timeout
+        self.framing = framing       # "tcp" (MBAP) or "rtu" (RTU over TCP, e.g. a serial device server)
         self.local_ip = local_ip     # bind to a specific source address (demo attackers use 127.0.0.66)
         self._tid = 0
         self._lock = asyncio.Lock()
@@ -314,9 +377,12 @@ class Client:
                 if self.writer is None:
                     await self.connect()
                 self._tid = (self._tid + 1) & 0xFFFF
-                self.writer.write(frame(self._tid, self.unit if unit is None else unit, pdu))
+                u = self.unit if unit is None else unit
+                self.writer.write(rtu_frame(u, pdu) if self.framing == "rtu" else frame(self._tid, u, pdu))
                 await self.writer.drain()
-                _, _, out = await asyncio.wait_for(read_frame(self.reader), self.timeout)
+                _, _, out = await asyncio.wait_for(
+                    read_rtu_response(self.reader) if self.framing == "rtu" else read_frame(self.reader),
+                    self.timeout)
             except (OSError, ConnectionError, asyncio.IncompleteReadError, asyncio.TimeoutError):
                 self.writer = None
                 raise ConnectionError(f"no response from {self.host}:{self.port}")

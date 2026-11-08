@@ -47,7 +47,7 @@ from .twin import REQUIRED, Twin
 
 def build(plc_host: str, plc_port: int, mode: str = "enforce", plc_unit: int = 1, audit=None, alerter=None,
           use_twin: bool = True, printer=print, unit_mode: str = "route", plc_units: set | None = None,
-          ip_sources: dict | None = None, protocol: str = "modbus"):
+          ip_sources: dict | None = None, protocol: str = "modbus", plc_framing: str = "tcp"):
     tags = Tags.load()
     audit = audit or AuditLog()
     alerter = alerter or Alerter(audit)
@@ -56,8 +56,8 @@ def build(plc_host: str, plc_port: int, mode: str = "enforce", plc_unit: int = 1
         state_client = PCCCClient(plc_host, plc_port, tags)
         reader_fn = lambda: state_client.read_state(tags)               # noqa: E731
     else:
-        upstream = modbus.Client(plc_host, plc_port, unit=plc_unit)      # connects lazily, reconnects
-        state_client = modbus.Client(plc_host, plc_port, unit=plc_unit)
+        upstream = modbus.Client(plc_host, plc_port, unit=plc_unit, framing=plc_framing)   # lazy, reconnects
+        state_client = modbus.Client(plc_host, plc_port, unit=plc_unit, framing=plc_framing)
         reader_fn = lambda: read_plc_state(state_client, tags)          # noqa: E731
     from .config import load_policy
     lab_cfg = load_policy(tags).get("lab_inputs") or {}
@@ -98,7 +98,7 @@ def make_reader(guard):
     up = guard.upstream
     if isinstance(up, PCCCClient):
         return PCCCClient(up.host, up.port, guard.tags)
-    return modbus.Client(up.host, up.port, unit=up.unit)
+    return modbus.Client(up.host, up.port, unit=up.unit, framing=up.framing)
 
 
 HISTORY_MAX_BYTES = 50 * 1024 * 1024          # ~2 weeks of 10-s polling per file
@@ -225,9 +225,10 @@ async def health_server(guard, audit, port: int, host: str = "127.0.0.1"):
 
 
 async def run(plc_host, plc_port, listen_host, listen_port, mode, plc_unit, use_twin, health_port=None,
-              ip_sources=None, protocol="modbus", console_port=None, console_host="127.0.0.1", console_tls=(None, None)):
+              ip_sources=None, protocol="modbus", console_port=None, console_host="127.0.0.1", console_tls=(None, None),
+              framing="tcp", plc_framing="tcp"):
     guard, audit, twin = build(plc_host, plc_port, mode, plc_unit, use_twin=use_twin, ip_sources=ip_sources,
-                               protocol=protocol)
+                               protocol=protocol, plc_framing=plc_framing)
     if guard.load_state("data/guard_state.json"):
         print("Restored rate/ramp windows from before the restart")
     if health_port:
@@ -251,9 +252,10 @@ async def run(plc_host, plc_port, listen_host, listen_port, mode, plc_unit, use_
         print(f"Aegis gateway [{mode}, EtherNet/IP + PCCC]: listening on {listen_host}:{listen_port} -> "
               f"MicroLogix/SLC {plc_host}:{plc_port}")
     else:
-        srv = await modbus.serve(guard.handle, listen_host, listen_port, per_ip=8, reserved=lambda: set(guard.ip_sources))
-        print(f"Aegis gateway [{mode}]: listening on {listen_host}:{listen_port} -> PLC {plc_host}:{plc_port} "
-              f"(unit {plc_unit})")
+        srv = await modbus.serve(guard.handle, listen_host, listen_port, per_ip=8,
+                                 reserved=lambda: set(guard.ip_sources), framing=framing)
+        print(f"Aegis gateway [{mode}]: listening on {listen_host}:{listen_port} ({framing.upper()} framing) -> "
+              f"PLC {plc_host}:{plc_port} (unit {plc_unit}, {plc_framing.upper()} framing)")
     print(f"Digital twin: {'on' if twin else 'off (sensor tags missing or --no-twin)'}")
     print(f"Audit log: {audit.path}  ({audit.verify()['message']})")
     async with srv:
@@ -268,6 +270,10 @@ def main():
                    help="modbus (TCP 502) or cip (EtherNet/IP + PCCC to a MicroLogix / SLC, TCP 44818)")
     p.add_argument("--plc-port", type=int, default=None, help="default 502 (modbus) or 44818 (cip)")
     p.add_argument("--plc-unit", type=int, default=1, help="Modbus unit/slave ID of the PLC")
+    p.add_argument("--framing", choices=["tcp", "rtu"], default="tcp",
+                   help="Modbus framing the HMI/SCADA side speaks: tcp (MBAP) or rtu (RTU over TCP, e.g. a radio bridge)")
+    p.add_argument("--plc-framing", choices=["tcp", "rtu"], default="tcp",
+                   help="framing toward the PLC: rtu for a serial device server in front of an RS-485 PLC")
     p.add_argument("--listen-host", default="0.0.0.0")
     p.add_argument("--listen-port", type=int, default=5502)
     p.add_argument("--mode", choices=MODES, default="enforce")
@@ -284,7 +290,7 @@ def main():
     port = a.plc_port or (44818 if a.protocol == "cip" else 502)
     asyncio.run(run(a.plc_host, port, a.listen_host, a.listen_port, a.mode, a.plc_unit, not a.no_twin,
                     a.health_port, srcs, a.protocol, a.console_port, a.console_host,
-                    (a.console_cert, a.console_key)))
+                    (a.console_cert, a.console_key), a.framing, a.plc_framing))
 
 
 if __name__ == "__main__":

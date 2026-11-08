@@ -210,6 +210,7 @@ The previous held-out run (seeds 100000+, before Round 7) had the twin blocking 
 | AI copilot against a real model (Groq) | ⚠️ **not yet run with a real key** |
 | Twilio SMS/call | ⚠️ request format tested against a mock; **not yet sent to a real phone** |
 | OpenPLC / real hardware | ⚠️ **not tested** (the sandbox this was built in blocked OpenPLC's installer). pymodbus is the third-party stand-in |
+| Modbus RTU over TCP (radio bridges, serial device servers) | ✅ `--framing rtu` / `--plc-framing rtu`; tested with pymodbus's RTU framer on both sides. Bad CRC or a function code whose length isn't known closes the connection. ⚠️ Native RS-485 (a serial port on the Aegis box) not built: use a serial device server |
 | EtherNet/IP + PCCC (MicroLogix / SLC) | ✅ built + tested with pycomm3 against our simulated MicroLogix. ⚠️ **not tested against a real MicroLogix**. Not covered: UDP implicit I/O, CIP Security (TLS), Logix symbolic writes (refused, not judged) |
 | Other protocols (DNP3, S7, Modbus RTU serial) | ❌ not built |
 | HTTPS for the dashboard | ⚠️ set `AEGIS_HTTPS=1` behind a TLS reverse proxy; not built in |

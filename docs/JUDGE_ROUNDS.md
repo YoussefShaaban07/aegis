@@ -378,3 +378,19 @@ Flow: *Aegis sits between the HMI and a MicroLogix (Modbus or EtherNet/IP) → r
 3. Behind a reverse proxy the check would see the proxy's address, and trusting `X-Forwarded-For` would let the attacker forge it. So the console docs now say: use the built-in TLS (`--console-cert/--console-key`) rather than a proxy.
 4. No. A lockdown still allows every change the twin forecasts as making the plant safer, and the console on the Aegis box itself (or any device other than the locked one) can clear it. In the simulated alert year, no operator station was ever locked down.
 5. Not yet. We tried to build the OpenPLC runtime for this round; its installer couldn't be run in our build environment. Still the first item on the "next" list: a real controller on the bench.
+
+## Round 20: the wells are on the radio
+
+1. **"Half the small systems in Mississippi reach their well sites over serial radios. That's Modbus RTU, not Modbus TCP. You don't speak it."**
+2. **"RTU has no length field. How do you know where a frame ends? Guess wrong and you forward the second half of an attacker's frame unjudged."**
+3. **"Did you test it with anyone else's RTU code, or only your own?"**
+4. **"Does a write that arrives over RTU get the same checks?"**
+5. **"What about a PLC with only an RS-485 port?"**
+
+### What we did about it (v24)
+
+1. Aegis speaks **Modbus RTU over TCP**, which is what radio-to-Ethernet bridges and serial device servers carry: `--framing rtu` toward the HMI/SCADA side, `--plc-framing rtu` toward the PLC, in any combination with Modbus TCP.
+2. The frame length comes from the function code (read, write single, write multiple, mask write, read/write multiple). A function code whose length Aegis doesn't know, or a bad CRC, **closes the connection**; nothing is forwarded. Test: a one-bit CRC error and a diagnostics request (FC 8) are both dropped without reaching the handler.
+3. pymodbus's RTU framer on both sides: pymodbus client (RTU over TCP) → Aegis → pymodbus server as the PLC (RTU over TCP). Allowed trim goes through; 11,100 via FC 6, 9,000 via FC 16 and via FC 22 are blocked; the PLC holds only the safe value.
+4. Yes: the framing is unwrapped before the guard, so every check (rules, twin, lockdown, safe-hold) is the same code path. Same test.
+5. Not built. Aegis would need a serial port and to sit on the RS-485 line itself. Today the answer is a serial device server (about $100) between Aegis and the PLC with `--plc-framing rtu`. Not tested on real radio or serial hardware.
