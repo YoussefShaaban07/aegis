@@ -19,7 +19,7 @@ Speaks **Modbus TCP and EtherNet/IP (Allen-Bradley MicroLogix/SLC)**, the PLC fa
 | Aegis | **10%**, including attackers sitting on the operator's own HMI, and **none** of those created harm: in every one, the same storm or bloom made the water unsafe without the attacker too (the attacker only made it sooner). Static rules: 52 attacks created harm. |
 
 - Operator cost: 4 false twin blocks in 382 simulated operator writes; no operator was ever locked down.
-- A simulated year: **9.6 texts a week**, 12 on calm days in the whole year.
+- A simulated year: **about 9 texts a week**, 24 on calm days in the whole year; 1 of 2,369 operator changes blocked.
 - Adds ~0.2 ms per command (static rules), ~13 ms with the twin.
 - 197 automated tests; tested against independent Modbus and EtherNet/IP clients (pymodbus, libmodbus, pycomm3).
 

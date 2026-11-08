@@ -1,0 +1,4031 @@
+{
+ "summary": {
+  "weeks": 52,
+  "days": 364,
+  "weather_days": 131,
+  "calm_days": 233,
+  "texts_total": 488,
+  "texts_per_week": 9.4,
+  "texts_on_calm_days": 24,
+  "texts_per_calm_day": 0.1,
+  "texts_per_weather_day": 3.54,
+  "escalations": 53,
+  "by_cause": {
+   "forecast": 338,
+   "process alarm": 138,
+   "other": 12
+  },
+  "calm_day_causes": [
+   "Twin forecast: clearwell level will go below 10% in about 176 min at current settings (now",
+   "Twin forecast: clearwell level will go below 10% in about 180 min at current settings (now",
+   "Twin forecast still unsafe (tank_level below limit in ~106 min) 60 min after it was acknow",
+   "Twin forecast still unsafe (tank_level below limit in ~30 min) 60 min after it was acknowl",
+   "Process alarm TANK LOW",
+   "Twin forecast still unsafe (tank_level below limit in ~0 min) 60 min after it was acknowle",
+   "Twin forecast: clearwell level will go below 10% in about 180 min at current settings (now",
+   "Twin forecast: clearwell level will go below 10% in about 180 min at current settings (now",
+   "Twin forecast: clearwell level will go below 10% in about 180 min at current settings (now",
+   "Twin forecast: clearwell level will go below 10% in about 180 min at current settings (now",
+   "Twin forecast: clearwell level will go below 10% in about 180 min at current settings (now",
+   "Process alarm TANK LOW",
+   "Twin forecast: clearwell level will go below 10% in about 180 min at current settings (now",
+   "Twin forecast: clearwell level will go below 10% in about 180 min at current settings (now",
+   "Twin forecast: clearwell level will go below 10% in about 176 min at current settings (now",
+   "Twin forecast still unsafe (tank_level below limit in ~106 min) 60 min after it was acknow",
+   "Twin forecast still unsafe (tank_level below limit in ~26 min) 60 min after it was acknowl",
+   "Process alarm TANK LOW",
+   "Twin forecast still unsafe (tank_level below limit in ~0 min) 60 min after it was acknowle",
+   "Twin forecast still unsafe (tank_level below limit in ~0 min) 60 min after it was acknowle"
+  ],
+  "operator_writes": {
+   "allowed": 2368,
+   "blocked:predict": 1
+  },
+  "safe_hold_actions": 0
+ },
+ "weeks": [
+  {
+   "seed": 0,
+   "days": 7,
+   "weather_days": 2,
+   "texts": [
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: chlorine_residual goes below its limit in ~6 min at current settings. Ackno"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: chlorine_residual goes below its limit in ~6 min at current settings. Ackno"
+    }
+   ],
+   "operator_writes": {
+    "allowed": 37
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 1,
+   "days": 7,
+   "weather_days": 2,
+   "texts": [
+    {
+     "day": 1,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: chlorine residual will go below 0.2 mg/L in about 120 min at current settin"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 120 min at current settings (now 7.44). Act n"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~106 min) 60 min after it was acknowledged. "
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Process alarm TANK HIGH"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    }
+   ],
+   "operator_writes": {
+    "allowed": 32
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 2,
+   "days": 7,
+   "weather_days": 2,
+   "texts": [
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 116 min at current settings (now 7.45). Act n"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: ph goes above its limit in ~120 min at current settings. Acknowledge within"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 120 min at current settings (now 7.89). Act n"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 116 min at current settings (now 8.27). Act n"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Operator HMI set distribution_rate to 500 gpm against the twin's advice: twin predicts chl"
+    }
+   ],
+   "operator_writes": {
+    "allowed": 44
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 3,
+   "days": 7,
+   "weather_days": 3,
+   "texts": [
+    {
+     "day": 2,
+     "day_kind": "calm",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: clearwell level will go below 10% in about 176 min at current settings (now"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Operator HMI set distribution_rate to 500 gpm against the twin's advice: twin predicts chl"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Process alarm TANK HIGH"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: clearwell level will go below 10% in about 176 min at current settings (now"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: clearwell level will go below 10% in about 180 min at current settings (now"
+    }
+   ],
+   "operator_writes": {
+    "allowed": 60
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 4,
+   "days": 7,
+   "weather_days": 1,
+   "texts": [
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 116 min at current settings (now 7.43). Act n"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~96 min) 60 min after it was acknowledged. A"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: clearwell level will go below 10% in about 176 min at current settings (now"
+    },
+    {
+     "day": 4,
+     "day_kind": "calm",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: clearwell level will go below 10% in about 180 min at current settings (now"
+    },
+    {
+     "day": 4,
+     "day_kind": "calm",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (tank_level below limit in ~106 min) 60 min after it was acknow"
+    },
+    {
+     "day": 4,
+     "day_kind": "calm",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (tank_level below limit in ~30 min) 60 min after it was acknowl"
+    },
+    {
+     "day": 4,
+     "day_kind": "calm",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Process alarm TANK LOW"
+    },
+    {
+     "day": 4,
+     "day_kind": "calm",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (tank_level below limit in ~0 min) 60 min after it was acknowle"
+    }
+   ],
+   "operator_writes": {
+    "allowed": 41
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 5,
+   "days": 7,
+   "weather_days": 3,
+   "texts": [
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 90 min at current settings (now 7.40). Act no"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 70 min at current settings (now 7.32). Act no"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 6,
+     "day_kind": "calm",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: clearwell level will go below 10% in about 180 min at current settings (now"
+    }
+   ],
+   "operator_writes": {
+    "allowed": 59
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 6,
+   "days": 7,
+   "weather_days": 3,
+   "texts": [
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: chlorine residual will go below 0.2 mg/L in about 120 min at current settin"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Process alarm CHLORINE LOW"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm CHLORINE LOW"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm CHLORINE LOW"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: chlorine residual will go below 0.2 mg/L in about 6 min at current settings"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 96 min at current settings (now 7.44). Act no"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: ph goes above its limit in ~120 min at current settings. Acknowledge within"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 120 min at current settings (now 7.56). Act n"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 120 min at current settings (now 7.77). Act n"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 116 min at current settings (now 8.23). Act n"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    }
+   ],
+   "operator_writes": {
+    "allowed": 43
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 7,
+   "days": 7,
+   "weather_days": 4,
+   "texts": [
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 70 min at current settings (now 7.41). Act no"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: clearwell level will go below 10% in about 176 min at current settings (now"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (tank_level below limit in ~100 min) 60 min after it was acknow"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: chlorine residual will go below 0.2 mg/L in about 120 min at current settin"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: chlorine residual will go below 0.2 mg/L in about 106 min at current settin"
+    }
+   ],
+   "operator_writes": {
+    "allowed": 54
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 8,
+   "days": 7,
+   "weather_days": 1,
+   "texts": [
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 120 min at current settings (now 7.44). Act n"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~70 min) 60 min after it was acknowledged. A"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: clearwell level will go below 10% in about 176 min at current settings (now"
+    }
+   ],
+   "operator_writes": {
+    "allowed": 37
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 9,
+   "days": 7,
+   "weather_days": 4,
+   "texts": [
+    {
+     "day": 1,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: chlorine residual will go below 0.2 mg/L in about 120 min at current settin"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 110 min at current settings (now 7.44). Act n"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~76 min) 60 min after it was acknowledged. A"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: chlorine_residual goes below its limit in ~120 min at current settings. Ack"
+    }
+   ],
+   "operator_writes": {
+    "allowed": 36
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 10,
+   "days": 7,
+   "weather_days": 3,
+   "texts": [
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: chlorine_residual goes below its limit in ~120 min at current settings. Ack"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 116 min at current settings (now 7.45). Act n"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~90 min) 60 min after it was acknowledged. A"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    }
+   ],
+   "operator_writes": {
+    "allowed": 51
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 11,
+   "days": 7,
+   "weather_days": 4,
+   "texts": [
+    {
+     "day": 1,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: chlorine residual will go below 0.2 mg/L in about 120 min at current settin"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Operator HMI set distribution_rate to 500 gpm against the twin's advice: twin predicts chl"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: clearwell level will go below 10% in about 176 min at current settings (now"
+    }
+   ],
+   "operator_writes": {
+    "allowed": 46
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 12,
+   "days": 7,
+   "weather_days": 2,
+   "texts": [
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 120 min at current settings (now 7.43). Act n"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~100 min) 60 min after it was acknowledged. "
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Process alarm TANK HIGH"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: clearwell level will go below 10% in about 180 min at current settings (now"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (tank_level below limit in ~106 min) 60 min after it was acknow"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (tank_level below limit in ~30 min) 60 min after it was acknowl"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Process alarm TANK LOW"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (tank_level below limit in ~0 min) 60 min after it was acknowle"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (tank_level below limit in ~0 min) 60 min after it was acknowle"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (tank_level below limit in ~0 min) 60 min after it was acknowle"
+    }
+   ],
+   "operator_writes": {
+    "allowed": 38
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 13,
+   "days": 7,
+   "weather_days": 3,
+   "texts": [
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 100 min at current settings (now 7.43). Act n"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: clearwell level will go below 10% in about 180 min at current settings (now"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 116 min at current settings (now 7.37). Act n"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~76 min) 60 min after it was acknowledged. A"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 110 min at current settings (now 7.36). Act n"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~56 min) 60 min after it was acknowledged. A"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    }
+   ],
+   "operator_writes": {
+    "allowed": 61
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 14,
+   "days": 7,
+   "weather_days": 4,
+   "texts": [
+    {
+     "day": 1,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: chlorine_residual goes below its limit in ~120 min at current settings. Ack"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: clearwell level will go below 10% in about 180 min at current settings (now"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 106 min at current settings (now 7.40). Act n"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~96 min) 60 min after it was acknowledged. A"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 120 min at current settings (now 7.22). Act n"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 120 min at current settings (now 7.41). Act n"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 120 min at current settings (now 7.82). Act n"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Process alarm TANK HIGH"
+    },
+    {
+     "day": 5,
+     "day_kind": "calm",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: clearwell level will go below 10% in about 180 min at current settings (now"
+    }
+   ],
+   "operator_writes": {
+    "allowed": 63
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 15,
+   "days": 7,
+   "weather_days": 2,
+   "texts": [
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 116 min at current settings (now 7.40). Act n"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    }
+   ],
+   "operator_writes": {
+    "allowed": 35
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 16,
+   "days": 7,
+   "weather_days": 0,
+   "texts": [],
+   "operator_writes": {
+    "allowed": 22
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 17,
+   "days": 7,
+   "weather_days": 4,
+   "texts": [
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 120 min at current settings (now 7.45). Act n"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~100 min) 60 min after it was acknowledged. "
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: clearwell level will go below 10% in about 180 min at current settings (now"
+    }
+   ],
+   "operator_writes": {
+    "allowed": 47
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 18,
+   "days": 7,
+   "weather_days": 2,
+   "texts": [
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 116 min at current settings (now 7.40). Act n"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 3,
+     "day_kind": "calm",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: clearwell level will go below 10% in about 180 min at current settings (now"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 116 min at current settings (now 7.37). Act n"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~70 min) 60 min after it was acknowledged. A"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    }
+   ],
+   "operator_writes": {
+    "allowed": 43
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 19,
+   "days": 7,
+   "weather_days": 3,
+   "texts": [
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 116 min at current settings (now 7.46). Act n"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~76 min) 60 min after it was acknowledged. A"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 1,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: chlorine residual will go below 0.2 mg/L in about 116 min at current settin"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: chlorine residual will go below 0.2 mg/L in about 106 min at current settin"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Operator HMI set distribution_rate to 400 gpm against the twin's advice: twin predicts chl"
+    }
+   ],
+   "operator_writes": {
+    "allowed": 58
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 20,
+   "days": 7,
+   "weather_days": 3,
+   "texts": [
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 106 min at current settings (now 7.43). Act n"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~70 min) 60 min after it was acknowledged. A"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 1,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 106 min at current settings (now 7.35). Act n"
+    },
+    {
+     "day": 1,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~86 min) 60 min after it was acknowledged. A"
+    },
+    {
+     "day": 1,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 116 min at current settings (now 8.13). Act n"
+    },
+    {
+     "day": 1,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 1,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 1,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 1,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: ph goes above its limit in ~0 min at current settings. Acknowledge within 1"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: chlorine_residual goes below its limit in ~120 min at current settings. Ack"
+    }
+   ],
+   "operator_writes": {
+    "allowed": 65
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 21,
+   "days": 7,
+   "weather_days": 1,
+   "texts": [
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 120 min at current settings (now 7.44). Act n"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~96 min) 60 min after it was acknowledged. A"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 3,
+     "day_kind": "calm",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: clearwell level will go below 10% in about 180 min at current settings (now"
+    }
+   ],
+   "operator_writes": {
+    "allowed": 37
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 22,
+   "days": 7,
+   "weather_days": 3,
+   "texts": [
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: chlorine_residual goes below its limit in ~120 min at current settings. Ack"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Process alarm TANK HIGH"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 76 min at current settings (now 7.44). Act no"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 76 min at current settings (now 7.34). Act no"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    }
+   ],
+   "operator_writes": {
+    "allowed": 62
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 23,
+   "days": 7,
+   "weather_days": 3,
+   "texts": [
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Operator HMI set distribution_rate to 500 gpm against the twin's advice: twin predicts chl"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: chlorine residual will go below 0.2 mg/L in about 120 min at current settin"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 76 min at current settings (now 7.40). Act no"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    }
+   ],
+   "operator_writes": {
+    "allowed": 58
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 24,
+   "days": 7,
+   "weather_days": 3,
+   "texts": [
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 116 min at current settings (now 7.44). Act n"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~90 min) 60 min after it was acknowledged. A"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 1,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: chlorine residual will go below 0.2 mg/L in about 106 min at current settin"
+    },
+    {
+     "day": 1,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: clearwell level will go below 10% in about 176 min at current settings (now"
+    },
+    {
+     "day": 1,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (tank_level below limit in ~106 min) 60 min after it was acknow"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 106 min at current settings (now 7.38). Act n"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~90 min) 60 min after it was acknowledged. A"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    }
+   ],
+   "operator_writes": {
+    "allowed": 55
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 25,
+   "days": 7,
+   "weather_days": 1,
+   "texts": [
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 106 min at current settings (now 7.41). Act n"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    }
+   ],
+   "operator_writes": {
+    "allowed": 27
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 26,
+   "days": 7,
+   "weather_days": 2,
+   "texts": [
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 110 min at current settings (now 7.44). Act n"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~76 min) 60 min after it was acknowledged. A"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 1,
+     "day_kind": "calm",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: clearwell level will go below 10% in about 180 min at current settings (now"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: chlorine residual will go below 0.2 mg/L in about 120 min at current settin"
+    }
+   ],
+   "operator_writes": {
+    "allowed": 50
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 27,
+   "days": 7,
+   "weather_days": 2,
+   "texts": [
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 116 min at current settings (now 7.46). Act n"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~106 min) 60 min after it was acknowledged. "
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 1,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: clearwell level will go below 10% in about 180 min at current settings (now"
+    },
+    {
+     "day": 1,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (tank_level below limit in ~106 min) 60 min after it was acknow"
+    }
+   ],
+   "operator_writes": {
+    "allowed": 34
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 28,
+   "days": 7,
+   "weather_days": 4,
+   "texts": [
+    {
+     "day": 1,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 86 min at current settings (now 7.43). Act no"
+    },
+    {
+     "day": 1,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~46 min) 60 min after it was acknowledged. A"
+    },
+    {
+     "day": 1,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 1,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 1,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 1,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: chlorine residual will go below 0.2 mg/L in about 100 min at current settin"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 86 min at current settings (now 7.36). Act no"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    }
+   ],
+   "operator_writes": {
+    "allowed": 47
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 29,
+   "days": 7,
+   "weather_days": 3,
+   "texts": [
+    {
+     "day": 1,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: chlorine residual will go below 0.2 mg/L in about 100 min at current settin"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: chlorine residual will go below 0.2 mg/L in about 110 min at current settin"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: clearwell level will go below 10% in about 180 min at current settings (now"
+    }
+   ],
+   "operator_writes": {
+    "allowed": 43
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 30,
+   "days": 7,
+   "weather_days": 3,
+   "texts": [
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 80 min at current settings (now 7.41). Act no"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: clearwell level will go below 10% in about 176 min at current settings (now"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (tank_level below limit in ~106 min) 60 min after it was acknow"
+    }
+   ],
+   "operator_writes": {
+    "allowed": 53
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 31,
+   "days": 7,
+   "weather_days": 1,
+   "texts": [
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 120 min at current settings (now 7.43). Act n"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~76 min) 60 min after it was acknowledged. A"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    }
+   ],
+   "operator_writes": {
+    "allowed": 26
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 32,
+   "days": 7,
+   "weather_days": 2,
+   "texts": [
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 110 min at current settings (now 7.45). Act n"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~86 min) 60 min after it was acknowledged. A"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Operator HMI set distribution_rate to 600 gpm against the twin's advice: twin predicts pH "
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: clearwell level will go below 10% in about 180 min at current settings (now"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (tank_level below limit in ~106 min) 60 min after it was acknow"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (tank_level below limit in ~30 min) 60 min after it was acknowl"
+    },
+    {
+     "day": 5,
+     "day_kind": "calm",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Process alarm TANK LOW"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 96 min at current settings (now 7.33). Act no"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~70 min) 60 min after it was acknowledged. A"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    }
+   ],
+   "operator_writes": {
+    "allowed": 48
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 33,
+   "days": 7,
+   "weather_days": 4,
+   "texts": [
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 120 min at current settings (now 7.45). Act n"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~100 min) 60 min after it was acknowledged. "
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: clearwell level will go below 10% in about 180 min at current settings (now"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Operator HMI set distribution_rate to 400 gpm against the twin's advice: twin predicts chl"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Process alarm TANK HIGH"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: clearwell level will go below 10% in about 180 min at current settings (now"
+    }
+   ],
+   "operator_writes": {
+    "allowed": 64
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 34,
+   "days": 7,
+   "weather_days": 1,
+   "texts": [],
+   "operator_writes": {
+    "allowed": 28
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 35,
+   "days": 7,
+   "weather_days": 2,
+   "texts": [
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: chlorine residual will go below 0.2 mg/L in about 120 min at current settin"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 116 min at current settings (now 7.40). Act n"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~90 min) 60 min after it was acknowledged. A"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 3,
+     "day_kind": "calm",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: clearwell level will go below 10% in about 180 min at current settings (now"
+    }
+   ],
+   "operator_writes": {
+    "allowed": 44
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 36,
+   "days": 7,
+   "weather_days": 1,
+   "texts": [
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Process alarm TANK HIGH"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: clearwell level will go below 10% in about 180 min at current settings (now"
+    }
+   ],
+   "operator_writes": {
+    "allowed": 32
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 37,
+   "days": 7,
+   "weather_days": 5,
+   "texts": [
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 110 min at current settings (now 7.42). Act n"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~80 min) 60 min after it was acknowledged. A"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 1,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Operator HMI set distribution_rate to 500 gpm against the twin's advice: twin predicts chl"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 80 min at current settings (now 7.35). Act no"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: chlorine residual will go below 0.2 mg/L in about 120 min at current settin"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: chlorine residual will go below 0.2 mg/L in about 96 min at current setting"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Operator HMI set distribution_rate to 500 gpm against the twin's advice: twin predicts chl"
+    }
+   ],
+   "operator_writes": {
+    "allowed": 73
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 38,
+   "days": 7,
+   "weather_days": 4,
+   "texts": [
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 116 min at current settings (now 7.44). Act n"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~100 min) 60 min after it was acknowledged. "
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: ph goes above its limit in ~0 min at current settings. Acknowledge within 1"
+    },
+    {
+     "day": 1,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 120 min at current settings (now 7.41). Act n"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 120 min at current settings (now 7.37). Act n"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~106 min) 60 min after it was acknowledged. "
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Process alarm TANK HIGH"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 4,
+     "day_kind": "calm",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: clearwell level will go below 10% in about 180 min at current settings (now"
+    },
+    {
+     "day": 4,
+     "day_kind": "calm",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: clearwell level will go below 10% in about 176 min at current settings (now"
+    },
+    {
+     "day": 4,
+     "day_kind": "calm",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (tank_level below limit in ~106 min) 60 min after it was acknow"
+    },
+    {
+     "day": 4,
+     "day_kind": "calm",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (tank_level below limit in ~26 min) 60 min after it was acknowl"
+    },
+    {
+     "day": 4,
+     "day_kind": "calm",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Process alarm TANK LOW"
+    },
+    {
+     "day": 4,
+     "day_kind": "calm",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (tank_level below limit in ~0 min) 60 min after it was acknowle"
+    },
+    {
+     "day": 4,
+     "day_kind": "calm",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (tank_level below limit in ~0 min) 60 min after it was acknowle"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Operator HMI set distribution_rate to 500 gpm against the twin's advice: twin predicts chl"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: chlorine_residual goes below its limit in ~110 min at current settings. Ack"
+    }
+   ],
+   "operator_writes": {
+    "allowed": 66,
+    "blocked:predict": 1
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 39,
+   "days": 7,
+   "weather_days": 0,
+   "texts": [],
+   "operator_writes": {
+    "allowed": 19
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 40,
+   "days": 7,
+   "weather_days": 2,
+   "texts": [
+    {
+     "day": 1,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: chlorine residual will go below 0.2 mg/L in about 116 min at current settin"
+    },
+    {
+     "day": 1,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: chlorine residual will go below 0.2 mg/L in about 6 min at current settings"
+    },
+    {
+     "day": 1,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: chlorine residual will go below 0.2 mg/L in about 6 min at current settings"
+    },
+    {
+     "day": 2,
+     "day_kind": "calm",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: clearwell level will go below 10% in about 180 min at current settings (now"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 80 min at current settings (now 7.41). Act no"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    }
+   ],
+   "operator_writes": {
+    "allowed": 44
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 41,
+   "days": 7,
+   "weather_days": 1,
+   "texts": [
+    {
+     "day": 6,
+     "day_kind": "calm",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: clearwell level will go below 10% in about 176 min at current settings (now"
+    }
+   ],
+   "operator_writes": {
+    "allowed": 37
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 42,
+   "days": 7,
+   "weather_days": 5,
+   "texts": [
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 120 min at current settings (now 7.43). Act n"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~70 min) 60 min after it was acknowledged. A"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 0,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 1,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 106 min at current settings (now 7.34). Act n"
+    },
+    {
+     "day": 1,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 1,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 1,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 1,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 1,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 1,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 1,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 110 min at current settings (now 7.39). Act n"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~76 min) 60 min after it was acknowledged. A"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Process alarm TANK HIGH"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: clearwell level will go below 10% in about 176 min at current settings (now"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: clearwell level will go below 10% in about 180 min at current settings (now"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 120 min at current settings (now 7.40). Act n"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~110 min) 60 min after it was acknowledged. "
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 116 min at current settings (now 7.86). Act n"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: clearwell level will go below 10% in about 176 min at current settings (now"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Process alarm TANK HIGH"
+    }
+   ],
+   "operator_writes": {
+    "allowed": 91
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 43,
+   "days": 7,
+   "weather_days": 4,
+   "texts": [
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 106 min at current settings (now 7.43). Act n"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~50 min) 60 min after it was acknowledged. A"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 110 min at current settings (now 7.41). Act n"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~100 min) 60 min after it was acknowledged. "
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: chlorine residual will go below 0.2 mg/L in about 120 min at current settin"
+    }
+   ],
+   "operator_writes": {
+    "allowed": 53
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 44,
+   "days": 7,
+   "weather_days": 2,
+   "texts": [
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: clearwell level will go below 10% in about 180 min at current settings (now"
+    }
+   ],
+   "operator_writes": {
+    "allowed": 35
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 45,
+   "days": 7,
+   "weather_days": 0,
+   "texts": [],
+   "operator_writes": {
+    "allowed": 21
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 46,
+   "days": 7,
+   "weather_days": 3,
+   "texts": [
+    {
+     "day": 2,
+     "day_kind": "calm",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: clearwell level will go below 10% in about 180 min at current settings (now"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: chlorine_residual goes below its limit in ~120 min at current settings. Ack"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Process alarm CHLORINE LOW"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm CHLORINE LOW"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm CHLORINE LOW"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: chlorine residual will go below 0.2 mg/L in about 6 min at current settings"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: chlorine_residual goes below its limit in ~0 min at current settings. Ackno"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: chlorine residual will go below 0.2 mg/L in about 106 min at current settin"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: clearwell level will go below 10% in about 180 min at current settings (now"
+    },
+    {
+     "day": 5,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (tank_level below limit in ~106 min) 60 min after it was acknow"
+    }
+   ],
+   "operator_writes": {
+    "allowed": 56
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 47,
+   "days": 7,
+   "weather_days": 3,
+   "texts": [],
+   "operator_writes": {
+    "allowed": 41
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 48,
+   "days": 7,
+   "weather_days": 4,
+   "texts": [
+    {
+     "day": 2,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Operator HMI set distribution_rate to 500 gpm against the twin's advice: twin predicts chl"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 90 min at current settings (now 7.44). Act no"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~46 min) 60 min after it was acknowledged. A"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Process alarm TANK HIGH"
+    }
+   ],
+   "operator_writes": {
+    "allowed": 56
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 49,
+   "days": 7,
+   "weather_days": 2,
+   "texts": [],
+   "operator_writes": {
+    "allowed": 24
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 50,
+   "days": 7,
+   "weather_days": 1,
+   "texts": [
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: pH will go above 8.5 in about 116 min at current settings (now 7.43). Act n"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm pH HIGH"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast still unsafe (ph above limit in ~0 min) 60 min after it was acknowledged. Ac"
+    },
+    {
+     "day": 3,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: clearwell level will go below 10% in about 176 min at current settings (now"
+    },
+    {
+     "day": 4,
+     "day_kind": "calm",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: clearwell level will go below 10% in about 180 min at current settings (now"
+    }
+   ],
+   "operator_writes": {
+    "allowed": 37
+   },
+   "safe_hold_actions": 0
+  },
+  {
+   "seed": 51,
+   "days": 7,
+   "weather_days": 4,
+   "texts": [
+    {
+     "day": 1,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: chlorine residual will go below 0.2 mg/L in about 120 min at current settin"
+    },
+    {
+     "day": 4,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: chlorine residual will go below 0.2 mg/L in about 120 min at current settin"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Operator HMI set distribution_rate to 500 gpm against the twin's advice: twin predicts chl"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: chlorine residual will go below 0.2 mg/L in about 120 min at current settin"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Process alarm CHLORINE LOW"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": false,
+     "cause": "Process alarm CHLORINE LOW"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "critical",
+     "escalation": true,
+     "cause": "Process alarm CHLORINE LOW"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: chlorine_residual goes below its limit in ~0 min at current settings. Ackno"
+    },
+    {
+     "day": 6,
+     "day_kind": "weather",
+     "severity": "warning",
+     "escalation": false,
+     "cause": "Twin forecast: chlorine_residual goes below its limit in ~6 min at current settings. Ackno"
+    }
+   ],
+   "operator_writes": {
+    "allowed": 35
+   },
+   "safe_hold_actions": 0
+  }
+ ]
+}
