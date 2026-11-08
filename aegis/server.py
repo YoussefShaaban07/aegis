@@ -143,7 +143,7 @@ async def lifespan(app: FastAPI):
                   twin=twin)
     guard.trusted_ips = {"127.0.0.1"}   # HMI + AI live here; demo attackers come from 127.0.0.66
     guard.sync_commanded(plant.snapshot())
-    gsrv = await modbus.serve(guard.handle, "0.0.0.0", GUARD_PORT)
+    gsrv = await modbus.serve(guard.handle, "0.0.0.0", GUARD_PORT, per_ip=8, reserved=lambda: set(guard.ip_sources))
     # The same plant also answers EtherNet/IP + PCCC like a MicroLogix 1400, with Aegis in front of it
     S["cip_plc"] = MicroLogixSim(plant, TAGS)
     S["cip"] = CIPGuard(guard, "127.0.0.1", CIP_PLC_PORT, TAGS)

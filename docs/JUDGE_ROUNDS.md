@@ -330,3 +330,19 @@ Flow: *Aegis sits between the HMI and a MicroLogix (Modbus or EtherNet/IP) → r
 3. 300078, replayed: the HMI attacker cut chlorine 1.5 → 1.18 → 0.69 in two minutes; the twin's ensemble put the long-run residual at 0.24–0.40 mg/L (true plant: 0.26), so it approved. Ordinary demand drift took it below 0.2 seven hours later, past the 6-hour forecast. Fix: **`prediction.approval_margin`**: to be *approved*, a change's forecast must stay 0.15 inside the chlorine and pH limits (≥ 0.35 mg/L, pH 6.65–8.35). Warnings and safe-hold still use the real limits; corrective changes still only have to beat doing nothing. Regression test reproduces 300078.
 4. The evaluation now prints the split: **created / made much worse / only sooner**.
 5. Held-out, v20: **19/200 for both attackers, 0 created, 0 made much worse, 19 only sooner**; static rules: 90/200 with 52 created. Operator cost unchanged (13 twin blocks, 4 false). Getting the last 19 to zero means fixing the *weather* harm, i.e. Aegis steering the plant through storms on its own. That's automatic process control, a decision for the utility's engineers rather than a safety guard, so we stop here and say so.
+
+## Round 17: attack Aegis itself
+
+1. **"Fuzz your new EtherNet/IP parser. Inline filters get bypassed when they and the PLC read the same bytes differently."**
+2. **"Attacker-controlled text ends up on your dashboard: Logix tag names, work orders, copilot input. Is that script injection?"**
+3. **"One laptop opens 64 Modbus connections and your real HMI can't connect. And a MicroLogix only accepts a handful of EtherNet/IP connections; you open one upstream per client, with no limit."**
+4. **"EtherNet/IP connections never time out."**
+5. **"`pip install fastapi` on install day gets whatever version exists that day."**
+
+### What we did about it (v21)
+
+1. `scripts/fuzz_cip.py`: mutates dangerous PCCC writes (lye 11,100; stop the distribution pump), wraps them in random transports (unconnected/connected, truncated, garbage), and every frame Aegis **forwards** is executed by the simulated MicroLogix; any PLC change must equal a value Aegis judged and approved. **60,000 cases: 0 unjudged or mismatched changes.** A separate 20,000-case run: 268 frames raised inside the inspector, and the connection loop turns those into refusals (fail-closed). A short run is in the test suite. Caveat, stated in the script: the simulator reuses Aegis's decoder for the innermost typed-write fields, so this covers the framing layers; only a real PLC can confirm the last bytes.
+2. Sent an HTML/script payload as a Logix tag name over EtherNet/IP and through the copilot, then rendered every tab of the dashboard and the phone page in a real browser: **nothing executed** (`scripts/xss_check.js`); the payload appears as text in the log.
+3. **`ConnLimiter`** for both fronts: per-address cap (Modbus 8, EtherNet/IP 2), global cap (64 / 8), and **the named operator stations (`--sources`) are always admitted**. Tests: one host can't take every slot; the named HMI still gets in when the box is full.
+4. EtherNet/IP clients are dropped after 120 s idle, like Modbus.
+5. `requirements.lock`: the exact versions this release was tested with, for deployed gateways (`run.bat` keeps the looser list so a newer laptop Python still installs). Hash pinning: not done yet.

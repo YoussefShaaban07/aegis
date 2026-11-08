@@ -101,6 +101,7 @@ Every write is checked in this order; the first failure blocks it:
 - **Guided demo**: one button walks through the whole story with what to say at each step; fast-forwards slow chemistry.
 - **Operator console for real installs** (`--console-port`, `aegis/console.py`): the gateway serves the phone page (acknowledge, release safe-holds) with named accounts and optional built-in HTTPS.
 - **More careful when the model is wrong**: while the integrity monitor says the plant doesn't match the chemistry (stronger lye delivered, failing pump, compromised PLC), the twin judges with a wide uncertainty band.
+- **Hardened front door**: differential fuzzing of the EtherNet/IP path (60,000 mutated attack frames, 0 writes slipped past or applied differently; `scripts/fuzz_cip.py`), dashboard tested against script injection through attacker-controlled names, per-address connection limits with room always kept for the named HMIs, idle timeouts, pinned versions in `requirements.lock`.
 - **Not just caustic soda**: the twin's alkali feed can be NaOH, lime, soda ash or bicarbonate (`process.json "alkali"`); chlorine-only plants simply have no alkali register.
 - **Demo without internet**: with no API key the demo copilot is a clearly labelled scripted model that falls for the poisoned work order, and Aegis blocks it. Nothing on the dashboard loads from the internet.
 - **Several PLCs**: run one gateway per PLC (own port, own tag map); Modbus unit IDs behind a TCP-to-serial gateway are routed.

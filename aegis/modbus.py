@@ -212,22 +212,48 @@ def exception_pdu(fc: int, code: int) -> bytes:
 Handler = Callable[[Request, tuple], Awaitable[bytes]]
 
 
+class ConnLimiter:
+    """Connection admission shared by the Modbus and EtherNet/IP fronts (judge round 17).
+
+    A global cap alone lets one attacker take every slot and lock the real HMI out. So: at most
+    `per_ip` connections from any one address, at most `total` overall, and addresses returned by
+    `reserved()` (the named operator stations) are always admitted up to their own per-IP cap."""
+
+    def __init__(self, total: int = 64, per_ip: int = 8, reserved=None):
+        self.total, self.per_ip, self.reserved = total, per_ip, reserved or (lambda: set())
+        self.by_ip: dict[str, int] = {}
+        self.refused = 0
+
+    def admit(self, peer) -> str | None:
+        ip = peer[0] if peer else "?"
+        n = sum(self.by_ip.values())
+        if (self.per_ip and self.by_ip.get(ip, 0) >= self.per_ip) or (n >= self.total and ip not in self.reserved()):
+            self.refused += 1
+            return None
+        self.by_ip[ip] = self.by_ip.get(ip, 0) + 1
+        return ip
+
+    def release(self, ip: str):
+        self.by_ip[ip] -= 1
+        if self.by_ip[ip] <= 0:
+            del self.by_ip[ip]
+
+
 async def serve(handler: Handler, host: str, port: int, idle_timeout: float = 120.0,
-                max_clients: int = 64) -> asyncio.base_events.Server:
+                max_clients: int = 64, per_ip: int | None = None, reserved=None) -> asyncio.base_events.Server:
     """Generic Modbus TCP server: handler(request, peer) -> response PDU.
 
-    Idle connections are dropped after `idle_timeout` seconds and at most
-    `max_clients` connections are served at once, so one misbehaving client
-    can't exhaust the device (a real problem for small embedded PLCs).
+    Idle connections are dropped after `idle_timeout` seconds; admission is limited per address and
+    overall (ConnLimiter), so one misbehaving client can't exhaust the device or lock out the HMI.
     """
-    active = {"n": 0}
+    limiter = ConnLimiter(max_clients, per_ip, reserved)
 
     async def on_client(reader, writer):
         peer = writer.get_extra_info("peername")
-        if active["n"] >= max_clients:
+        ip = limiter.admit(peer)
+        if ip is None:
             writer.close()
             return
-        active["n"] += 1
         try:
             while True:
                 tid, unit, pdu = await asyncio.wait_for(read_frame(reader), idle_timeout)
@@ -243,10 +269,12 @@ async def serve(handler: Handler, host: str, port: int, idle_timeout: float = 12
         except (asyncio.IncompleteReadError, ConnectionError, asyncio.TimeoutError, OSError):
             pass
         finally:
-            active["n"] -= 1
+            limiter.release(ip)
             writer.close()
 
-    return await asyncio.start_server(on_client, host, port)
+    srv = await asyncio.start_server(on_client, host, port)
+    srv.limiter = limiter
+    return srv
 
 
 class Client:

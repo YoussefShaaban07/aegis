@@ -216,3 +216,40 @@ def test_approval_needs_headroom_not_just_a_forecast_inside_the_limit():
     assert g.check("chlorine_dose", 1.3, plant.snapshot(), "Operator HMI", "h:1", dry_run=True).allowed
     g.policy["prediction"]["approval_margin"] = {}
     assert g.check("chlorine_dose", 0.69, plant.snapshot(), "Operator HMI", "h:1", dry_run=True).allowed   # old behaviour
+
+
+# ---------------- round 17 ----------------
+def test_one_host_cannot_take_every_connection_and_lock_out_the_hmi():
+    import asyncio
+    from aegis import modbus
+
+    async def go():
+        plant = Plant(noise=False)
+        reserved = {"127.0.0.1"}                       # pretend the named HMI is this address
+        srv = await modbus.serve(plant.handle, "127.0.0.1", 0, max_clients=4, per_ip=3, reserved=lambda: reserved)
+        port = srv.sockets[0].getsockname()[1]
+        lim = srv.limiter
+        held = [await asyncio.open_connection("127.0.0.1", port) for _ in range(5)]
+        await asyncio.sleep(0.05)
+        assert lim.by_ip.get("127.0.0.1") == 3 and lim.refused == 2    # per-address cap
+        reserved.clear()
+        lim.total = 3                                                  # now the box is "full"
+        extra = await asyncio.open_connection("127.0.0.1", port)
+        await asyncio.sleep(0.05)
+        assert lim.refused == 3
+        for r, w in held + [extra]:
+            w.close()
+        srv.close()
+    asyncio.run(go())
+
+
+def test_cip_guard_limits_connections_per_address():
+    from aegis.cip import CIPGuard
+    g = Guard(None, Plant(noise=False).snapshot)
+    p = CIPGuard(g, "127.0.0.1", 1)
+    assert [p.limiter.admit(("10.0.0.9", i)) for i in range(3)] == ["10.0.0.9", "10.0.0.9", None]
+    g.ip_sources = {"10.0.0.5": "Operator HMI"}
+    for i in range(6):
+        p.limiter.admit((f"10.1.0.{i}", 1))
+    assert p.limiter.admit(("10.2.2.2", 1)) is None                     # full
+    assert p.limiter.admit(("10.0.0.5", 1)) == "10.0.0.5"              # the named HMI still gets in

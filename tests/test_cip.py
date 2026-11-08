@@ -272,3 +272,12 @@ def test_onboarding_drafts_pccc_tags_from_an_rslogix_export():
     assert [u["address"] for u in d["unmapped"]] == ["N7:50"]
     tags = Tags(t)                                                     # loads without Modbus addresses
     assert tags.holding["naoh_dose"].pccc == "N7:1" and tags.by_addr == {}
+
+
+def test_differential_fuzz_no_unjudged_or_mismatched_plc_change():
+    import importlib
+    import sys
+    sys.argv = ["fuzz", "11", "3000"]
+    import scripts.fuzz_cip as fz
+    importlib.reload(fz)
+    assert fz.main() == []

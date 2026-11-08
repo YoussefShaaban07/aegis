@@ -251,7 +251,7 @@ async def run(plc_host, plc_port, listen_host, listen_port, mode, plc_unit, use_
         print(f"Aegis gateway [{mode}, EtherNet/IP + PCCC]: listening on {listen_host}:{listen_port} -> "
               f"MicroLogix/SLC {plc_host}:{plc_port}")
     else:
-        srv = await modbus.serve(guard.handle, listen_host, listen_port)
+        srv = await modbus.serve(guard.handle, listen_host, listen_port, per_ip=8, reserved=lambda: set(guard.ip_sources))
         print(f"Aegis gateway [{mode}]: listening on {listen_host}:{listen_port} -> PLC {plc_host}:{plc_port} "
               f"(unit {plc_unit})")
     print(f"Digital twin: {'on' if twin else 'off (sensor tags missing or --no-twin)'}")
