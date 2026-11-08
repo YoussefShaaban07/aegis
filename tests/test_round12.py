@@ -164,3 +164,41 @@ def test_twin_chemistry_for_other_alkalis_and_chlorine_only_plants():
     st = plant.snapshot(); st.pop("naoh_dose")
     v = Twin().evaluate(st, "chlorine_dose", 0.8)
     assert not v.allowed and "chlorine" in v.reason
+
+
+# ---------------- round 15 ----------------
+def test_probing_source_is_locked_down_to_corrective_changes_only(tmp_path):
+    from aegis.alerts import Alerter
+    plant = Plant(noise=False)
+    plant.set_scenario("bloom")
+    for _ in range(40):
+        plant.step(1.0)
+    g = Guard(None, plant.snapshot, twin=Twin(), alerter=Alerter(None, throttle_s=0))
+    src, peer = "Operator HMI", "10.0.0.5:5000"
+    for i in range(5):                                    # 5 refusals: not yet
+        assert not g.check("naoh_dose", 140 + i, plant.snapshot(), src, peer).allowed
+    assert src not in g.lockdowns
+    assert not g.check("naoh_dose", 146, plant.snapshot(), src, peer).allowed
+    assert src in g.lockdowns and any(a["key"] == f"lockdown:{src}" for a in g.alerter.recent)
+    # a small, otherwise-legal chlorine trim is now refused; cutting lye in a bloom (corrective) still works
+    d = g.check("chlorine_dose", 1.6, plant.snapshot(), src, peer)
+    assert not d.allowed and d.check == "lockdown"
+    assert g.check("naoh_dose", 50, plant.snapshot(), src, peer).allowed
+    # other sources are unaffected; a restart doesn't clear it; a person does
+    assert g.check("chlorine_dose", 1.6, plant.snapshot(), "AI copilot", "h:2").check != "lockdown"
+    g.save_state(tmp_path / "s.json")
+    g2 = Guard(None, plant.snapshot, twin=Twin())
+    g2.load_state(tmp_path / "s.json")
+    assert src in g2.lockdowns
+    assert g2.clear_lockdown(src, "maria (operator)") and src not in g2.lockdowns
+
+
+def test_lockdown_does_not_trigger_in_monitor_mode_or_on_dry_runs():
+    plant = Plant(noise=False)
+    g = Guard(None, plant.snapshot, twin=Twin())
+    for _ in range(10):
+        g.check("naoh_dose", 11100, plant.snapshot(), "AI copilot", "h", dry_run=True)
+    g.mode = "monitor"
+    for _ in range(10):
+        g.check("naoh_dose", 11100, plant.snapshot(), "Operator HMI", "h")
+    assert g.lockdowns == {}

@@ -124,6 +124,11 @@ def validate_policy(p: dict, tags: Tags) -> dict:
                 raise PolicyError(f"safe_hold.{k} must be a positive number")
         if any(r not in tags.holding or tags.holding[r].table == "coil" for r in sh.get("registers", [])):
             raise PolicyError("safe_hold.registers must list writable holding-register setpoints (not pumps)")
+    ld = p.get("lockdown")
+    if ld is not None:
+        if not isinstance(ld, dict) or not isinstance(ld.get("after_blocks", 6), int) or ld.get("after_blocks", 6) < 2 \
+                or not ld.get("window_min", 60) > 0:
+            raise PolicyError("lockdown: after_blocks must be an integer >= 2 and window_min > 0")
     pw = p.get("pass_writes") or []
     if not isinstance(pw, list) or not all(isinstance(x, str) for x in pw):
         raise PolicyError("pass_writes must be a list of addresses, e.g. [\"N7:50-N7:59\", \"holding 40-49\"]")

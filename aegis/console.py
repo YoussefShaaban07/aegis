@@ -44,6 +44,10 @@ class HoldIn(BaseModel):
     name: str
 
 
+class SourceIn(BaseModel):
+    source: str
+
+
 def alarms(st: dict) -> list[str]:
     out = []
     for k, (lo, hi, label) in BANDS.items():
@@ -126,6 +130,8 @@ def build_console(guard, auth: Auth | None = None) -> FastAPI:
             "log": [d.as_dict() for d in list(guard.log)[:30]],
             "holds": [{"register": r, "value": h["value"], "reason": h.get("reason", ""),
                        "remaining_min": max(0, round((h["until"] - now) / 60))} for r, h in guard.holds.items()],
+            "lockdowns": [{"source": k, "blocks": v["blocks"], "last": v.get("last"),
+                           "since_min": round((now - v["since"]) / 60)} for k, v in guard.lockdowns.items()],
             "polled_at": st.get("_polled_at"),
         }
 
@@ -143,6 +149,12 @@ def build_console(guard, auth: Auth | None = None) -> FastAPI:
         if not guard.release_hold(body.name, by(who) + " via gateway console"):
             raise HTTPException(404, f"{body.name} is not held")
         return {"ok": True, "released": body.name, "t": time.time()}
+
+    @app.post("/api/lockdown/clear")
+    def clear(body: SourceIn, who: dict = Depends(role("operator"))):
+        if not guard.clear_lockdown(body.source, by(who) + " via gateway console"):
+            raise HTTPException(404, f"{body.source} is not locked down")
+        return {"ok": True, "cleared": body.source}
 
     return app
 

@@ -291,6 +291,8 @@ def state(who: dict = Depends(role("viewer"))):
             "forewarn": list(S["forewarn"].active.values()),
             "holds": [{"register": r, **{k: v for k, v in h.items() if k != "until"},
                        "remaining_min": round((h["until"] - g.clock()) / 60)} for r, h in g.holds.items()],
+            "lockdowns": [{"source": k, "blocks": v["blocks"], "last": v.get("last"),
+                           "since_min": round((g.clock() - v["since"]) / 60)} for k, v in g.lockdowns.items()],
             "safe_hold": {"enabled": S["safehold"].enabled, "standing_down": S["safehold"].standing_down,
                           "after_min": S["safehold"].cfg["after_min"], "actions": S["safehold"].actions[-5:]},
             "attack_log": list(S["attack_log"]), "patient_running": bool(S["patient"] and not S["patient"].done()),
@@ -656,6 +658,18 @@ def release_hold(body: HoldIn, who: dict = Depends(role("operator"))):
     if not S["guard"].release_hold(body.name, by=_by(who)):
         raise HTTPException(404, f"{body.name} is not held")
     return {"released": body.name}
+
+
+class SourceIn(BaseModel):
+    source: str
+
+
+@app.post("/api/lockdown/clear")
+def clear_lockdown(body: SourceIn, who: dict = Depends(role("operator"))):
+    """Clearing a lockdown needs a login, like releasing a hold."""
+    if not S["guard"].clear_lockdown(body.source, by=_by(who)):
+        raise HTTPException(404, f"{body.source} is not locked down")
+    return {"cleared": body.source}
 
 
 class Msg(BaseModel):

@@ -234,3 +234,13 @@ def test_keyless_demo_uses_a_labelled_scripted_model_and_aegis_still_blocks_it(c
     assert [t["tool"] for t in r["trace"]] == ["read_work_orders", "propose_setpoint"]
     assert "BLOCKED" in r["trace"][1]["result"]["result"]
     assert client.get("/api/state").json()["plant"]["naoh_dose"] == 100
+
+
+def test_lockdown_shown_and_cleared_only_with_login(client):
+    g = client.server.S["guard"]
+    g.lockdowns["Unknown host 10.9.9.9"] = {"since": g.clock(), "wall": 0, "blocks": 6, "last": "naoh_dose"}
+    s = client.get("/api/state").json()
+    assert s["lockdowns"][0]["source"] == "Unknown host 10.9.9.9"
+    assert client.post("/api/lockdown/clear", json={"source": "nobody"}).status_code == 404
+    assert client.post("/api/lockdown/clear", json={"source": "Unknown host 10.9.9.9"}).json()["cleared"]
+    assert client.get("/api/state").json()["lockdowns"] == []

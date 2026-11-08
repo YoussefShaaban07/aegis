@@ -55,6 +55,7 @@ ATTACK = {
     "flood": [("T0806", "Brute Force I/O")],
     "writer": [("T0855", "Unauthorized Command Message")],
     "hold": [("T0836", "Modify Parameter")],
+    "lockdown": [("T0836", "Modify Parameter"), ("T0855", "Unauthorized Command Message")],
     "allowlist": [("T0855", "Unauthorized Command Message")],
     "range": [("T0836", "Modify Parameter")],
     "step": [("T0836", "Modify Parameter")],
@@ -143,6 +144,8 @@ class Guard:
         self.permits: dict[tuple, dict] = {}
         self.commanded: dict[str, float] = {}   # last value of each setpoint that Aegis let through
         self.setpoint_log: deque = deque(maxlen=500)   # (t, register, old, new, source) of allowed changes
+        self.lockdowns: dict[str, dict] = {}                   # source -> {since, blocks, last} (judge round 15)
+        self._refusals: dict[str, deque] = defaultdict(deque)
         self.holds: dict[str, dict] = {}          # register -> safe-hold {value, until, by, reason}
 
     @property
@@ -164,6 +167,47 @@ class Guard:
     def check(self, register: str, new: float, state: dict, source: str, peer: str,
               dry_run: bool = False, together: dict | None = None, fc: int = 0) -> Decision:
         """Decide one write. `together`: other values written in the same request (for the twin)."""
+        d = self._check(register, new, state, source, peer, dry_run, together, fc)
+        if not dry_run and not d.allowed and source != SAFE_HOLD and self.mode == "enforce":
+            self._note_refusal(source, register, d)
+        return d
+
+    def _note_refusal(self, source: str, register: str, d: Decision):
+        """Judge round 15: the attacks that still got through were refused 15 to 1,800 times first, while a
+        simulated operator was refused at most 3 times in a 12-hour shift. Probing is a signal: after
+        `lockdown.after_blocks` refusals within `lockdown.window_min`, that source may only make changes the
+        twin forecasts as corrective until a person clears it on the console (a packet can't log in)."""
+        cfg = self.policy.get("lockdown") or {}
+        if not cfg.get("enabled", True) or source in self.lockdowns:
+            return
+        now = self.clock()
+        q = self._refusals[source]
+        q.append(now)
+        while q and now - q[0] > cfg.get("window_min", 60) * 60:
+            q.popleft()
+        if len(q) >= cfg.get("after_blocks", 6):
+            self.lockdowns[source] = {"since": now, "wall": time.time(), "blocks": len(q), "last": register}
+            q.clear()
+            msg = (f"{source} was refused {cfg.get('after_blocks', 6)} times in {cfg.get('window_min', 60)} min "
+                   f"(last: {register} = {d.new:g}, {d.check}). Possible intrusion or a misconfigured HMI. "
+                   "LOCKED DOWN: it can only make changes that make the plant safer until an operator clears "
+                   "it on the console.")
+            if self.audit:
+                self.audit.append("lockdown", {"source": source, "blocks": self.lockdowns[source]["blocks"],
+                                               "last_register": register})
+            if self.alerter:
+                self.alerter.raise_alert(f"lockdown:{source}", "critical", msg)
+
+    def clear_lockdown(self, source: str, by: str) -> bool:
+        if self.lockdowns.pop(source, None) is None:
+            return False
+        self._refusals.pop(source, None)
+        if self.audit:
+            self.audit.append("lockdown_cleared", {"source": source, "by": by})
+        return True
+
+    def _check(self, register: str, new: float, state: dict, source: str, peer: str,
+               dry_run: bool = False, together: dict | None = None, fc: int = 0) -> Decision:
         now = self.clock()
         old = state.get(register)
         u = self._unit(register)
@@ -224,6 +268,13 @@ class Guard:
         hold_msg = (f"{register} is held at {hold['value']:g} {u} by Aegis safe-hold ({hold['reason']}); changes back "
                     f"toward {hold.get('from', '?')} are accepted only if the twin forecasts them as corrective, until "
                     "someone releases the hold on the dashboard (operator login)") if held else ""
+        hold_check = "hold"
+        lock = self.lockdowns.get(source) if source != SAFE_HOLD else None
+        if lock and not held:
+            held, hold_check = True, "lockdown"
+            hold_msg = (f"{source} is locked down after {lock['blocks']} refused commands (possible intrusion or a "
+                        "misconfigured HMI): only changes the twin forecasts as corrective are accepted until an "
+                        "operator clears it on the console")
         # 3. range
         if not lim["min"] <= new <= lim["max"]:
             return deny("range", f"outside safe range {lim['min']:g}-{lim['max']:g} {u} ({reason})")
@@ -242,7 +293,7 @@ class Guard:
         pred = self.policy.get("prediction") or {}
         use_twin = self.twin is not None and pred and pred.get("enabled", True)
         if held and not use_twin:
-            return deny("hold", hold_msg)
+            return deny(hold_check, hold_msg)
         if soft and not use_twin:
             return deny(*soft)
         # 5b. cycling: rapid back-and-forth changes wear out pumps and valves and cause pressure
@@ -303,7 +354,7 @@ class Guard:
                     self.alerter.raise_alert("twin_timeout", "warning", "Digital twin couldn't finish within its "
                                              "time budget on this hardware; static checks only for that command.")
                 if held:
-                    return deny("hold", hold_msg)
+                    return deny(hold_check, hold_msg)
                 if pred.get("on_timeout", "static") == "block":
                     return deny("predict", "digital twin couldn't finish within its time budget; blocked "
                                            "(prediction.on_timeout = block)")
@@ -319,7 +370,7 @@ class Guard:
                 return Decision(True, source, register, old, new, "within static envelope; twin skipped "
                                 "(time budget exceeded)" + permit_note, peer, "ok", wall, u, fc)
             if held and not (v.allowed and v.reason.startswith("corrective")):
-                d = deny("hold", hold_msg)
+                d = deny(hold_check, hold_msg)
                 d.forecast = forecast
                 return d
             trusted = source in SOURCES.values() or source in self.ip_sources.values()
@@ -467,6 +518,7 @@ class Guard:
                 "big_dirs": {k: [(now - t, d) for t, d in dq] for k, dq in self._big_dirs.items()},
                 "attempts": {k: [now - t for t in dq] for k, dq in self._attempts.items()},
                 "holds": {k: {**h, "until": h["until"] - now} for k, h in self.holds.items()},
+                "lockdowns": {k: {**v, "since": now - v["since"]} for k, v in self.lockdowns.items()},
                 "setpoint_log": [(now - t, r, a, b, src) for t, r, a, b, src in self.setpoint_log]}
         tmp = str(path) + ".tmp"
         with open(tmp, "w") as f:
@@ -487,10 +539,12 @@ class Guard:
             left = h["until"] - max(0.0, down)
             if left > 0:
                 self.holds[k] = {**h, "until": now + left}
+        for k, v in data.get("lockdowns", {}).items():     # a restart must not clear a lockdown
+            self.lockdowns[k] = {**v, "since": now - v["since"] - max(0.0, down)}
         for age, r, a, b, src in data.get("setpoint_log", []):
             self.setpoint_log.append((now - age - max(0.0, down), r, a, b, src))
         if not 0 <= down < 600:                   # stale or clock nonsense: fresh rate windows
-            return bool(self.holds)
+            return bool(self.holds or self.lockdowns)
 
         for k, items in data.get("changes", {}).items():
             self._changes[k] = deque((now - age - down, a, b) for age, a, b in items if age + down < 600)
