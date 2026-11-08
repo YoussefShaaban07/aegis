@@ -23,7 +23,7 @@ Speaks **Modbus TCP and EtherNet/IP (Allen-Bradley MicroLogix/SLC)**, the PLC fa
 - Adds ~0.2 ms per command (static rules), ~13 ms with the twin.
 - 197 automated tests; tested against independent Modbus and EtherNet/IP clients (pymodbus, libmodbus, pycomm3).
 
-**Not yet done (said plainly).** Not tested on a real plant or real PLC hardware; the twin is validated against simulators, not real plant data; no utility has used it yet.
+**Not yet done (said plainly).** Not tested on a real plant or real PLC hardware; the twin's chemistry matches the USGS reference code PHREEQC (mean 0.05 pH over 100 cases) but has not been checked against real plant data; no utility has used it yet.
 
 **Business.** Hardware + yearly subscription, priced by town size: about **$1,500 setup and $100/month** for a small system. It runs for about $50/year in electricity and texts. Reached through the Rural Water Association and the integrators who already service plant PLCs; free 60–90-day watch-only pilots; grant- and insurer-ready reporting.
 
