@@ -104,7 +104,7 @@ Every write is checked in this order; the first failure blocks it:
 - **Not just caustic soda**: the twin's alkali feed can be NaOH, lime, soda ash or bicarbonate (`process.json "alkali"`); chlorine-only plants simply have no alkali register.
 - **Demo without internet**: with no API key the demo copilot is a clearly labelled scripted model that falls for the poisoned work order, and Aegis blocks it. Nothing on the dashboard loads from the internet.
 - **Several PLCs**: run one gateway per PLC (own port, own tag map); Modbus unit IDs behind a TCP-to-serial gateway are routed.
-- **One page for judges**: `docs/ONE_PAGER.md`.
+- **One page for judges**: `docs/ONE_PAGER.md`. Judge Q&A prep and the 3-minute demo order: `docs/QA_PREP.md`.
 - **Operator runbook** (`docs/RUNBOOK.md`): one printable page: what each text means, what to do, what to do if the box fails.
 - **Defending its own judgement**: unnamed writers are refused if the twin runs out of time (slowing the box can't switch the twin off for an attacker); calibrations can't drift more than 40% from the commissioned values without an engineer on site; typed-in lab alkalinity is checked against what the plant's own pH implies.
 - **Resilience**: per-request errors fail closed without taking the server down; a supervisor restarts the gateway; `/health` endpoint; systemd unit with least privilege (`deploy/aegis.service`); soak-tested with 20 concurrent HMIs.
