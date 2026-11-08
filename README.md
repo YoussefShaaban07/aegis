@@ -119,7 +119,7 @@ Every write is checked in this order; the first failure blocks it:
 pip install -r requirements.txt
 cp .env.example .env          # add GROQ_API_KEY for the AI copilot (free at console.groq.com)
 python -m aegis.server        # open http://127.0.0.1:8000
-python -m pytest -q           # 184 tests
+python -m pytest -q           # 207 tests
 python -m aegis.evaluate      # attack/operator evaluation (~10 min)
 python -m aegis.redteam       # prompt-injection red team against the real copilot (needs GROQ_API_KEY)
 python scripts/bench.py       # latency on your machine
