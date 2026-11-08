@@ -119,3 +119,27 @@ def test_servers_start_under_uvloop():
         assert await c.read_holding(0, 2) == [7, 7]
         await c.close(); srv.close()
     uvloop.run(go())
+
+
+def test_what_now_guidance_when_the_water_is_already_out_of_range():
+    """Expo prep: after the Oldsmar step the clearwell is caustic even though the lye is back to normal. Aegis now
+    says how long until it's back in range (twin, current settings) and puts the pump decision to a person,
+    once per excursion; nothing for the overflow band; cleared when the water is back in range."""
+    from aegis.alerts import Alerter
+    from aegis.forewarn import ForecastWatch
+    al = Alerter(None, throttle_s=0)
+    w = ForecastWatch(al)
+    fc = [{"min": m, "ph": max(7.4, 12.0 - m * 0.02), "chlorine_residual": 0.9, "tank_level": 60} for m in range(0, 361, 10)]
+    w.update(fc, {"ph": 12.0, "chlorine_residual": 0.9, "tank_level": 60})
+    rec = w.recovery["ph:above"]
+    assert rec["back_in_min"] == 180                      # 12.0 - 0.02*180 = 8.4 <= 8.5
+    assert "back under 8.5 in about 3 h 00 min" in rec["message"] and "stop P-2" in rec["message"]
+    texts = [i for i in al.incidents if i["title"].startswith("What now")]
+    assert len(texts) == 1
+    w.update(fc, {"ph": 11.0, "chlorine_residual": 0.9, "tank_level": 60})
+    assert len([i for i in al.incidents if i["title"].startswith("What now")]) == 1      # once per excursion
+    stuck = [{"min": m, "ph": 12.0, "chlorine_residual": 0.9, "tank_level": 60} for m in range(0, 361, 10)]
+    w.update(stuck, {"ph": 12.0, "chlorine_residual": 0.9, "tank_level": 60})
+    assert w.recovery["ph:above"]["back_in_min"] is None and "does NOT come back" in w.recovery["ph:above"]["message"]
+    w.update(fc, {"ph": 7.5, "chlorine_residual": 0.9, "tank_level": 99})              # back in range; overflow: no
+    assert w.recovery == {}

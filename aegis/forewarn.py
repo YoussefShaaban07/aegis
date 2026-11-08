@@ -36,18 +36,76 @@ def first_crossings(forecast: list[dict], bands: dict = ALARM_BANDS) -> dict:
     return out
 
 
+def _fmt(mins: float) -> str:
+    mins = int(round(mins))
+    return f"{mins} min" if mins < 90 else f"{mins // 60} h {mins % 60:02d} min"
+
+
+# What to tell the operator when the water is ALREADY out of range (user question at the expo prep: "the attack
+# was stopped, but the water already made is alkaline and nothing fixed it"). Chemicals already in the clearwell
+# can't be taken back out; only water flowing through brings it back. Aegis never stops pumps itself (a stopped
+# high-service pump can drop distribution pressure, pull contaminated water in and leave hydrants dry), so the
+# message gives the twin's recovery time and puts the pump decision in front of a person.
+RECOVERY_TEXT = {
+    "ph:above": "pH is {now:.1f}, above {limit:g}, in water already made. It can't be un-dosed; check the lye feed "
+                "is back to normal.",
+    "ph:below": "pH is {now:.1f}, below {limit:g}, in water already made: corrosive, can pick up lead from old "
+                "pipes. Check the lye feed.",
+    "chlorine_residual:below": "Chlorine residual is {now:.2f} mg/L, below {limit:g}: the water isn't being "
+                               "disinfected. Check the chlorine feed.",
+    "chlorine_residual:above": "Chlorine residual is {now:.2f} mg/L, above {limit:g}. Check the chlorine feed.",
+}
+PUMP_TEXT = (" Until then, decide whether to stop P-2 to town or send the clearwell to waste. Aegis won't stop "
+             "pumps on its own: stopping one can drop pipe pressure and pull dirty water in.")
+
+
+def recovery_eta(forecast: list[dict], var: str, lo: float, hi: float) -> float | None:
+    """Minutes until the forecast is back inside [lo, hi] at current settings, or None if not within it."""
+    for pt in forecast:
+        v = pt.get(var)
+        if pt["min"] > 0 and v is not None and lo <= v <= hi:
+            return pt["min"]
+    return None
+
+
 class ForecastWatch:
     def __init__(self, alerter=None, audit=None, bands: dict = ALARM_BANDS):
         self.alerter, self.audit, self.bands = alerter, audit, bands
         self.active: dict[str, dict] = {}
+        self.recovery: dict[str, dict] = {}
+
+    def _recovery(self, forecast: list[dict], now_state: dict):
+        for var, (lo, hi, _h, label, unit) in self.bands.items():
+            now = now_state.get(var)
+            direction = None if now is None else "below" if now < lo else "above" if now > hi else None
+            key = f"{var}:{direction}"
+            if direction is None or key not in RECOVERY_TEXT:
+                for k in [k for k in self.recovery if k.startswith(var + ":")]:
+                    del self.recovery[k]                  # back in range: re-arm
+                continue
+            limit = lo if direction == "below" else hi
+            eta = recovery_eta(forecast, var, lo, hi)
+            when = (f"At current settings it's back {'above' if direction == 'below' else 'under'} {limit:g}{unit} "
+                    f"in about {_fmt(eta)}." if eta is not None else
+                    "At current settings it does NOT come back within the 6-hour forecast: settings must change.")
+            msg = RECOVERY_TEXT[key].format(now=now, limit=limit) + " " + when + PUMP_TEXT
+            first = key not in self.recovery
+            self.recovery[key] = {"var": var, "direction": direction, "back_in_min": eta, "message": msg}
+            if first:
+                if self.audit:
+                    self.audit.append("recovery_guidance", self.recovery[key])
+                if self.alerter:
+                    self.alerter.raise_alert(f"recovery:{key}", "warning", "What now: " + msg, fresh=True)
 
     def update(self, forecast: list[dict] | None, now_state: dict) -> dict:
         if not forecast:
             return self.active
+        self._recovery(forecast, now_state)
         cross = first_crossings(forecast, self.bands)
         for var, (mins, direction, val) in cross.items():
             lo, hi, _, label, unit = self.bands[var]
-            if mins == 0:        # already out of band: the process alarm covers it
+            if mins == 0:        # already out of band: the process alarm and the "What now" guidance cover it
+                self.active.pop(f"{var}:{direction}", None)
                 continue
             key = f"{var}:{direction}"
             if key in self.active:

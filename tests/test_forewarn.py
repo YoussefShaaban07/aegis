@@ -41,4 +41,5 @@ def test_no_warning_when_already_in_alarm_or_safe():
     assert first_crossings([{"min": 0, "ph": 9.0}])["ph"][0] == 0
     al = Alerter(None, throttle_s=0)
     ForecastWatch(al).update([{"min": 0, "ph": 9.0}, {"min": 10, "ph": 9.1}], {"ph": 9.0})
-    assert not al.recent
+    # already in alarm: no forecast warning (the process alarm covers it), only the one "What now" guidance
+    assert [a["key"] for a in al.recent] == ["recovery:ph:above"]

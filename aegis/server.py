@@ -292,6 +292,7 @@ def state(who: dict = Depends(role("viewer"))):
             "integrity": {**S["integrity"].status, "events": list(S["integrity"].events)[:10]},
             "truth": p.truth() if p.compromise else None,
             "forewarn": list(S["forewarn"].active.values()),
+            "recovery": list(S["forewarn"].recovery.values()),
             "holds": [{"register": r, **{k: v for k, v in h.items() if k != "until"},
                        "remaining_min": round((h["until"] - g.clock()) / 60)} for r, h in g.holds.items()],
             "tickets": [{"register": r, "value": t["value"], "by": t["by"]} for r, t in S["guard"].tickets.items()],
