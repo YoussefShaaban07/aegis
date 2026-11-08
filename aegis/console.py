@@ -27,7 +27,7 @@ from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from .auth import Auth, allowed
 
@@ -175,6 +175,29 @@ def build_console(guard, auth: Auth | None = None) -> FastAPI:
             return guard.allow_once(body.name, body.value, by(who) + " via gateway console", body.minutes)
         except ValueError as e:
             raise HTTPException(400, str(e))
+
+    class InboundIn(BaseModel):
+        model_config = {"populate_by_name": True}
+        sender: str = Field("", alias="from")
+        text: str = ""
+
+    @app.post("/api/alerts/inbound")
+    def alert_inbound(body: InboundIn, request: Request):
+        """Texts back from on-call phones, passed on by photon/bridge.ts (AEGIS_URL = this console)."""
+        import hmac as _hmac
+        from .alerts import bridge_token, spectrum_secret
+        if not spectrum_secret() or not _hmac.compare_digest(request.headers.get("x-aegis-bridge", ""),
+                                                             bridge_token()):
+            raise HTTPException(401, "bad bridge token")
+        st = guard.last_state or {}
+
+        def status():
+            return (f"pH {st.get('ph', 0):.2f}, chlorine {st.get('chlorine_residual', 0):.2f} mg/L, "
+                    f"lye {st.get('naoh_dose', 0):g} ppm, guard {guard.mode}, {len(guard.holds)} hold(s), "
+                    f"{len(guard.lockdowns)} lockdown(s).")
+        if guard.alerter is None:
+            return {"reply": None}
+        return {"reply": guard.alerter.handle_reply(body.sender, body.text, status)}
 
     @app.post("/api/lockdown/clear")
     def clear(request: Request, body: SourceIn, who: dict = Depends(role("operator"))):

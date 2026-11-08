@@ -4,9 +4,12 @@ At 3 AM nobody is watching the dashboard. When the guard blocks a dangerous
 command or the process goes out of range, the on-call operator gets an SMS,
 and for critical events a phone call that reads the alert out loud.
 
-Delivery channels (either or both; ALERT_TO lists the phone numbers):
-- Photon (iMessage, works with an iPhone): PHOTON_URL + PHOTON_TOKEN from app.photon.codes.
-  Aegis calls Photon's HTTP API directly (POST /v1/messages:sendText); no Node needed.
+Delivery channels (any combination; ALERT_TO lists the phone numbers):
+- Photon Spectrum (iMessage, works with an iPhone, no Mac): PROJECT_ID + PROJECT_SECRET in .env, as written
+  by `bun create spectrum-project ... --projectId <id>`. Spectrum's SDK is TypeScript, so a small Bun
+  bridge (photon/bridge.ts, started by run.bat) sends the texts and passes replies back: text "ack" to
+  acknowledge the open alert, "status" for the plant's readings.
+- A self-hosted Photon Advanced iMessage server: PHOTON_URL + PHOTON_TOKEN (HTTP API, no bridge needed).
 - Twilio (SMS, plus a phone call for critical alerts): TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM.
 Without either, alerts still appear on the dashboard and in the audit log, marked "not configured",
 never pretending to have been sent.
@@ -29,6 +32,17 @@ from xml.sax.saxutils import escape
 import httpx
 
 TWILIO = "https://api.twilio.com/2010-04-01/Accounts/{sid}/{what}.json"
+
+
+def spectrum_secret() -> str:
+    return os.getenv("PROJECT_SECRET") or os.getenv("SPECTRUM_PROJECT_SECRET") or ""
+
+
+def bridge_token() -> str:
+    """Shared between Aegis and photon/bridge.ts: HMAC-SHA256(project secret, "aegis-bridge"), hex."""
+    import hashlib
+    import hmac as _hmac
+    return _hmac.new(spectrum_secret().encode(), b"aegis-bridge", hashlib.sha256).hexdigest()
 
 
 class Alerter:
@@ -54,8 +68,13 @@ class Alerter:
     def photon_configured() -> bool:
         return all(os.getenv(k) for k in ("PHOTON_URL", "PHOTON_TOKEN"))
 
+    @staticmethod
+    def spectrum_configured() -> bool:
+        return bool(spectrum_secret()) and bool(os.getenv("PROJECT_ID") or os.getenv("SPECTRUM_PROJECT_ID"))
+
     def channels(self) -> list[str]:
-        return [n for n, ok in (("iMessage (Photon)", self.photon_configured()),
+        return [n for n, ok in (("iMessage (Photon)", self.spectrum_configured()),
+                                ("iMessage (Photon server)", self.photon_configured()),
                                 ("SMS (Twilio)", self.twilio_configured())) if ok]
 
     def configured(self) -> bool:
@@ -156,6 +175,8 @@ class Alerter:
         to = to or self.contacts()[0]
         body = f"AEGIS {alert['severity'].upper()}: {text or alert['message']}"[:1500]
         results = []
+        if self.spectrum_configured():
+            results.append(await self._spectrum(to, body))
         if self.photon_configured():
             results.append(await self._photon(to, body))
         if self.twilio_configured():
@@ -164,6 +185,43 @@ class Alerter:
         if self.audit:
             self.audit.append("alert_delivery", {"key": alert["key"], "result": alert["delivery"]})
         return alert["delivery"]
+
+    async def _spectrum(self, to: str, body: str) -> str:
+        """iMessage through the Photon Spectrum bridge (photon/bridge.ts) on this machine."""
+        url = os.getenv("PHOTON_BRIDGE_URL", "http://127.0.0.1:8789").rstrip("/") + "/send"
+        try:
+            async with httpx.AsyncClient(timeout=20, transport=self.transport) as c:
+                r = await c.post(url, json={"to": to.replace(" ", ""), "text": body},
+                                 headers={"X-Aegis-Bridge": bridge_token()})
+            j = r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
+            if r.status_code < 300 and j.get("ok"):
+                return "iMessage sent"
+            return f"iMessage failed ({r.status_code}: {(j.get('error') or r.text)[:120]})"
+        except httpx.ConnectError:
+            return "iMessage failed: the Photon bridge isn't running (run.bat starts it)"
+        except Exception as e:  # never let alerting crash the guard
+            return f"iMessage error: {type(e).__name__}: {e}"
+
+    def handle_reply(self, sender: str, text: str, status=None) -> str | None:
+        """A text back from an on-call phone. Only numbers in ALERT_TO count; anyone else gets no answer.
+        'ack' acknowledges the newest open alert (stops escalation, and safe-hold treats it as a person
+        on the job), 'status' answers with the plant's readings."""
+        norm = lambda n: "".join(ch for ch in n if ch.isdigit())[-10:]
+        if not sender or norm(sender) not in {norm(c) for c in self.contacts()}:
+            if self.audit:
+                self.audit.append("alert_reply_ignored", {"from": sender[-4:] if sender else "", "text": text[:80]})
+            return None
+        word = text.strip().lower()
+        if word.startswith(("ack", "ok", "on it", "got it", "yes")):
+            open_ = [i for i in self.incidents if i["closed"] is None and not i["acked_by"]]
+            if not open_:
+                return "Aegis: nothing to acknowledge right now."
+            inc = open_[-1]
+            self.ack(inc["id"], f"phone ...{norm(sender)[-4:]}")
+            return f"Aegis: acknowledged #{inc['id']}: {inc['title'][:120]}. Log in to the console to act."
+        if word.startswith("status") and status:
+            return "Aegis: " + status()
+        return "Aegis: reply ACK to acknowledge the latest alert, or STATUS for the plant's readings."
 
     async def _photon(self, to: str, body: str) -> str:
         """iMessage through Photon's HTTP API (same request as their SDK's createHttpClient().messages.sendText)."""

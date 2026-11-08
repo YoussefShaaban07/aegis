@@ -19,7 +19,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from . import attacks, modbus
 from .alerts import Alerter
@@ -711,6 +711,28 @@ def clear_lockdown(body: SourceIn, who: dict = Depends(role("operator"))):
     if not S["guard"].clear_lockdown(body.source, by=_by(who)):
         raise HTTPException(404, f"{body.source} is not locked down")
     return {"cleared": body.source}
+
+
+class InboundIn(BaseModel):
+    model_config = {"populate_by_name": True}
+    sender: str = Field("", alias="from")
+    text: str = ""
+
+
+@app.post("/api/alerts/inbound")
+def alert_inbound(body: InboundIn, request: Request):
+    """A text back from a phone, passed on by photon/bridge.ts (no login: the bridge's token is the check)."""
+    from .alerts import bridge_token, spectrum_secret
+    if not spectrum_secret() or not hmac.compare_digest(request.headers.get("x-aegis-bridge", ""), bridge_token()):
+        raise HTTPException(401, "bad bridge token")
+    st = S["plant"].snapshot()
+
+    def status():
+        g = S["guard"]
+        return (f"pH {st.get('ph', 0):.2f}, chlorine {st.get('chlorine_residual', 0):.2f} mg/L, "
+                f"lye {st.get('naoh_dose', 0):g} ppm, guard {g.mode}, {len(g.holds)} hold(s), "
+                f"{len(g.lockdowns)} lockdown(s).")
+    return {"reply": S["alerter"].handle_reply(body.sender, body.text, status)}
 
 
 @app.post("/api/alerts/test")

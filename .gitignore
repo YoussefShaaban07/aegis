@@ -4,3 +4,5 @@ __pycache__/
 *.pyc
 .venv/
 data/
+
+photon/node_modules/

@@ -1,0 +1,8 @@
+{
+  "name": "aegis-photon-bridge",
+  "private": true,
+  "type": "module",
+  "description": "Sends Aegis alerts to phones as iMessages through Photon Spectrum, and passes 'ack' replies back to Aegis.",
+  "scripts": { "start": "bun run bridge.ts" },
+  "dependencies": { "spectrum-ts": "12.15.0" }
+}

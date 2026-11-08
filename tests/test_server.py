@@ -338,7 +338,8 @@ def test_send_test_text_button(client, monkeypatch):
     r = client.post("/api/alerts/test", json={"pin": "2468"})
     assert r.status_code == 400 and "ALERT_TO" in r.json()["detail"]
     monkeypatch.setenv("ALERT_TO", "+16015550100")
-    for k in ("PHOTON_URL", "PHOTON_TOKEN", "TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_FROM"):
+    for k in ("PHOTON_URL", "PHOTON_TOKEN", "TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_FROM",
+              "PROJECT_ID", "PROJECT_SECRET"):
         monkeypatch.delenv(k, raising=False)
     assert "PHOTON_URL" in client.post("/api/alerts/test", json={"pin": "2468"}).json()["detail"]
     monkeypatch.setenv("PHOTON_URL", "https://photon.example")
@@ -347,4 +348,18 @@ def test_send_test_text_button(client, monkeypatch):
     assert client.post("/api/alerts/test", json={"pin": "0000"}).status_code == 403
     r = client.post("/api/alerts/test", json={"pin": "2468"}).json()
     assert r == {"ok": True, "result": "iMessage sent", "to": "+16015550100"}
-    assert client.get("/api/state").json()["alert_channels"] == ["iMessage (Photon)"]
+    assert client.get("/api/state").json()["alert_channels"] == ["iMessage (Photon server)"]
+
+
+def test_inbound_text_route_needs_the_bridge_token(client, monkeypatch):
+    import hashlib
+    import hmac
+    monkeypatch.setenv("PROJECT_ID", "p1")
+    monkeypatch.setenv("PROJECT_SECRET", "s3cret")
+    monkeypatch.setenv("ALERT_TO", "+16015550100")
+    body = {"from": "+16015550100", "text": "status"}
+    assert client.post("/api/alerts/inbound", json=body).status_code == 401
+    assert client.post("/api/alerts/inbound", json=body, headers={"x-aegis-bridge": "nope"}).status_code == 401
+    tok = hmac.new(b"s3cret", b"aegis-bridge", hashlib.sha256).hexdigest()
+    r = client.post("/api/alerts/inbound", json=body, headers={"x-aegis-bridge": tok}).json()
+    assert r["reply"].startswith("Aegis: pH ")
