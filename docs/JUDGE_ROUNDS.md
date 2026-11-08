@@ -505,3 +505,19 @@ Tests: `tests/test_round18.py` (other value, stranger, dry run, single use, expi
 ### What we did about it (v29)
 
 1. to 5. Reset (which every demo step and booth scene starts with) used to restore the plant, the logs and the alerts only. It now also clears **lockdowns, refusal counts, safe-holds, allow-once tickets and distrust mode**, puts the **rules back to what they were at startup** (in memory and in the rules file), sets the **guard mode back to enforce** and the **AI back to propose-only**. Test: `test_demo_reset_undoes_everything_a_visitor_or_the_booth_loop_can_leave_behind` makes every one of those changes through the API, resets, and checks each, including the file on disk. Reset only exists with `AEGIS_DEMO=1`; a real gateway has no reset.
+
+## Round 28: a stranger's laptop
+
+1. **"Clone your repo on a clean Linux or Mac machine and start it. Does it run?"**
+2. **"Your tests pass on your machine. What's different about a fresh install?"**
+3. **"Why didn't 210 tests catch it?"**
+4. **"Does the pitch demo work on that install?"**
+5. **"Is your expo laptop affected?"**
+
+### What we found and did (v30)
+
+1. **No, it didn't.** A fresh clone with a fresh virtual environment crashed at startup: `'uvloop.loop.Server' object has no attribute 'limiter'`.
+2. A fresh `pip install` of uvicorn on Linux/macOS also installs uvloop, a faster event loop, and uvicorn uses it. uvloop's server objects don't accept new attributes, and `modbus.serve()` stored its connection limiter as one (added in round 17).
+3. The build machine had no uvloop, so every test ran on Python's standard loop. Fix: the limiter is kept in a table (`modbus.limiter_of(srv)`), not on the server object. New test `test_servers_start_under_uvloop` runs a Modbus server and client on uvloop; uvloop is now in `requirements-dev.txt` so the suite covers it. Checked that the old code crashes under that test's conditions and the new code doesn't.
+4. Yes: the dashboard from the fresh install ran the full pitch demo (4 steps, AI proposal 100 → 9,000 blocked, no page errors, no outside requests).
+5. Probably not: uvloop doesn't exist on Windows, so a Windows laptop never hit this. Still `git pull` before the expo and run the pitch demo once.

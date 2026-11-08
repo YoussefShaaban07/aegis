@@ -228,7 +228,7 @@ def test_one_host_cannot_take_every_connection_and_lock_out_the_hmi():
         reserved = {"127.0.0.1"}                       # pretend the named HMI is this address
         srv = await modbus.serve(plant.handle, "127.0.0.1", 0, max_clients=4, per_ip=3, reserved=lambda: reserved)
         port = srv.sockets[0].getsockname()[1]
-        lim = srv.limiter
+        lim = modbus.limiter_of(srv)
         held = [await asyncio.open_connection("127.0.0.1", port) for _ in range(5)]
         await asyncio.sleep(0.05)
         assert lim.by_ip.get("127.0.0.1") == 3 and lim.refused == 2    # per-address cap

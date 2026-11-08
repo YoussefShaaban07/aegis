@@ -100,3 +100,22 @@ def test_allow_once_ticket_lets_one_value_past_a_wrong_block_and_nothing_else():
     now[0] += 6 * 60
     assert not g.check("naoh_dose", 230, st, "Operator HMI", "10.0.0.5:1").allowed       # expired
     assert "naoh_dose" not in g.tickets
+
+
+def test_servers_start_under_uvloop():
+    """Round 28: a fresh install on Linux/macOS gets uvloop with uvicorn; its Server objects don't take new
+    attributes, and `srv.limiter = ...` crashed the dashboard at startup. Windows has no uvloop."""
+    import pytest
+    uvloop = pytest.importorskip("uvloop")
+    from aegis import modbus
+
+    async def go():
+        async def handler(req, peer):
+            return modbus.response_pdu(req, [7] * (req.count or 1))
+        srv = await modbus.serve(handler, "127.0.0.1", 0, per_ip=2)
+        port = srv.sockets[0].getsockname()[1]
+        assert modbus.limiter_of(srv) is not None
+        c = modbus.Client("127.0.0.1", port)
+        assert await c.read_holding(0, 2) == [7, 7]
+        await c.close(); srv.close()
+    uvloop.run(go())

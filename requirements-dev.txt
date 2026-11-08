@@ -1,2 +1,3 @@
 -r requirements.txt
 phreeqpython     # PHREEQC (USGS): tests/test_phreeqc.py checks the twin's chemistry against it
+uvloop; sys_platform != "win32"   # tests that the servers run on the event loop uvicorn picks on Linux/macOS

@@ -334,8 +334,16 @@ async def serve(handler: Handler, host: str, port: int, idle_timeout: float = 12
             writer.close()
 
     srv = await asyncio.start_server(on_client, host, port)
-    srv.limiter = limiter
+    _LIMITERS[id(srv)] = limiter     # not an attribute: uvloop's Server objects don't accept new attributes
     return srv
+
+
+_LIMITERS: dict[int, ConnLimiter] = {}
+
+
+def limiter_of(srv) -> ConnLimiter:
+    """The connection limiter of a server returned by serve()."""
+    return _LIMITERS[id(srv)]
 
 
 class Client:
