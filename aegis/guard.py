@@ -144,6 +144,7 @@ class Guard:
         self.permits: dict[tuple, dict] = {}
         self.commanded: dict[str, float] = {}   # last value of each setpoint that Aegis let through
         self.setpoint_log: deque = deque(maxlen=500)   # (t, register, old, new, source) of allowed changes
+        self.tickets: dict[str, dict] = {}                     # register -> allow-once ticket (round 25)
         self.lockdowns: dict[str, dict] = {}                   # source -> {since, blocks, last} (judge round 15)
         self._refusals: dict[str, deque] = defaultdict(deque)
         self.holds: dict[str, dict] = {}          # register -> safe-hold {value, until, by, reason}
@@ -168,6 +169,8 @@ class Guard:
               dry_run: bool = False, together: dict | None = None, fc: int = 0) -> Decision:
         """Decide one write. `together`: other values written in the same request (for the twin)."""
         d = self._check(register, new, state, source, peer, dry_run, together, fc)
+        if not d.allowed:
+            d = self._use_ticket(d, dry_run)
         if not dry_run and not d.allowed and source != SAFE_HOLD and self.mode == "enforce":
             self._note_refusal(source, register, d)
             if source in self.lockdowns:      # remember which machines it came from (round 19)
@@ -175,6 +178,51 @@ class Guard:
                 ips = self.lockdowns[source].setdefault("ips", [])
                 if ip and ip not in ips and len(ips) < 16:
                     ips.append(ip)
+        return d
+
+    # ---- allow-once tickets (judge round 25) ------------------------------------------------------------
+    # The twin is sometimes wrong (5 false blocks in 508 simulated operator writes). Before this, the only way
+    # past a wrong block was switching the whole guard OFF or the break-glass cable. A ticket lets ONE value on
+    # ONE setpoint through the judgement checks (step, ramp, cycling, twin, unusual-value) for up to 30 min.
+    # It's issued by a named person on the console from a device that isn't locked down; range limits,
+    # interlocks, permits, writer rules and lockdowns still apply, and using it alerts everyone.
+    TICKET_WAIVES = {"step", "ramp", "cycling", "predict"}
+
+    def allow_once(self, register: str, value: float, by: str, minutes: float = 30) -> dict:
+        lim = self.policy["limits"].get(register)
+        if lim is None:
+            raise ValueError(f"{register} is not a setpoint Aegis judges")
+        if not lim["min"] <= value <= lim["max"]:
+            raise ValueError(f"{value:g} is outside the hard limits {lim['min']:g}-{lim['max']:g}; a ticket can't "
+                             "change those")
+        minutes = max(1.0, min(30.0, float(minutes)))
+        t = {"value": float(value), "by": by, "until": self.clock() + minutes * 60, "minutes": minutes}
+        self.tickets[register] = t
+        if self.audit:
+            self.audit.append("allow_once", {"register": register, "value": value, "by": by, "minutes": minutes})
+        if self.alerter:
+            self.alerter.raise_alert(f"ticket:{register}", "warning",
+                                     f"{by} allowed {register} = {value:g} once (next {minutes:g} min), past the "
+                                     "twin and step checks.", fresh=True)
+        return {"register": register, **t}
+
+    def _use_ticket(self, d: Decision, dry_run: bool) -> Decision:
+        t = self.tickets.get(d.register)
+        if not t:
+            return d
+        if self.clock() > t["until"]:
+            self.tickets.pop(d.register, None)
+            return d
+        if (d.check not in self.TICKET_WAIVES or d.source.startswith("Unknown host")
+                or d.source in self.lockdowns or abs(d.new - t["value"]) > max(1e-6, 1e-3 * abs(t["value"]))):
+            return d
+        if not dry_run:
+            self.tickets.pop(d.register, None)
+            if self.audit:
+                self.audit.append("allow_once_used", {"register": d.register, "value": d.new, "by": t["by"],
+                                                      "source": d.source, "waived": d.check})
+        d.allowed = True
+        d.reason = f"ALLOWED ONCE by {t['by']} (would have been blocked: {d.reason})"
         return d
 
     def locked_ips(self) -> set:

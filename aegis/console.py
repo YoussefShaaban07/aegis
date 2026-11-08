@@ -140,6 +140,7 @@ def build_console(guard, auth: Auth | None = None) -> FastAPI:
             "log": [d.as_dict() for d in list(guard.log)[:30]],
             "holds": [{"register": r, "value": h["value"], "reason": h.get("reason", ""),
                        "remaining_min": max(0, round((h["until"] - now) / 60))} for r, h in guard.holds.items()],
+            "tickets": [{"register": r, "value": t["value"], "by": t["by"]} for r, t in guard.tickets.items()],
             "lockdowns": [{"source": k, "blocks": v["blocks"], "last": v.get("last"),
                            "since_min": round((now - v["since"]) / 60)} for k, v in guard.lockdowns.items()],
             "polled_at": st.get("_polled_at"),
@@ -161,6 +162,19 @@ def build_console(guard, auth: Auth | None = None) -> FastAPI:
         if not guard.release_hold(body.name, by(who) + " via gateway console"):
             raise HTTPException(404, f"{body.name} is not held")
         return {"ok": True, "released": body.name, "t": time.time()}
+
+    class TicketIn(BaseModel):
+        name: str
+        value: float
+        minutes: float = 30
+
+    @app.post("/api/allow-once")
+    def allow_once(request: Request, body: TicketIn, who: dict = Depends(role("operator"))):
+        not_from_locked(request)
+        try:
+            return guard.allow_once(body.name, body.value, by(who) + " via gateway console", body.minutes)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
 
     @app.post("/api/lockdown/clear")
     def clear(request: Request, body: SourceIn, who: dict = Depends(role("operator"))):

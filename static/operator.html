@@ -47,7 +47,7 @@ a{color:#0b5cad}.muted{color:var(--muted);font-size:13px}
     <div class="card" id="hold-card" style="display:none"><h2>Safe-hold</h2><div id="holds"></div></div>
     <div class="card" id="inc-card"><h2>Open incidents</h2><div id="inc"></div></div>
     <div class="card"><h2>Coming up (twin forecast)</h2><div id="fw"></div></div>
-    <div class="card"><h2>Recently blocked</h2><div id="blk"></div></div>
+    <div class="card"><h2>Recently blocked</h2><div id="tix"></div><div id="blk"></div></div>
     <div class="muted" style="margin-top:14px">Full console: <a href="/">dashboard</a></div>
   </div>
 </div>
@@ -62,6 +62,8 @@ async function act(url,body){const r=await fetch(url,{method:'POST',headers:H,bo
     clearTimeout(t._h);t._h=setTimeout(()=>{t.style.display='none';},12000);}
   load();}
 async function ack(id){await act(`/api/incidents/${id}/ack`);}
+async function allowOnce(name,value){if(!confirm(`Let ${name} = ${value} through ONCE in the next 30 minutes, past the twin and step checks? Hard limits still apply. Everyone on call is told, and it's logged with your name.`))return;
+  await act('/api/allow-once',{name,value});}
 async function release(name){if(!confirm(`Release the safe-hold on ${name}? Writes to it will be judged normally again.`))return;
   await act('/api/hold/release',{name});}
 async function clearLock(source){if(!confirm(`Clear the lockdown on ${source}? Only do this once you know who sent those commands.`))return;
@@ -88,7 +90,10 @@ async function load(){
     ${i.acked_by?`<div class="muted">acknowledged by ${esc(i.acked_by)}</div>`:`<button class="big" onclick="ack(${i.id})">Acknowledge</button>`}</div>`).join(''):'<div class="muted">None.</div>';
   $('fw').innerHTML=(s.forewarn||[]).length?s.forewarn.map(w=>`<div class="item">${esc(w.message)}</div>`).join(''):'<div class="muted">Nothing forecast to cross a limit in the next 2–3 hours.</div>';
   const blk=(s.log||[]).filter(d=>!d.allowed).slice(0,5);
-  $('blk').innerHTML=blk.length?blk.map(d=>`<div class="item"><b>${esc(d.source)}</b> tried ${esc(d.register)} = ${esc(d.new)} ${esc(d.unit)}<div class="muted">${esc(d.reason).slice(0,160)} · ${ago(d.t)}</div></div>`).join(''):'<div class="muted">Nothing blocked recently.</div>';
+  const WAIVE=['step','ramp','cycling','predict'];
+  $('blk').innerHTML=blk.length?blk.map(d=>`<div class="item"><b>${esc(d.source)}</b> tried ${esc(d.register)} = ${esc(d.new)} ${esc(d.unit)}<div class="muted">${esc(d.reason).slice(0,160)} · ${ago(d.t)}</div>${
+    WAIVE.includes(d.check)&&!/^Unknown host/.test(d.source)?`<button onclick='allowOnce(${JSON.stringify(d.register)},${+d.new})'>Allow this value once</button>`:''}</div>`).join(''):'<div class="muted">Nothing blocked recently.</div>';
+  $('tix').innerHTML=(s.tickets||[]).map(t=>`<div class="item"><b>ALLOWED ONCE</b> ${esc(t.register)} = ${esc(t.value)} (by ${esc(t.by)}); waiting for the HMI to send it.</div>`).join('');
 }
 load();setInterval(load,3000);
 </script>

@@ -460,3 +460,20 @@ Sources: [TechRadar on CISA's July count](https://techradar.com/pro/security/cis
 3. Re-ran the current version on held-out seeds 300000–300199, attacker on the operator's HMI, safe-hold on, **high-fidelity plant**: static rules **91/200 (46%)**, Aegis **19/200 (10%)**. Of Aegis's 19: **0 created harm**, 1 made storm harm much worse, 18 only made it come sooner. Same headline as the standard simulator. Output: `docs/eval/v27_heldout_hmi_safehold_highfi.{txt,json}`.
 4. 508 simulated operator writes: the twin blocked 19, **14 justified and 5 false** (standard simulator: 4 false in 382). Safe-hold undid 21 operator changes: 16 helped, 4 no difference, 1 made things worse.
 5. They shouldn't yet. Both simulators are ours; the high-fidelity one is a stricter test, not a real plant. That's why the next step on the last slide is a real controller and a pilot plant, and why Aegis starts in watch-only mode: a week of real logs shows how often the twin would have blocked before it's allowed to.
+
+## Round 25: when the twin is wrong
+
+1. **"Your twin blocked 5 good operator changes in 508. At 3 a.m. one of those is the change the plant needs. What does the operator do?"**
+2. **"Today the answer is 'switch the guard OFF' or 'pull the break-glass cable'. Both remove all protection to get one value through."**
+3. **"Any override is an attack path. What stops malware on the HMI from using it?"**
+4. **"Can an override push lye to 11,100?"**
+5. **"Who finds out?"**
+
+### What we did about it (v28)
+
+1. and 2. **Allow-once tickets.** Under *Recently blocked* on the operator console, a write blocked by the twin, the step/ramp limits or the cycling check gets an **Allow this value once** button. It lets that exact value on that one setpoint through once, within 30 minutes (capped), then the ticket is gone. Everything else stays enforced.
+3. It needs a named login on the console, and the console refuses it from a locked-down device (round 19), so a compromised HMI can't issue one. It can't be used by an unknown host or a locked-down source, and only the exact value passes: malware on the HMI could at most send the value the operator just approved.
+4. No. Range limits, interlocks, permits, writer rules, holds and lockdowns aren't waivable, and issuing a ticket outside the hard limits is refused.
+5. Issuing one texts everyone on call with the person's name; issuing and using it are both in the signed audit log. Runbook: use it from your phone, resend from the HMI, acknowledge the warning so safe-hold doesn't undo it, and tell the engineer so the twin can be checked.
+
+Tests: `tests/test_round18.py` (other value, stranger, dry run, single use, expiry, hard limit) and a browser check of the button on the phone page.

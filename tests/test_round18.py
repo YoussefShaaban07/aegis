@@ -66,3 +66,37 @@ def test_a_locked_down_machine_cannot_unlock_itself_with_a_stolen_password(tmp_p
     phone = signed_in("10.0.9.20")
     assert phone.post("/api/lockdown/clear", json={"source": "Operator HMI"}, headers={"X-Aegis": "1"}).json()["ok"]
     assert g.lockdowns == {} and g.locked_ips() == set()
+
+
+def test_allow_once_ticket_lets_one_value_past_a_wrong_block_and_nothing_else():
+    """Round 25: the twin is sometimes wrong. An operator can let ONE value on ONE setpoint through, once."""
+    import pytest
+    from aegis.alerts import Alerter
+    from aegis.guard import Guard
+    from aegis.plant import Plant
+    from aegis.twin import Twin
+    plant = Plant(noise=False)
+    now = [1000.0]
+    g = Guard(None, plant.snapshot, twin=Twin(), alerter=Alerter(None, throttle_s=0), clock=lambda: now[0])
+    g.policy["limits"]["naoh_dose"].update(max_step=None, max_change_per_min=None)
+    st = plant.snapshot()
+    blocked = g.check("naoh_dose", 230, st, "Operator HMI", "10.0.0.5:1")
+    assert not blocked.allowed and blocked.check == "predict"
+
+    with pytest.raises(ValueError):
+        g.allow_once("naoh_dose", 11100, "maria")                      # hard limits can't be ticketed
+    g.allow_once("naoh_dose", 230, "maria", minutes=90)
+    assert g.tickets["naoh_dose"]["until"] == now[0] + 30 * 60         # capped at 30 min
+    assert any("allowed naoh_dose = 230 once" in i["title"] for i in g.alerter.incidents)
+
+    assert not g.check("naoh_dose", 240, st, "Operator HMI", "10.0.0.5:1").allowed      # other value: no
+    assert not g.check("naoh_dose", 230, st, "Unknown host 9.9.9.9", "9.9.9.9:1").allowed  # stranger: no
+    assert g.check("naoh_dose", 230, st, "Operator HMI", "10.0.0.5:1", dry_run=True).allowed   # dry run: not used up
+    d = g.check("naoh_dose", 230, st, "Operator HMI", "10.0.0.5:1")
+    assert d.allowed and d.reason.startswith("ALLOWED ONCE by maria")
+    assert not g.check("naoh_dose", 230, st, "Operator HMI", "10.0.0.5:1").allowed       # only once
+
+    g.allow_once("naoh_dose", 230, "maria", minutes=5)
+    now[0] += 6 * 60
+    assert not g.check("naoh_dose", 230, st, "Operator HMI", "10.0.0.5:1").allowed       # expired
+    assert "naoh_dose" not in g.tickets

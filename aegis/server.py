@@ -291,6 +291,7 @@ def state(who: dict = Depends(role("viewer"))):
             "forewarn": list(S["forewarn"].active.values()),
             "holds": [{"register": r, **{k: v for k, v in h.items() if k != "until"},
                        "remaining_min": round((h["until"] - g.clock()) / 60)} for r, h in g.holds.items()],
+            "tickets": [{"register": r, "value": t["value"], "by": t["by"]} for r, t in S["guard"].tickets.items()],
             "lockdowns": [{"source": k, "blocks": v["blocks"], "last": v.get("last"),
                            "since_min": round((g.clock() - v["since"]) / 60)} for k, v in g.lockdowns.items()],
             "safe_hold": {"enabled": S["safehold"].enabled, "standing_down": S["safehold"].standing_down,
@@ -670,6 +671,21 @@ def clear_lockdown(body: SourceIn, who: dict = Depends(role("operator"))):
     if not S["guard"].clear_lockdown(body.source, by=_by(who)):
         raise HTTPException(404, f"{body.source} is not locked down")
     return {"cleared": body.source}
+
+
+class TicketIn(BaseModel):
+    name: str
+    value: float
+    minutes: float = 30
+
+
+@app.post("/api/allow-once")
+def allow_once(body: TicketIn, who: dict = Depends(role("operator"))):
+    """Judge round 25: let one value on one setpoint past the twin/step checks after a wrong block."""
+    try:
+        return S["guard"].allow_once(body.name, body.value, _by(who), body.minutes)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
 
 
 class Msg(BaseModel):
