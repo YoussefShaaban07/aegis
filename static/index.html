@@ -515,7 +515,7 @@ async function guideGo(dir){const b=$('g-next');
   if(dir<0){gi=Math.max(0,gi-1);guideShow();return;}
   if(ran){if(gi>=ORDER.length-1)return;gi++;guideShow();if(ORDER!==PITCH)return;}  // next press: move on (pitch mode also runs it: one press per step)
   b.disabled=true;$('g-st').textContent='running…';
-  try{await STEPS[ORDER[gi]].run();if(!/offline|Routine/.test($('g-st').textContent))$('g-st').textContent='Done: talk over the result, then go on';}
+  try{await STEPS[ORDER[gi]].run();if(!/offline|Routine/.test($('g-st').textContent))$('g-st').textContent=ORDER===PITCH?(gi<ORDER.length-1?'Done · Space for the next step':'Done'):'Done: talk over the result, then go on';}
   catch(e){$('g-st').textContent='Error: '+(e.message||e);b.disabled=false;return;}
   b.disabled=false;ran=true;b.textContent=gi<ORDER.length-1?'Next step ▶':(ORDER.length<STEPS.length?'Done: back to the slides':'Finished');}
 // ---- Booth loop (expo table): the three blocked attacks on repeat, captions big enough to read from the aisle
