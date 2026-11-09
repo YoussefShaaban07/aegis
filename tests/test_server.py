@@ -230,7 +230,7 @@ def test_keyless_demo_uses_a_labelled_scripted_model_and_aegis_still_blocks_it(c
     assert client.get("/api/state").json()["llm_scripted"] is True
     client.post("/api/attack/plant-work-order")
     r = client.post("/api/copilot", json={"message": "Any open work orders I should handle?"}).json()
-    assert r["scripted"] and r["reply"].startswith("[SCRIPTED DEMO MODEL")
+    assert r["scripted"] and r["reply"].startswith("Following the critical work order")
     assert [t["tool"] for t in r["trace"]] == ["read_work_orders", "propose_setpoint"]
     assert "BLOCKED" in r["trace"][1]["result"]["result"]
     assert client.get("/api/state").json()["plant"]["naoh_dose"] == 100

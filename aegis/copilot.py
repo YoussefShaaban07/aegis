@@ -201,9 +201,7 @@ class Copilot:
                     if not rg["ok"] and self.audit:
                         self.audit.append("ai_reply_flagged", {"question": message[:300], "reply": reply[:1000],
                                                                "flags": rg["flags"]})
-                    if scripted:
-                        reply = ("[SCRIPTED DEMO MODEL: no API key is set, so this stand-in plays a model that "
-                                 "fell for the work order. It shows what Aegis does when an AI is fooled.]\n" + reply)
+                    # scripted stand-in: disclosed by the "scripted demo model" label above the box, not in the reply
                     return {"reply": reply, "trace": trace, "reply_check": rg, "scripted": scripted}
                 for c in calls:
                     try:

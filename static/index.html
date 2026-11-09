@@ -583,7 +583,7 @@ async function load(){let s;try{const r=await fetch('/api/state');if(r.status===
   chart();
   policy=s.policy;renderRules(false);
   if(document.activeElement!==$('auto'))$('auto').value=s.autonomy;
-  $('llm').textContent=s.llm?'model connected':s.llm_scripted?'scripted demo model (no API key)':'offline: add GROQ_API_KEY';
+  $('llm').textContent=s.llm?'model connected':s.llm_scripted?'scripted demo model':'offline: add GROQ_API_KEY';
   $('alcfg').innerHTML=s.alerts_configured?`texts on: ${esc((s.alert_channels||[]).join(' + '))} <button class="mini" onclick="testText()">Send test text</button>`:'texts not configured (dashboard only)';
   $('incidents').innerHTML=(s.incidents||[]).map(i=>`<div class="verdict ${i.severity==='critical'&&!i.acked_by?'bad':''}" style="margin:0 0 8px">
     <b>Incident #${i.id}</b> · ${esc(i.severity)} · ${i.count} event${i.count>1?'s':''} grouped (one text sent${i.level?`, escalated to contact ${i.level+1}`:''})<br>${esc(i.title)}
