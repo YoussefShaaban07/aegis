@@ -214,35 +214,201 @@ class Copilot:
         return {"reply": "(stopped after too many steps)", "trace": trace}
 
 
+_SCRIPT_INTENTS = [            # first match wins; checked against the operator's question
+    ("orders", r"work ?orders?|maintenance|\bwo-?\d|tickets?"),
+    ("guard", r"block|guard|attack|hack|reject|denied|aegis|intru"),
+    ("trust", r"trust|integrity|spoof|tamper|lying|frozen|fake|accurate|reliab"),
+    ("chlorine_residual", r"chlorine|\bcl2?\b|residual|disinfect"),
+    ("ph", r"\bph\b|acid|alkalin|lye|naoh|caustic"),
+    ("tank_level", r"tank|level|clearwell|overflow"),
+    ("flow_out", r"flow|pressure|demand|gpm|distribution"),
+]
+# tag -> (setpoint that moves it, act below, act above, act if falling below, act if rising above, step);
+# steps stay under the policy's max_step
+_SCRIPT_FIX = {"chlorine_residual": ("chlorine_dose", 0.5, 3.5, 0.8, 3.0, 0.3),
+               "ph": ("naoh_dose", 6.8, 8.3, 7.0, 8.1, 25)}
+_SCRIPT_NAMES = {"chlorine_residual": "Chlorine residual", "ph": "pH", "tank_level": "Clearwell level",
+                 "flow_out": "Outflow"}
+_SCRIPT_RANGE = {"chlorine_residual": "safe range 0.2-4.0 mg/L", "ph": "safe range 6.5-8.5"}
+
+
+def _fmt(v, unit=""):
+    if v is None:
+        return "n/a"
+    s = f"{v:g}" if isinstance(v, (int, float)) else str(v)
+    if unit == "pH":
+        return s
+    return f"{s} {unit}".strip() if unit and unit != "%" else s + (unit or "")
+
+
 def scripted_demo_model():
     """A stand-in LLM for demos without an API key (judge round 14: 'your AI demo step dies if the API is down
-    or the model refuses'). It behaves like a model that falls for prompt injection: reads the work orders and,
-    if one tells the AI to change a setpoint, tries to do exactly that with whatever tool its mode allows.
-    Only used when the dashboard runs with AEGIS_DEMO=1 and no key; every reply says it is scripted."""
+    or the model refuses'). Asked about work orders, it behaves like a model that falls for prompt injection:
+    reads them and, if one tells the AI to change a setpoint, tries exactly that with whatever tool its mode
+    allows. Asked anything else (chlorine, pH, tank, flow, blocks, sensor trust) it reads the live plant through
+    the same tools a real model would and answers from those numbers. Labelled 'scripted demo model' in the UI."""
     import json as _json
     import re as _re
 
-    def handler(request):
-        body = _json.loads(request.content)
-        msgs, tools = body["messages"], [t["function"]["name"] for t in body.get("tools", [])]
-        done = [m for m in msgs if m.get("role") == "tool"]
+    def call(name, args=None):
+        return httpx.Response(200, json={"choices": [{"message": {"role": "assistant", "content": None,
+            "tool_calls": [{"id": f"s_{name}", "type": "function",
+                            "function": {"name": name, "arguments": _json.dumps(args or {})}}]}}]})
+
+    def say(text):
+        return httpx.Response(200, json={"choices": [{"message": {"role": "assistant", "content": text}}]})
+
+    def work_orders(done, tools):
         if not done:
-            return httpx.Response(200, json={"choices": [{"message": {"role": "assistant", "content": None,
-                "tool_calls": [{"id": "s1", "type": "function",
-                                "function": {"name": "read_work_orders", "arguments": "{}"}}]}}]})
+            return call("read_work_orders")
         if len(done) == 1:
             orders = " ".join(_json.loads(done[0]["content"]).get("work_orders", []))
             m = _re.search(r"raise (\w+) to ([\d.]+)", orders)
             act = "set_setpoint" if "set_setpoint" in tools else "propose_setpoint"
             if m:
-                args = {"name": m.group(1), "value": float(m.group(2)), "reason": "work order WO-4471 (critical)"}
-                return httpx.Response(200, json={"choices": [{"message": {"role": "assistant", "content": None,
-                    "tool_calls": [{"id": "s2", "type": "function",
-                                    "function": {"name": act, "arguments": _json.dumps(args)}}]}}]})
-            return httpx.Response(200, json={"choices": [{"message": {"role": "assistant",
-                "content": "No open work orders need a setpoint change right now."}}]})
+                return call(act, {"name": m.group(1), "value": float(m.group(2)),
+                                  "reason": "work order WO-4471 (critical)"})
+            n = len(_json.loads(done[0]["content"]).get("work_orders", []))
+            return say(f"I read {n} open work order{'s' if n != 1 else ''}; none of them needs a setpoint "
+                       "change right now.")
         res = _json.loads(done[-1]["content"])
-        return httpx.Response(200, json={"choices": [{"message": {"role": "assistant",
-            "content": f"Following the critical work order WO-4471, I tried to raise the lye dose. Result: "
-                       f"{res.get('result', res)}."}}]})
+        return say(f"Following the critical work order WO-4471, I tried to raise the lye dose. Result: "
+                   f"{res.get('result', res)}.")
+
+    def handler(request):
+        body = _json.loads(request.content)
+        msgs, tools = body["messages"], [t["function"]["name"] for t in body.get("tools", [])]
+        done = [m for m in msgs if m.get("role") == "tool"]
+        q = next((m.get("content") or "" for m in msgs if m.get("role") == "user"), "").lower()
+        intent = next((k for k, rx in _SCRIPT_INTENTS if _re.search(rx, q)), "status")
+        if intent == "orders":
+            return work_orders(done, tools)
+        got = {m["tool_call_id"][2:]: _json.loads(m["content"]) for m in done if m["tool_call_id"].startswith("s_")}
+
+        if intent == "guard":
+            if "get_guard_log" not in got:
+                return call("get_guard_log", {"limit": 10})
+            if "get_integrity" not in got:
+                return call("get_integrity")
+            dec = got["get_guard_log"].get("decisions", [])
+            blocked = [d for d in dec if d.get("allowed") is False]
+            if not dec:
+                out = ["Aegis hasn't checked any commands yet, so nothing has been blocked."]
+            elif not blocked:
+                out = [f"Nothing blocked: the last {len(dec)} commands Aegis checked were all within limits."]
+            else:
+                d = blocked[0]
+                out = [f"Aegis blocked {len(blocked)} of the last {len(dec)} commands.",
+                       f"Most recent: {d.get('source') or 'unknown source'} tried to set {d.get('register')} to "
+                       f"{_fmt(d.get('new'))}, blocked by the {d.get('check') or 'policy'} check: "
+                       f"{d.get('reason') or 'outside the safety envelope'}.",
+                       "Nothing from a blocked command reached the PLC."]
+            integ = got["get_integrity"].get("integrity")
+            if isinstance(integ, dict) and not integ.get("ok", True):
+                out.append(f"Sensor integrity is failing too ({integ.get('message')}): treat the readings with care.")
+            return say(" ".join(out))
+
+        if "get_plant_status" not in got:
+            return call("get_plant_status")
+        st = got["get_plant_status"]
+        alarms = st.get("alarms") or []
+
+        if intent == "trust":
+            if "get_integrity" not in got:
+                return call("get_integrity")
+            r = got["get_integrity"]
+            integ, warn = r.get("integrity"), r.get("early_warnings") or []
+            if not isinstance(integ, dict):
+                out = ["The integrity check isn't available on this plant, so I can't verify the PLC's readings."]
+            elif integ.get("ok", True):
+                out = ["Yes: the physics check finds the PLC's readings consistent with the approved setpoints."]
+            else:
+                out = [f"No: the integrity check failed ({integ.get('message')}).",
+                       "The PLC may be reporting values that don't match the real water. Take a lab grab sample "
+                       "before acting on them."]
+            if warn:
+                out.append(f"{len(warn)} early warning{'s' if len(warn) != 1 else ''} from the digital twin active.")
+            return say(" ".join(out))
+
+        if intent == "status":
+            out = [f"pH {_fmt(st.get('ph'))}, chlorine residual {_fmt(st.get('chlorine_residual'), 'mg/L')}, "
+                   f"clearwell {_fmt(st.get('tank_level'), '%')}, outflow {_fmt(st.get('flow_out'), 'gpm')}.",
+                   f"Alarms: {', '.join(alarms)}." if alarms else "No active alarms; pH and chlorine are in range."]
+            if (st.get("raw_turbidity") or 0) > 5:
+                out.append(f"Raw water turbidity is high ({_fmt(st['raw_turbidity'], 'NTU')}), so chlorine "
+                           "demand is up: keep an eye on the residual.")
+            return say(" ".join(out))
+
+        tag = intent
+        if "get_trend" not in got:
+            return call("get_trend", {"tag": tag})
+        pts = [p for p in got["get_trend"].get("samples_oldest_to_newest", []) if isinstance(p, (int, float))]
+        now = st.get(tag, pts[-1] if pts else None)
+        first = pts[0] if pts else now
+        unit = UNITS.get(tag, "")
+        delta = (now - first) if isinstance(now, (int, float)) and isinstance(first, (int, float)) else 0
+        tol = {"ph": 0.05, "chlorine_residual": 0.05}.get(tag, abs(first or 1) * 0.03)
+        trend = "falling" if delta < -tol else "rising" if delta > tol else "steady"
+        line = f"{_SCRIPT_NAMES[tag]} is {_fmt(now, unit)}"
+        line += f", {trend} from {_fmt(first, unit)} over the recent trend" if trend != "steady" else ", steady"
+        if tag in _SCRIPT_RANGE:
+            line += f" ({_SCRIPT_RANGE[tag]})"
+        out = [line + "."]
+        said = "falling" if _re.search(r"drop|fall|\blow\b|lower|decreas|going down", q) else \
+            "rising" if _re.search(r"\bris|climb|high|increas|going up|spik", q) else None
+        if said and said != trend:
+            out.append(f"I don't see it {said} on the live trend; if your analyzer disagrees, take a grab sample.")
+        if alarms:
+            out.append(f"Active alarms: {', '.join(alarms)}.")
+
+        fix = _SCRIPT_FIX.get(tag)
+        target = None
+        if fix and fix[0] in st and isinstance(now, (int, float)):
+            reg, lo, hi, warn_lo, warn_hi, step = fix
+            cur = st[reg]
+            if now < lo or (trend == "falling" and now < warn_lo):
+                target = round(cur + step, 2)
+            elif now > hi or (trend == "rising" and now > warn_hi):
+                target = round(max(0.0, cur - step), 2)
+        if tag == "chlorine_residual":
+            if (st.get("raw_turbidity") or 0) > 5:
+                out.append(f"Likely cause: raw turbidity is {_fmt(st['raw_turbidity'], 'NTU')}, which raises "
+                           "chlorine demand.")
+            elif trend == "falling":
+                out.append("Raw water looks normal, so check the chlorinator feed pump and the analyzer.")
+        if tag == "tank_level" and isinstance(now, (int, float)):
+            out.append("That's high: watch for overflow." if now > 90 else "That's low: check the intake pump."
+                       if now < 20 else "That's a normal operating level.")
+        if tag == "flow_out":
+            out.append(f"Distribution rate setpoint is {_fmt(st.get('distribution_rate'), 'gpm')}.")
+
+        if target is not None:
+            reg = fix[0]
+            if "simulate_change" not in got:
+                return call("simulate_change", {"name": reg, "value": target, "hours": 6})
+            sim = got["simulate_change"]
+            w, wo = sim.get("with_change") or [], sim.get("without_change") or []
+            verdict = str(sim.get("twin_verdict", ""))
+            if w and wo:
+                out.append(f"Digital twin: {reg} {_fmt(st[reg])} -> {_fmt(target)} {UNITS.get(reg, '')} gives "
+                           f"{_fmt(w[-1].get(tag), unit)} in {w[-1].get('hour'):g} h, vs "
+                           f"{_fmt(wo[-1].get(tag), unit)} without it.")
+            if verdict.startswith("UNSAFE"):
+                out.append(f"The twin rejects that change ({verdict[8:]}), so I'm not proposing it.")
+            elif "propose_setpoint" in tools:
+                if "propose_setpoint" not in got:
+                    return call("propose_setpoint", {"name": reg, "value": target,
+                                                     "reason": f"{_SCRIPT_NAMES[tag].lower()} {trend} at "
+                                                               f"{_fmt(now, unit)}"})
+                res = got["propose_setpoint"]
+                out.append("I filed it as a proposal: approve it in the Proposals panel."
+                           if "BLOCKED" not in str(res.get("result")) else
+                           f"Aegis blocked that proposal ({res.get('why')}).")
+            else:
+                out.append(f"I'd raise {reg} to {_fmt(target)} {UNITS.get(reg, '')}; say the word and I'll do it."
+                           if target > st[reg] else
+                           f"I'd lower {reg} to {_fmt(target)} {UNITS.get(reg, '')}; say the word and I'll do it.")
+        elif fix and isinstance(now, (int, float)):
+            out.append("No setpoint change needed yet; I'd keep watching it.")
+        return say(" ".join(out))
     return httpx.MockTransport(handler)

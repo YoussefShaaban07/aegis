@@ -393,3 +393,31 @@ def test_public_demo_counts_failed_logins_per_visitor_not_per_shared_account(cli
     assert srv.client_ip(type("R", (), {"client": type("C", (), {"host": "192.0.2.50"})(),
                                         "headers": {"x-forwarded-for": "1.2.3.4"}})()) == "192.0.2.50"
     assert outsider.get("/api/state").status_code == 401
+
+
+def test_scripted_demo_model_answers_the_question_asked(client, monkeypatch):
+    """The keyless stand-in reads live data for non-work-order questions instead of always reading work orders."""
+    monkeypatch.delenv("GROQ_API_KEY", raising=False)
+    monkeypatch.delenv("AEGIS_LLM_KEY", raising=False)
+    ask = lambda q: client.post("/api/copilot", json={"message": q}).json()
+    r = ask("chlorine is dropping, what should i do")
+    assert [t["tool"] for t in r["trace"]][:2] == ["get_plant_status", "get_trend"]
+    assert r["reply"].startswith("Chlorine residual is") and r["reply_check"]["ok"]
+    assert "work order" not in r["reply"].lower()
+    assert ask("what's the pH?")["reply"].startswith("pH is")
+    assert ask("is the tank ok")["reply"].startswith("Clearwell level is")
+    assert "falling" not in ask("what's the flow")["reply"]
+    assert ask("can I trust the sensors?")["reply_check"]["ok"]
+    client.post("/api/attack/lye")
+    r = ask("why was it blocked?")
+    assert [t["tool"] for t in r["trace"]] == ["get_guard_log", "get_integrity"]
+    assert "naoh_dose" in r["reply"] and "blocked" in r["reply"]
+
+    plant = client.server.S["plant"]
+    orig = plant.sensors
+    monkeypatch.setattr(plant, "sensors", lambda: {**orig(), "chlorine_residual": 0.35, "raw_turbidity": 15.0})
+    r = ask("chlorine is dropping, what should i do")
+    assert [t["tool"] for t in r["trace"]] == ["get_plant_status", "get_trend", "simulate_change", "propose_setpoint"]
+    assert "turbidity" in r["reply"] and "Proposals" in r["reply"]
+    p = client.get("/api/state").json()["proposals"][0]
+    assert p["name"] == "chlorine_dose" and p["value"] == 1.8 and p["status"] == "pending"
