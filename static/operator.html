@@ -78,7 +78,7 @@ async function load(){
   const warn=(s.forewarn||[]).length>0||open.length>0||s.guard_mode!=='enforce';
   const st=$('status');
   if(bad){st.className='status s-bad';st.innerHTML=`ACTION NEEDED<small>${esc(p.alarms.join(' · ')||'')}${!s.integrity.ok?(p.alarms.length?' · ':'')+'PLC readings don\'t match the chemistry, take a grab sample':''}</small>`;}
-  else if(warn){st.className='status s-warn';st.innerHTML=`WATCH<small>${open.length?open.length+' open incident(s)':''}${(s.forewarn||[]).length?(open.length?' · ':'')+'a limit is forecast to be crossed':''}${s.guard_mode!=='enforce'?' · guard is '+s.guard_mode.toUpperCase():''}</small>`;}
+  else if(warn){st.className='status s-warn';st.innerHTML=`WATCH<small>${open.length?open.length+(open.length===1?' open incident':' open incidents'):''}${(s.forewarn||[]).length?(open.length?' · ':'')+'a limit is forecast to be crossed':''}${s.guard_mode!=='enforce'?' · guard is '+s.guard_mode.toUpperCase():''}</small>`;}
   else{st.className='status s-ok';st.innerHTML='WATER IS SAFE<small>all readings in range · Aegis enforcing</small>';}
   $('v-ph').textContent=num(p.ph,2);$('v-cl').textContent=num(p.chlorine_residual,2);$('v-lv').textContent=num(p.tank_level,0);
   const hl=s.holds||[],ld=s.lockdowns||[];$('hold-card').style.display=(hl.length||ld.length)?'':'none';
@@ -86,10 +86,13 @@ async function load(){
     +ld.map(l=>`<div class="item"><b>LOCKDOWN</b> ${esc(l.source)}: refused ${l.blocks} times (last ${esc(l.last)}). Possible intrusion. Only safer changes allowed.<button onclick='clearLock(${JSON.stringify(l.source)})'>Clear lockdown</button></div>`).join('');
   $('t-ph').classList.toggle('bad',p.ph>8.5||p.ph<6.5);$('t-cl').classList.toggle('bad',p.chlorine_residual<.2||p.chlorine_residual>4);$('t-lv').classList.toggle('bad',p.tank_level<10||p.tank_level>95);
   $('v-g').textContent=s.guard_mode.toUpperCase();$('v-int').textContent=s.integrity.ok?'PLC readings consistent':'PLC readings suspect';
-  $('inc').innerHTML=(s.incidents||[]).length?(s.incidents).map(i=>`<div class="item"><b>#${i.id} · ${esc(i.severity)}</b> · ${i.count} event(s) · ${ago(i.opened)}<br>${esc(i.title)}
+  $('inc').innerHTML=(s.incidents||[]).length?(s.incidents).map(i=>`<div class="item"><b>#${i.id} · ${esc(i.severity)}</b> · ${i.count} ${i.count===1?'event':'events'} · ${ago(i.opened)}<br>${esc(i.title)}
     ${i.acked_by?`<div class="muted">acknowledged by ${esc(i.acked_by)}</div>`:`<button class="big" onclick="ack(${i.id})">Acknowledge</button>`}</div>`).join(''):'<div class="muted">None.</div>';
   $('fw').innerHTML=(s.forewarn||[]).length?s.forewarn.map(w=>`<div class="item">${esc(w.message)}</div>`).join(''):'<div class="muted">Nothing forecast to cross a limit in the next 2–3 hours.</div>';
-  const blk=(s.log||[]).filter(d=>!d.allowed).slice(0,5);
+  // blocked AI proposals count too (they're judged as dry runs, so they aren't in the write log)
+  const aiBlk=(s.proposals||[]).filter(x=>x.status==='blocked').map(x=>({source:'AI copilot (proposal)',register:x.name,new:x.value,
+    unit:x.unit||'',reason:x.guard||'',t:x.t||x.created||x.decided_at,check:'ai'}));
+  const blk=[...(s.log||[]).filter(d=>!d.allowed),...aiBlk].sort((a,b)=>(b.t||0)-(a.t||0)).slice(0,5);
   const WAIVE=['step','ramp','cycling','predict'];
   $('blk').innerHTML=blk.length?blk.map(d=>`<div class="item"><b>${esc(d.source)}</b> tried ${esc(d.register)} = ${esc(d.new)} ${esc(d.unit)}<div class="muted">${esc(d.reason).slice(0,160)} · ${ago(d.t)}</div>${
     WAIVE.includes(d.check)&&!/^Unknown host/.test(d.source)?`<button onclick='allowOnce(${JSON.stringify(d.register)},${+d.new})'>Allow this value once</button>`:''}</div>`).join(''):'<div class="muted">Nothing blocked recently.</div>';

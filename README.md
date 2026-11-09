@@ -23,6 +23,7 @@ Inspired by [Control Seat (YC S26)](https://www.ycombinator.com/launches/RJ6-con
 - Water utilities run on PLCs that speak **Modbus** (1979) or Rockwell's **EtherNet/IP + PCCC** (the MicroLogix / SLC family), with **no authentication**: any device that can reach the controller can change a setpoint.
 - In May 2024 the EPA said **over 70%** of the water systems it inspected did not fully comply with basic cybersecurity requirements. The EPA's 2023 rule requiring cyber checks in sanitary surveys was withdrawn after a lawsuit by states and industry groups.
 - In 2023, CISA warned after Iran-linked hackers compromised a Unitronics PLC at the Municipal Water Authority of Aliquippa, PA.
+- In January 2024, hackers made the water system of Muleshoe, Texas (about 5,000 people) overflow; staff took over by hand ([Fortune](https://fortune.com/2024/04/18/small-texas-town-foiled-russian-hacker-group/)).
 - In the widely reported 2021 Oldsmar, FL incident, the lye (sodium hydroxide) setpoint was raised from **100 ppm to 11,100 ppm**. In 2023 the city's former manager said it was probably an employee's mistake, not a hacker. **Aegis doesn't care which**: the guard checks the command, not who typed it, so it stops the attack *and* the fat-finger.
 - In 2026, Dragos reported attackers used commercial LLMs to plan a breach of a water utility.
 - Vendors are adding **AI copilots** that read plant data and can write setpoints. An AI that reads untrusted text (work orders, emails, alarm notes) can be **prompt-injected** into issuing commands.
