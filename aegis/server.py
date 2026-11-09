@@ -265,7 +265,10 @@ def login(body: LoginIn, request: Request, response: Response):
     if request.headers.get("x-aegis") != "1":
         raise HTTPException(403, "missing X-Aegis header (CSRF protection)")
     ip = client_ip(request)
-    token, msg = S["auth"].login(body.username, body.password, ip, per_user=not PUBLIC)
+    # public demo: the demo accounts' passwords are printed on the login page, so a lockout protects nothing and
+    # only lets one visitor lock everyone out (behind a hosting proxy all visitors can even share one address)
+    open_demo = PUBLIC and body.username in ("engineer", "operator")
+    token, msg = S["auth"].login(body.username, body.password, ip, per_user=not PUBLIC, limit=not open_demo)
     S["audit"].append("login" if token else "login_failed", {"user": body.username, "ip": ip, "result": msg})
     if not token:
         raise HTTPException(429 if "too many" in msg else 401, msg)

@@ -378,10 +378,16 @@ def test_public_demo_counts_failed_logins_per_visitor_not_per_shared_account(cli
                    headers={**H, "X-Forwarded-For": "203.0.113.9"})
     r = proxy.post("/api/login", json={"username": "engineer", "password": "engineer"},
                    headers={**H, "X-Forwarded-For": "203.0.113.9"})
-    assert r.status_code == 429                                     # the griefer is locked out
-    r = proxy.post("/api/login", json={"username": "engineer", "password": "engineer"},
+    assert r.status_code == 200          # demo accounts on a public demo: no lockout (password is on the page)
+    for _ in range(6):
+        proxy.post("/api/login", json={"username": "maria", "password": "nope"},
+                   headers={**H, "X-Forwarded-For": "203.0.113.9"})
+    r = proxy.post("/api/login", json={"username": "maria", "password": "nope"},
+                   headers={**H, "X-Forwarded-For": "203.0.113.9"})
+    assert r.status_code == 429                                     # other accounts: per-visitor limit
+    r = proxy.post("/api/login", json={"username": "maria", "password": "nope"},
                    headers={**H, "X-Forwarded-For": "198.51.100.4"})
-    assert r.status_code == 200                                     # a judge on another network is not
+    assert r.status_code == 401                                     # another visitor is not locked out
     # a forged header from anywhere but the local proxy is ignored
     outsider = TestClient(srv.app, client=("192.0.2.50", 40001))
     assert srv.client_ip(type("R", (), {"client": type("C", (), {"host": "192.0.2.50"})(),

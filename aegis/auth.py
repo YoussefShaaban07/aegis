@@ -73,10 +73,12 @@ class Auth:
             dq.popleft()
         return len(dq) >= MAX_FAILS
 
-    def login(self, name: str, password: str, ip: str = "?", per_user: bool = True) -> tuple[str | None, str]:
+    def login(self, name: str, password: str, ip: str = "?", per_user: bool = True,
+              limit: bool = True) -> tuple[str | None, str]:
         """Returns (token, message). Constant-time compare; failures counted per user and per IP
-        (per IP only on the public demo, where everyone shares the demo accounts)."""
-        keys = (f"user:{name}", f"ip:{ip}") if per_user else (f"ip:{ip}",)
+        (per IP only on the public demo, where everyone shares the demo accounts; not at all for the public
+        demo accounts themselves, whose passwords are on the login page)."""
+        keys = ((f"user:{name}", f"ip:{ip}") if per_user else (f"ip:{ip}",)) if limit else ()
         for k in keys:
             if self._locked(k):
                 return None, "too many failed attempts; try again in a few minutes"
