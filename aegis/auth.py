@@ -73,9 +73,11 @@ class Auth:
             dq.popleft()
         return len(dq) >= MAX_FAILS
 
-    def login(self, name: str, password: str, ip: str = "?") -> tuple[str | None, str]:
-        """Returns (token, message). Constant-time compare; failures counted per user and per IP."""
-        for k in (f"user:{name}", f"ip:{ip}"):
+    def login(self, name: str, password: str, ip: str = "?", per_user: bool = True) -> tuple[str | None, str]:
+        """Returns (token, message). Constant-time compare; failures counted per user and per IP
+        (per IP only on the public demo, where everyone shares the demo accounts)."""
+        keys = (f"user:{name}", f"ip:{ip}") if per_user else (f"ip:{ip}",)
+        for k in keys:
             if self._locked(k):
                 return None, "too many failed attempts; try again in a few minutes"
         u = self.users.get(name)
@@ -86,8 +88,8 @@ class Auth:
             _hash(password, b"x" * 16)          # same cost whether or not the user exists
         if not ok:
             now = self.clock()
-            self.fails[f"user:{name}"].append(now)
-            self.fails[f"ip:{ip}"].append(now)
+            for k in keys:
+                self.fails[k].append(now)
             return None, "wrong username or password"
         return self.issue(name, u["role"]), "ok"
 

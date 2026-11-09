@@ -363,3 +363,27 @@ def test_inbound_text_route_needs_the_bridge_token(client, monkeypatch):
     tok = hmac.new(b"s3cret", b"aegis-bridge", hashlib.sha256).hexdigest()
     r = client.post("/api/alerts/inbound", json=body, headers={"x-aegis-bridge": tok}).json()
     assert r["reply"].startswith("Aegis: pH ")
+
+
+def test_public_demo_counts_failed_logins_per_visitor_not_per_shared_account(client, monkeypatch):
+    """Public demo (deploy/public): everyone shares the 'engineer' demo account, so five wrong passwords from one
+    visitor must not lock everyone else out. X-Forwarded-For is trusted only from the local proxy."""
+    from fastapi.testclient import TestClient
+    srv = client.server
+    monkeypatch.setattr(srv, "PUBLIC", True)
+    proxy = TestClient(srv.app, client=("127.0.0.1", 40000))
+    H = {"X-Aegis": "1"}
+    for _ in range(6):
+        proxy.post("/api/login", json={"username": "engineer", "password": "nope"},
+                   headers={**H, "X-Forwarded-For": "203.0.113.9"})
+    r = proxy.post("/api/login", json={"username": "engineer", "password": "engineer"},
+                   headers={**H, "X-Forwarded-For": "203.0.113.9"})
+    assert r.status_code == 429                                     # the griefer is locked out
+    r = proxy.post("/api/login", json={"username": "engineer", "password": "engineer"},
+                   headers={**H, "X-Forwarded-For": "198.51.100.4"})
+    assert r.status_code == 200                                     # a judge on another network is not
+    # a forged header from anywhere but the local proxy is ignored
+    outsider = TestClient(srv.app, client=("192.0.2.50", 40001))
+    assert srv.client_ip(type("R", (), {"client": type("C", (), {"host": "192.0.2.50"})(),
+                                        "headers": {"x-forwarded-for": "1.2.3.4"}})()) == "192.0.2.50"
+    assert outsider.get("/api/state").status_code == 401

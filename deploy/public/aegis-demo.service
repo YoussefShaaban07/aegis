@@ -1,0 +1,22 @@
+# Public Aegis demo dashboard (installed by deploy/public/setup.sh). Listens on 127.0.0.1:8000; Caddy serves it.
+[Unit]
+Description=Aegis public demo (simulated plant)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=aegis
+WorkingDirectory=/opt/aegis-public
+EnvironmentFile=/opt/aegis-public/.env
+ExecStart=/opt/aegis-public/.venv/bin/python -m aegis.server
+Restart=always
+RestartSec=3
+MemoryMax=600M
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/aegis-public
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

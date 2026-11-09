@@ -127,7 +127,7 @@ Every write is checked in this order; the first failure blocks it:
 pip install -r requirements.txt
 cp .env.example .env          # add GROQ_API_KEY for the AI copilot (free at console.groq.com)
 python -m aegis.server        # open http://127.0.0.1:8000
-python -m pytest -q           # 222 tests
+python -m pytest -q           # 223 tests
 python -m aegis.evaluate      # attack/operator evaluation (~10 min)
 python -m aegis.redteam       # prompt-injection red team against the real copilot (needs GROQ_API_KEY)
 python scripts/bench.py       # latency on your machine
@@ -154,6 +154,16 @@ Point the HMI and AI at the gateway instead of the PLC, and firewall the PLC so 
 2. `python -m aegis.onboard --export plc_tags.csv`: draft `config/tags.json` from the PLC's tag export and what was seen on the wire. Review it.
 3. `python -m aegis.learn --hours 168`: suggested rules from observed traffic. `python -m aegis.calibrate --history data/history.csv`: fit the twin to this plant.
 4. Switch to `--mode enforce`.
+
+## Put the demo online
+
+On a free cloud server (Ubuntu 22.04/24.04 or Debian 12) with a domain pointing at it:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/YoussefShaaban07/aegis/main/deploy/public/setup.sh | sudo bash -s -- demo.yourdomain.com
+```
+
+It installs Aegis and [Caddy](https://caddyserver.com) (automatic HTTPS), and runs the dashboard with `AEGIS_PUBLIC=1`: the simulator's Modbus and EtherNet/IP ports listen on the server only, only ports 80/443 face the internet, failed logins are counted per visitor (so nobody can lock others out of the shared demo account), and no AI key is set (the copilot uses the labelled scripted model). Everyone online shares one simulated plant; *Reset plant* puts it back. Re-run the same command to update.
 
 ## Measured numbers (this repo, not marketing)
 

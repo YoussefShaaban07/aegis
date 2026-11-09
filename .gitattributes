@@ -1,2 +1,3 @@
 run.bat text eol=crlf
 run_example.bat text eol=crlf
+deploy/public/setup.sh text eol=lf

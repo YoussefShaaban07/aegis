@@ -128,7 +128,8 @@ details.demo>.in{padding:0 14px 12px}
   <input id="lp" class="f" type="password" placeholder="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
   <button style="width:100%;margin-top:8px" onclick="doLogin()">Sign in</button>
   <div class="err" id="lerr"></div>
-  <div class="trace" id="ldemo">Demo login: username <b>engineer</b>, password <b>engineer</b> (or operator / operator). The PIN 2468 is asked for later, not here.</div></div></div>
+  <div class="trace" id="ldemo">Demo login: username <b>engineer</b>, password <b>engineer</b> (or operator / operator). The PIN 2468 is asked for later, not here.
+  <button style="width:100%;margin-top:10px" onclick="$('lu').value='engineer';$('lp').value='engineer';doLogin()">Sign in as the demo engineer</button></div></div></div>
 <div id="booth" style="display:none;position:fixed;left:0;right:0;top:0;z-index:60;background:#1C2E44;color:#fff;padding:18px 28px;font:600 30px/1.3 'Segoe UI',system-ui,sans-serif;box-shadow:0 4px 24px rgba(0,0,0,.3)">
   <div id="booth-t"></div><div id="booth-s" style="font-size:20px;font-weight:400;opacity:.85;margin-top:4px"></div></div>
 <div id="guide"><div class="meta" id="g-n"></div><h3 id="g-t"></h3><div id="g-d" class="trace" style="margin:0"></div>
@@ -148,7 +149,7 @@ details.demo>.in{padding:0 14px 12px}
   <div class="seg" id="modes" title="Guard mode"><button data-m="enforce" onclick="setMode('enforce')">ENFORCE</button><button data-m="monitor" onclick="setMode('monitor')">MONITOR</button><button data-m="off" onclick="setMode('off')">OFF</button></div>
 </header>
 <div id="simbanner" style="display:none;padding:4px 16px;font-size:12.5px">
-  SIMULATED PLANT · demo controls and demo accounts are on (AEGIS_DEMO=1). Attacks and weather on this page are simulated; the protocol traffic is real.</div>
+  SIMULATED PLANT · demo controls and demo accounts are on (AEGIS_DEMO=1). Attacks and weather on this page are simulated; the protocol traffic is real.<span id="pubnote" style="display:none"> <b>Public demo:</b> everyone online shares this one plant. If someone left it in a strange state, open the Demo console and press Reset plant.</span></div>
 <div class="err" id="hdrerr" style="padding:0 18px"></div>
 <div class="tabs"><button class="on" data-p="ops" onclick="tab('ops')">Operations</button><button data-p="eng" onclick="tab('eng')">Engineering</button><button data-p="evi" onclick="tab('evi')">Evidence &amp; performance</button></div>
 
@@ -555,7 +556,7 @@ async function logout(){await post('/api/logout');showLogin();}
 (async()=>{const r=await fetch('/api/me');if(r.ok){const j=await r.json();$('who').textContent=`${j.user} · ${j.role}`;$('ldemo').style.display=j.demo?'':'none';$('simbanner').style.display=j.demo?'':'none';}else showLogin();})();
 
 /* ---------- main loop ---------- */
-async function load(){let s;try{const r=await fetch('/api/state');if(r.status===401){showLogin();return;}s=await r.json();}catch(e){return;}S=s;const p=s.plant;
+async function load(){let s;try{const r=await fetch('/api/state');if(r.status===401){showLogin();return;}s=await r.json();}catch(e){return;}S=s;const p=s.plant;$('pubnote').style.display=s.public?'':'none';
   document.querySelectorAll('#modes button').forEach(b=>b.className=(b.dataset.m===s.guard_mode?'on ':'')+b.dataset.m);
   $('v-ph').textContent=p.ph.toFixed(2);$('v-cl').textContent=p.chlorine_residual.toFixed(2);$('v-lv').textContent=p.tank_level.toFixed(0)+'%';
   $('v-hocl').textContent=p.hocl_pct.toFixed(0)+'%';$('v-fl').textContent=p.flow_out;

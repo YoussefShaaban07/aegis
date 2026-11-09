@@ -49,6 +49,21 @@ CIP_PLC_PORT = int(os.getenv("AEGIS_CIP_PLC_PORT", 44819))     # simulated Micro
 CIP_GUARD_PORT = int(os.getenv("AEGIS_CIP_GUARD_PORT", 44818))  # Aegis in front of it
 PIN = os.getenv("AEGIS_ENGINEER_PIN", "2468")
 DEMO = os.getenv("AEGIS_DEMO", "1") == "1"      # simulator controls + demo accounts
+# Public demo on the internet (deploy/public): the simulator's Modbus and EtherNet/IP doors listen on this machine
+# only (an industrial port on the internet just draws scanners), the dashboard sits behind a local HTTPS proxy,
+# and failed logins are counted per visitor (from the proxy's X-Forwarded-For), not per shared demo account,
+# so one person can't lock everyone else out of "engineer".
+PUBLIC = os.getenv("AEGIS_PUBLIC") == "1"
+PROTO_HOST = "127.0.0.1" if PUBLIC else "0.0.0.0"
+
+
+def client_ip(request) -> str:
+    ip = request.client.host if request.client else "?"
+    if PUBLIC and ip in ("127.0.0.1", "::1"):            # trust X-Forwarded-For only from the local proxy
+        fwd = request.headers.get("x-forwarded-for", "")
+        if fwd:
+            return fwd.split(",")[-1].strip()            # the proxy appends the address it actually saw
+    return ip
 PLANT_NAME = os.getenv("AEGIS_PLANT_NAME", "Hattiesburg Water Treatment Plant #2 (simulated)")
 
 S: dict = {}
@@ -144,14 +159,14 @@ async def lifespan(app: FastAPI):
                   twin=twin)
     guard.trusted_ips = {"127.0.0.1"}   # HMI + AI live here; demo attackers come from 127.0.0.66
     guard.sync_commanded(plant.snapshot())
-    gsrv = await modbus.serve(guard.handle, "0.0.0.0", GUARD_PORT, per_ip=8, reserved=lambda: set(guard.ip_sources))
+    gsrv = await modbus.serve(guard.handle, PROTO_HOST, GUARD_PORT, per_ip=8, reserved=lambda: set(guard.ip_sources))
     # The same plant also answers EtherNet/IP + PCCC like a MicroLogix 1400, with Aegis in front of it
     S["cip_plc"] = MicroLogixSim(plant, TAGS)
     S["cip"] = CIPGuard(guard, "127.0.0.1", CIP_PLC_PORT, TAGS)
     cip_servers = []
     try:
         cip_servers = [await S["cip_plc"].serve("127.0.0.1", CIP_PLC_PORT),
-                       await S["cip"].serve("0.0.0.0", CIP_GUARD_PORT)]
+                       await S["cip"].serve(PROTO_HOST, CIP_GUARD_PORT)]
     except OSError as e:                     # port taken: the Modbus demo still works
         print("EtherNet/IP demo disabled:", e)
     orders = list(BASE_ORDERS)
@@ -249,8 +264,8 @@ class LoginIn(BaseModel):
 def login(body: LoginIn, request: Request, response: Response):
     if request.headers.get("x-aegis") != "1":
         raise HTTPException(403, "missing X-Aegis header (CSRF protection)")
-    ip = request.client.host if request.client else "?"
-    token, msg = S["auth"].login(body.username, body.password, ip)
+    ip = client_ip(request)
+    token, msg = S["auth"].login(body.username, body.password, ip, per_user=not PUBLIC)
     S["audit"].append("login" if token else "login_failed", {"user": body.username, "ip": ip, "result": msg})
     if not token:
         raise HTTPException(429 if "too many" in msg else 401, msg)
@@ -281,6 +296,7 @@ def state(who: dict = Depends(role("viewer"))):
     return {"plant": p.snapshot(), "history": [{k: h[k] for k in ("sim_t", "ph", "chlorine_residual", "hocl_pct",
                                                                   "naoh_dose", "chlorine_dose")} for h in hist],
             "forecast": S["forecast"], "sim_t": p.sim_time, "speed": p.speed,
+            "public": PUBLIC,
             "chemistry": {k: p.model.params.get(k, d) for k, d in (("chlorine_source", "hypochlorite"),
                                                                    ("fluoride_chemical", "fsa"), ("alkali", "naoh"))},
             "guard_mode": g.mode, "guard_enabled": g.enabled,
