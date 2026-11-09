@@ -73,30 +73,30 @@ Short answers in plain words. Say the **bold line** first; add the rest only if 
 
 Practise it out loud with a timer; the parts add up to 2:30 exactly, so aim for 2:20.
 
-**Cover** (10 seconds)
+**Cover** (7 seconds)
 
 > Hi, I’m Youssef. This is Aegis: a safety guard for the old computers that run small-town drinking water.
 
-**The controller obeys anyone** (20 seconds)
+**Small-town water is under attack** (25 seconds)
 
-> In 2021, someone set the lye at a Florida water plant from 100 to 11,100 parts per million. Hacker or mistake, the controller just obeyed: it takes commands from anyone. This July, attackers targeted more than a hundred water systems and got in across seven states, on Allen-Bradley MicroLogix controllers, the kind Aegis speaks. Most of these utilities have no security team.
+> Attacks on water plants aren’t hypothetical. In 2023, Iran-linked hackers took over a water controller in Pennsylvania. In 2024, hackers overflowed a small Texas town’s water system. This July, more than a hundred water systems were targeted, with break-ins in seven states. These old controllers obey anyone who reaches them: type 11,100 instead of 100 for lye, like Oldsmar in 2021, and they just do it.
 
 **Every command passes through Aegis** (20 seconds)
 
 > Aegis is a small box between the plant’s screens and its old controller. Every command passes through it: from the operator, an AI assistant, or an attacker. It checks the rules, and it runs a chemistry model of the plant six hours ahead. If nobody answers an alarm, it puts back the last safe setting.
 
-**Live demo** (55 seconds)
+**Live demo** (50 seconds)
 
 Setup: BEFORE the pitch: dashboard open, logged in as engineer, PIN 2468 in the header, plant reset, laptop set to never sleep. Start the dashboard WITHOUT an API key so the AI step is the same every time. Press "Pitch demo" once so it sits on its first step.
 
 - Alt-Tab to the dashboard. Press Space once per step (it moves on and runs the step):
 - Space 1 (guard OFF): "Without Aegis, the 11,100 attack goes straight through: the lye box turns red." (12 s)
 - Space 2 (guard ON): "Same attack with Aegis: blocked. Rules can do that." (8 s)
-- Space 3 (algae bloom): "Now a small, legal-looking +50 lye change. Every rule says yes. The twin says the pH crosses the limit in under two hours: blocked. Cutting lye is still allowed." (20 s)
-- Space 4 (AI): "A work order tells the AI to raise lye to 9,000. The AI falls for it; Aegis blocks it like any other command." (15 s)
+- Space 3 (algae bloom): "Now a small, legal-looking +50 lye change. Every rule says yes. The twin says the pH crosses the limit in under two hours: blocked. Cutting lye is still allowed." (18 s)
+- Space 4 (AI): "A work order tells the AI to raise lye to 9,000. The AI falls for it; Aegis blocks it like any other command." (12 s)
 - The last button says "Done: back to the slides". Alt-Tab back. IF THE LAPTOP OR SERVER FAILS: play docs/video/pitch-demo-backup.mp4 and say the same lines. After the pitch, press "Booth loop" so the screen keeps demoing for visitors.
 
-**200 attacks it had never seen** (25 seconds)
+**200 attacks it had never seen** (28 seconds)
 
 > We attacked it 200 times with cases it was never tuned on. Plain rules let 45 percent make the water unsafe. Aegis: 10 percent, even with the attacker on the operator’s own PC, and in every one of those, the same storm made the water unsafe anyway. About one operator change in 60 is wrongly blocked. This is simulation; the next step is a real plant.
 

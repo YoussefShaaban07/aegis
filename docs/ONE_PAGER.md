@@ -22,7 +22,7 @@ Speaks **Modbus TCP, Modbus RTU over TCP (radio links to well sites) and EtherNe
 - Operator cost: 9 false twin blocks in 514 simulated operator writes (about 1 in 57), each one can be let through with *Allow this value once*; no operator was ever locked down.
 - A simulated year: **about 10 texts a week**, 24 on calm days in the whole year; 1 of 2,384 operator changes blocked.
 - Adds ~0.2 ms per command (static rules), ~13 ms with the twin.
-- 207 automated tests; tested against independent Modbus and EtherNet/IP clients (pymodbus, libmodbus, pycomm3).
+- 217 automated tests; tested against independent Modbus and EtherNet/IP clients (pymodbus, libmodbus, pycomm3).
 
 **Not yet done (said plainly).** Not tested on a real plant or real PLC hardware; the twin's chemistry matches the USGS reference code PHREEQC (mean 0.05 pH over 100 cases) but has not been checked against real plant data; no utility has used it yet.
 
