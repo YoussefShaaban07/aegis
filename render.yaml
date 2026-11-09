@@ -1,0 +1,21 @@
+# One-click public demo on Render's free plan (render.com -> New -> Blueprint -> this repo).
+# Simulated plant only. Free services sleep after ~15 min idle; the first visit then takes ~1 min.
+services:
+  - type: web
+    name: aegis
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m aegis.server
+    healthCheckPath: /
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: AEGIS_DEMO
+        value: "1"
+      - key: AEGIS_PUBLIC
+        value: "1"
+      - key: AEGIS_HTTPS
+        value: "1"
+      - key: AEGIS_HOST
+        value: 0.0.0.0
