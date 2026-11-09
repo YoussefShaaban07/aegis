@@ -42,6 +42,18 @@ ALKALIS = {
     "bicarbonate": (84_007.0, 1.0), # NaHCO3, 84.01 g/mol, 1 eq/mol, 1 mol carbonate per mol
 }
 
+# More chemical feeds (expo prep). Both default OFF, so a plant that doesn't configure them behaves exactly as before.
+# Chlorine gas: Cl2 + H2O -> HOCl + H+ + Cl-, and HOCl -> H+ + OCl- at treated-water pH, so gas chlorination
+# destroys about 1.4 mg/L of alkalinity (as CaCO3) per mg/L of chlorine fed (the standard design figure).
+# Sodium hypochlorite (liquid bleach), the default, is modelled as neutral, as before.
+CHLORINE_SOURCES = {"hypochlorite": 0.0, "gas": 1.4}       # mg/L alkalinity as CaCO3 lost per mg/L Cl2
+# Fluoride feeds: acid equivalents released per mol of fluoride once fully hydrolysed.
+#   fluorosilicic acid  H2SiF6 + 2 H2O -> 6 F- + SiO2 + 6 H+   -> 1 eq/mol F  (about 2.6 mg/L alkalinity per mg/L F)
+#   sodium fluorosilicate Na2SiF6 + 2 H2O -> 2 Na+ + 6 F- + SiO2 + 4 H+ -> 2/3 eq/mol F
+#   sodium fluoride  NaF -> Na+ + F-                            -> 0
+FLUORIDE_CHEMICALS = {"fsa": 1.0, "na2sif6": 2.0 / 3.0, "naf": 0.0}
+F_MG_PER_MOL = 18_998.0
+
 
 # ------------------------------------------------------------------ chemistry
 def _alphas(h: float, k1: float, k2: float) -> tuple[float, float]:
@@ -137,6 +149,8 @@ class ProcessState:
     cells: list = field(default_factory=list)     # [(alk, ct, cl)] per baffled cell, last = outlet
     cell_ph: list = field(default_factory=list)   # last solved pH per cell (warm start for the solver)
     degas_s: float = 0.0                          # time since CO2 exchange was last applied
+    fluoride: float = 0.0                         # outlet fluoride, mg/L (conservative: mixes, doesn't decay)
+    f_cells: list = field(default_factory=list)   # fluoride per baffled cell, last = outlet
 
 
 @dataclass
@@ -183,10 +197,25 @@ class ProcessModel:
         ct = ct_from_ph_alk(raw.ph, raw_alk, *self.pk(raw.temp_c))
         mg_per_eq, ct_per_eq = ALKALIS[self.params.get("alkali", "naoh")]
         added = self.naoh_added(sp.get("naoh_dose") or 0) / mg_per_eq     # chlorine-only plants: no alkali feed
-        alk = raw_alk + added
+        alk = raw_alk + added - self.acid_added(sp)
         ct = ct + added * ct_per_eq
         d = self.demand(raw) if demand is None else demand
         return alk, ct, max(0.0, sp["chlorine_dose"] - d)
+
+    def acid_added(self, sp: dict) -> float:
+        """Alkalinity (eq/L) destroyed by acidic feeds: chlorine gas, and fluorosilicic acid or sodium
+        fluorosilicate on the fluoride feed. Zero for a plant that uses bleach and no fluoride."""
+        p = self.params
+        cl = CHLORINE_SOURCES[p.get("chlorine_source", "hypochlorite")] * (sp.get("chlorine_dose") or 0) / CACO3_EQ_MG
+        f = FLUORIDE_CHEMICALS[p.get("fluoride_chemical", "fsa")] * self.fluoride_added(sp) / F_MG_PER_MOL
+        return cl + f
+
+    def fluoride_added(self, sp: dict) -> float:
+        """mg/L of fluoride the feed adds (the fluoride_dose setpoint is in mg/L as F)."""
+        return max(0.0, sp.get("fluoride_dose") or 0.0) * self.params.get("fluoride_feed_gain", 1.0)
+
+    def fluoride_in(self, sp: dict) -> float:
+        return self.params.get("raw_fluoride", 0.2) + self.fluoride_added(sp)
 
     def ph(self, s: ProcessState) -> float:
         g = s.cell_ph[-1] if s.cell_ph else None
@@ -214,12 +243,18 @@ class ProcessModel:
             q_out = 0.0
         vol = max(s.tank_level, 1.0) / 100 * p["capacity_gal"] / n
         cells = list(s.cells)
+        if len(s.f_cells) != n:
+            s.f_cells = [s.fluoride] * n
         if q_in > 0:
             f = 1 - math.exp(-q_in / 60 * dt / vol)
             prev = self.inlet(raw, sp, demand)
             for i, (a, c, cl) in enumerate(cells):
                 cells[i] = (a + (prev[0] - a) * f, c + (prev[1] - c) * f, cl + (prev[2] - cl) * f)
                 prev = cells[i]
+            prev_f = self.fluoride_in(sp)
+            for i, x in enumerate(s.f_cells):
+                s.f_cells[i] = prev_f = x + (prev_f - x) * f
+        s.fluoride = s.f_cells[-1]
         k_cl = p["chlorine_decay_per_hr"] * self.decay_factor(raw.temp_c)
         decay = math.exp(-k_cl * dt / 3600)
         s.degas_s += dt
@@ -262,7 +297,8 @@ class ProcessModel:
                     c = c_new
             cl = cl / (1 + k_cl * tau_cell_h)
             cells.append((a, c, cl))
-        return ProcessState(level, a, c, cl, 0.0, raw.temp_c, cells)
+        fl = self.fluoride_in(sp)
+        return ProcessState(level, a, c, cl, 0.0, raw.temp_c, cells, fluoride=fl, f_cells=[fl] * n)
 
     def estimate(self, meas: dict, raw: Raw) -> ProcessState:
         """Estimate the hidden tank state from sensors (what the twin does in the field).
@@ -274,6 +310,8 @@ class ProcessModel:
         """
         sp = {k: meas.get(k) for k in ("intake_pump", "distribution_pump", "chlorine_dose", "naoh_dose",
                                        "distribution_rate")}
+        if "fluoride_dose" in meas:
+            sp["fluoride_dose"] = meas["fluoride_dose"]
         if self.params["kla_per_hr"] > 0 and all(v is not None for v in sp.values()):
             ct = self.steady(raw, sp, meas.get("tank_level", 60)).ct
         else:
@@ -281,7 +319,10 @@ class ProcessModel:
         alk = alk_from_ph(meas["ph"], ct, *self.pk(raw.temp_c))
         n = max(1, int(self.params["baffling_cells"]))
         cl = meas["chlorine_residual"]
-        return ProcessState(meas["tank_level"], alk, ct, cl, meas.get("flow_out", 0), raw.temp_c, [(alk, ct, cl)] * n)
+        fl = meas.get("fluoride")
+        fl = self.fluoride_in(sp) if fl is None else fl
+        return ProcessState(meas["tank_level"], alk, ct, cl, meas.get("flow_out", 0), raw.temp_c, [(alk, ct, cl)] * n,
+                            fluoride=fl, f_cells=[fl] * n)
 
 
 # ------------------------------------------------------------------ high-fidelity "truth" plant

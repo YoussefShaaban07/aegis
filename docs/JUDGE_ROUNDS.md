@@ -521,3 +521,19 @@ Tests: `tests/test_round18.py` (other value, stranger, dry run, single use, expi
 3. The build machine had no uvloop, so every test ran on Python's standard loop. Fix: the limiter is kept in a table (`modbus.limiter_of(srv)`), not on the server object. New test `test_servers_start_under_uvloop` runs a Modbus server and client on uvloop; uvloop is now in `requirements-dev.txt` so the suite covers it. Checked that the old code crashes under that test's conditions and the new code doesn't.
 4. Yes: the dashboard from the fresh install ran the full pitch demo (4 steps, AI proposal 100 → 9,000 blocked, no page errors, no outside requests).
 5. Probably not: uvloop doesn't exist on Windows, so a Windows laptop never hit this. Still `git pull` before the expo and run the pitch demo once.
+
+## Round 29: "It only knows lye"
+
+1. **"Half of small plants chlorinate with gas, not bleach. Gas makes the water more acidic. Your twin doesn't know that."**
+2. **"Most fluoridating utilities feed fluorosilicic acid. It's an acid too, and fluoride is its own hazard. Not covered."**
+3. **"Has a fluoride overfeed ever actually hurt anyone, or is this hypothetical?"**
+4. **"If you add chemistry tonight, your published results are from a different program."**
+5. **"How do you know the new chemistry is right?"**
+
+### What we did about it (v31)
+
+1. `process.json` `chlorine_source`: `hypochlorite` (default) or `gas`. Gas uses up 1.4 mg/L of alkalinity (as CaCO3) per mg/L fed, the standard design figure, so the twin forecasts the pH drop.
+2. A `fluoride_dose` setpoint and `fluoride` analyzer, tracked through the clearwell (it mixes, doesn't decay). `fluoride_chemical`: `fsa` (1 acid equivalent per mol F, about 2.6 mg/L alkalinity per mg/L F), `na2sif6` (2/3) or `naf` (0). Range limit, twin forecast limit 2.0 mg/L (EPA secondary standard; the enforceable maximum is 4.0), "What now" guidance, FLUORIDE HIGH alarm, dashboard tile and an overfeed attack. Example plant: `config/examples/gas-fluoride`, `run_example.bat`. Tests: `tests/test_feeds.py` (40 mg/L blocked by range; 2.5 mg/L inside a deliberately bad range blocked by the twin; 0.6 allowed; alarm trips).
+3. Yes. In 1993 a faulty feed pump in a small Mississippi town let fluoride solution siphon into the reservoir: restaurant water over 40 mg/L, tap water 200 mg/L, dozens ill (Penman et al., *Public Health Reports*, 1997). Aegis blocks a commanded overfeed; a pump failing on its own is not a command, so there it can only forecast and alarm.
+4. Both feeds are off unless a plant configures them, and the extra sensor noise is drawn only when a fluoride analyzer exists. A 16-episode held-out evaluation of the default plant (attacks + operators) is identical, number for number, before and after.
+5. PHREEQC (USGS) given the actual chemicals (H2SiF6, NaF) and left to do its own hydrolysis: mean pH difference 0.005 for fluorosilicic acid, 0.001 for sodium fluoride; chlorine gas given as the acid it releases, 0.006 (that checks the carbonate response, not the 1.4 figure itself). `docs/eval/feeds_phreeqc_validation.json`.

@@ -44,7 +44,7 @@ from .config import Tags, load_policy, save_policy, validate_policy
 SOURCES = {1: "Operator HMI", 2: "AI copilot"}   # Modbus unit-id labels (spoofable; log only)
 WINDOW = 60.0
 LOG_BURST = 5
-BLOCK_REGISTERS = ("naoh_dose", "chlorine_dose")   # twin blocks these for everyone; others: advice for operators          # identical blocked decisions per sender/register/check per minute before summarising
+BLOCK_REGISTERS = ("naoh_dose", "chlorine_dose", "fluoride_dose")   # twin blocks these for everyone; others: advice for operators          # identical blocked decisions per sender/register/check per minute before summarising
 MODES = ("enforce", "monitor", "off")
 SAFE_HOLD = "Aegis safe-hold"
 

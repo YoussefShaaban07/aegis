@@ -1,0 +1,2 @@
+run.bat text eol=crlf
+run_example.bat text eol=crlf

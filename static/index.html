@@ -167,7 +167,7 @@ details.demo>.in{padding:0 14px 12px}
         <line x1="120" y1="65" x2="120" y2="128" stroke="#6b7379" stroke-width="5"/>
         <line id="pipe1" x1="142" y1="150" x2="410" y2="150" stroke="#6b7379" stroke-width="5" stroke-dasharray="10 8"/>
         <rect x="200" y="20" width="70" height="70" rx="2" fill="#eaebec" stroke="#6b7379" stroke-width="1.5"/>
-        <text x="235" y="45" text-anchor="middle" font-size="11" fill="#4f565c">Chlorine</text>
+        <text id="cllab" x="235" y="45" text-anchor="middle" font-size="11" fill="#4f565c">Chlorine</text>
         <text id="clsp" x="235" y="68" text-anchor="middle" font-size="16" font-weight="600" font-family="ui-monospace,Consolas,monospace">1.5</text>
         <text x="235" y="83" text-anchor="middle" font-size="10" fill="#4f565c">mg/L dose</text>
         <line x1="235" y1="90" x2="235" y2="146" stroke="#6b7379" stroke-width="2" stroke-dasharray="4 4"/>
@@ -193,6 +193,7 @@ details.demo>.in{padding:0 14px 12px}
         <div class="kpi" id="k-cl"><div class="l">Chlorine residual</div><div class="v" id="v-cl">–</div><div class="r">mg/L · safe 0.2 – 4.0</div></div>
         <div class="kpi" id="k-hocl"><div class="l">Disinfecting (HOCl)</div><div class="v" id="v-hocl">–</div><div class="r">share of chlorine that works</div></div>
         <div class="kpi" id="k-lv"><div class="l">Clearwell level</div><div class="v" id="v-lv">–</div><div class="r">safe 10 – 95%</div></div>
+        <div class="kpi" id="k-fl" style="display:none"><div class="l">Fluoride</div><div class="v" id="v-fl2">–</div><div class="r" id="r-fl2">mg/L · safe ≤ 2.0</div></div>
       </div>
       <div class="raw">Raw water: <span>pH <b id="r-ph">–</b></span><span>alkalinity <b id="r-alk">–</b> mg/L CaCO₃</span><span>turbidity <b id="r-tu">–</b> NTU</span><span>flow to town <b id="v-fl">–</b> gpm</span></div>
       <div class="alarm" id="alarm"></div>
@@ -246,6 +247,7 @@ details.demo>.in{padding:0 14px 12px}
       <div class="grp">Attacks (real protocol traffic from 127.0.0.66)</div>
       <div class="btns">
         <button class="red" onclick="atk('lye')" title="FC 6">Oldsmar: lye → 11,100</button>
+        <button class="red" id="atk-fl" style="display:none" onclick="atk('fluoride')" title="FC 6: what a Mississippi town's water reached in 1993">Fluoride overfeed → 40 mg/L</button>
         <button class="red" onclick="atk('mask')" title="Mask Write, FC 22">Sneaky FC 22 write</button>
         <button class="red" onclick="atk('readwrite')" title="FC 23">Sneaky FC 23 write</button>
         <button class="red" onclick="atk('coil')" title="FC 5">Stop town pump</button>
@@ -557,6 +559,11 @@ async function load(){let s;try{const r=await fetch('/api/state');if(r.status===
   document.querySelectorAll('#modes button').forEach(b=>b.className=(b.dataset.m===s.guard_mode?'on ':'')+b.dataset.m);
   $('v-ph').textContent=p.ph.toFixed(2);$('v-cl').textContent=p.chlorine_residual.toFixed(2);$('v-lv').textContent=p.tank_level.toFixed(0)+'%';
   $('v-hocl').textContent=p.hocl_pct.toFixed(0)+'%';$('v-fl').textContent=p.flow_out;
+  {const hasF=p.fluoride!==undefined;$('k-fl').style.display=hasF?'':'none';$('atk-fl').style.display=hasF?'':'none';
+   document.querySelector('.kpis').style.gridTemplateColumns=hasF?'repeat(5,1fr)':'';
+   if(hasF){$('v-fl2').textContent=p.fluoride.toFixed(2);$('r-fl2').textContent=`mg/L · feed ${(+p.fluoride_dose).toFixed(2)} · safe ≤ 2.0`;
+     $('k-fl').classList.toggle('bad',p.fluoride>2.0);}
+   {const gas=(s.chemistry||{}).chlorine_source==='gas';$('cllab').textContent=gas?'Chlorine gas':'Chlorine';$('cllab').setAttribute('font-size',gas?'10':'11');}}
   $('r-ph').textContent=p.raw_ph.toFixed(2);$('r-alk').textContent=p.raw_alkalinity;$('r-tu').textContent=p.raw_turbidity;
   $('k-ph').classList.toggle('bad',p.ph>8.5||p.ph<6.5);$('k-cl').classList.toggle('bad',p.chlorine_residual>4||p.chlorine_residual<.2);
   $('k-lv').classList.toggle('bad',p.tank_level>95||p.tank_level<10);$('k-hocl').classList.toggle('warn',p.hocl_pct<20);

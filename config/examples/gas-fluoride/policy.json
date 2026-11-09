@@ -1,0 +1,143 @@
+{
+  "_doc": "Example plant with chlorine gas and a fluoride feed. Safety envelope enforced by the guard. min/max: absolute limits. max_step: largest change in one command. max_change_per_min: largest net change within any 60 s window (stops slow-ramp attacks). prediction: the digital twin simulates horizon_min ahead and blocks commands that would push the water outside these bands. Edit via the dashboard (engineer PIN) or here.",
+  "max_writes_per_min_per_source": 20,
+  "limits": {
+    "chlorine_dose": {
+      "min": 0.2,
+      "max": 4,
+      "max_step": 0.5,
+      "max_change_per_min": 0.6,
+      "reason": "dose cap; the residual itself (EPA max 4.0 mg/L) is checked by the twin"
+    },
+    "naoh_dose": {
+      "min": 0,
+      "max": 250,
+      "max_step": 50,
+      "max_change_per_min": 75,
+      "reason": "lye overdose pushes pH above the EPA 6.5-8.5 range"
+    },
+    "distribution_rate": {
+      "min": 100,
+      "max": 900,
+      "max_step": 200,
+      "max_change_per_min": 250,
+      "reason": "sudden flow changes cause pressure surges (water hammer)"
+    },
+    "intake_pump": {
+      "min": 0,
+      "max": 1,
+      "reason": "stopping it drains the clearwell",
+      "max_step": null,
+      "max_change_per_min": null,
+      "permit_values": [
+        0
+      ]
+    },
+    "distribution_pump": {
+      "min": 0,
+      "max": 1,
+      "reason": "stopping it cuts water to the town",
+      "max_step": null,
+      "max_change_per_min": null,
+      "permit_values": [
+        0
+      ]
+    },
+    "fluoride_dose": {
+      "min": 0.0,
+      "max": 1.2,
+      "max_step": 0.2,
+      "max_change_per_min": 0.3,
+      "reason": "fluoride feed cap; U.S. recommended level is 0.7 mg/L in the water, EPA secondary standard 2.0, enforceable maximum 4.0"
+    }
+  },
+  "interlocks": [
+    {
+      "register": "distribution_pump",
+      "value": 0,
+      "when": "tank_level",
+      "op": ">",
+      "threshold": 90,
+      "message": "can't stop distribution while clearwell is above 90% (overflow risk)"
+    },
+    {
+      "register": "intake_pump",
+      "value": 0,
+      "when": "tank_level",
+      "op": "<",
+      "threshold": 15,
+      "message": "can't stop intake while clearwell is below 15% (town runs dry)"
+    }
+  ],
+  "prediction": {
+    "enabled": true,
+    "horizon_min": 360,
+    "limits": {
+      "ph": [
+        6.5,
+        8.5
+      ],
+      "chlorine_residual": [
+        0.2,
+        4.0
+      ],
+      "tank_level": [
+        5,
+        100,
+        180
+      ],
+      "fluoride": [
+        0.0,
+        2.0
+      ]
+    },
+    "uncertainty": {
+      "naoh_feed_strength": 0.1,
+      "chlorine_decay_per_hr": 0.3,
+      "chlorine_demand": 0.25
+    },
+    "approval_margin": {
+      "chlorine_residual": 0.15,
+      "ph": 0.15
+    },
+    "_doc_approval_margin": "A change is approved only if its forecast stays this far inside the limits (chlorine >= 0.35 mg/L, pH 6.65-8.35). Warnings and safe-hold use the real limits; corrective changes only need to beat doing nothing.",
+    "budget_ms": 500,
+    "on_timeout": "static",
+    "margin": 0.01,
+    "block_registers": [
+      "naoh_dose",
+      "chlorine_dose",
+      "fluoride_dose"
+    ]
+  },
+  "max_reversals_per_10min": 4,
+  "max_large_reversals_per_hour": 6,
+  "_doc_max_large_reversals_per_hour": "Swings of at least half a max step that reverse direction more than this many times in an hour are refused (slow pump cycling).",
+  "max_reads_per_sec_per_ip": 50,
+  "read_cache_ms": 100,
+  "unknown_writers": "allow",
+  "lockdown": {
+    "enabled": true,
+    "after_blocks": 6,
+    "window_min": 60,
+    "_doc": "After this many refused commands from one source within window_min, that source may only make changes the twin forecasts as corrective, until an operator clears it on the console. Simulated operators were refused at most 3 times in a 12-hour shift."
+  },
+  "lab_inputs": {},
+  "_doc_lab_inputs": "Twin inputs the PLC doesn't measure, entered from lab grab samples: e.g. {\"raw_alkalinity\": {\"max_age_h\": 36}}. Older than max_age_h: twin chemistry pauses (static rules only) and the operator is alerted. python -m aegis.labinputs set raw_alkalinity 74 --by NAME",
+  "safe_hold": {
+    "enabled": true,
+    "after_min": 15,
+    "lookback_min": 720,
+    "hold_min": 240,
+    "registers": [
+      "naoh_dose",
+      "chlorine_dose",
+      "distribution_rate",
+      "fluoride_dose"
+    ],
+    "margin": 0.01,
+    "ack_valid_min": 60,
+    "_doc": "If the twin forecasts unsafe water and nobody acknowledges for after_min, restore the earlier value (within lookback_min) that fixes the forecast most, and hold it for hold_min (only corrective changes until released on the dashboard). An acknowledgement pauses it for ack_valid_min. Never acts in monitor mode or while the integrity monitor distrusts the sensors."
+  },
+  "_doc_unknown_writers": "gateway (route mode): 'block' makes every host not named in --sources read-only. Recommended once the writers are known."
+}

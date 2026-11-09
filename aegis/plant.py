@@ -30,10 +30,13 @@ from .process import HiFiModel, ProcessModel, ProcessState, Raw, hocl_fraction
 TAGS = Tags.load()
 HOLDING = {n: t.address for n, t in TAGS.holding.items()}   # writable tags (name -> address)
 UNITS = {n: t.unit for n, t in TAGS.all.items()}
-ALARMS = ["pH HIGH", "pH LOW", "CHLORINE HIGH", "CHLORINE LOW", "TANK HIGH", "TANK LOW"]
+ALARMS = ["pH HIGH", "pH LOW", "CHLORINE HIGH", "CHLORINE LOW", "TANK HIGH", "TANK LOW", "FLUORIDE HIGH"]
+FLUORIDE_ALARM = 2.0      # mg/L: EPA's secondary standard (the enforceable maximum is 4.0)
 
 NORMAL = {"intake_pump": 1, "distribution_pump": 1, "chlorine_dose": 1.5,
-          "naoh_dose": 100, "distribution_rate": 500}
+          "naoh_dose": 100, "distribution_rate": 500, "fluoride_dose": 0.5}
+# fluoride_dose only exists on plants whose tags.json has it; 0.5 mg/L added to ~0.2 natural = 0.7 mg/L,
+# the U.S. Public Health Service's recommended level
 SCENARIOS = {
     "normal": Raw(6.9, 77.0, 1.0),
     "storm": Raw(6.8, 55.0, 15.0),
@@ -53,7 +56,8 @@ def _true_params(fidelity: str = "standard") -> dict:
     p = load_process()
     # the real plant is never exactly the model
     p.update(naoh_feed_strength=p["naoh_feed_strength"] * 1.03,
-             chlorine_decay_per_hr=p["chlorine_decay_per_hr"] * 1.2)
+             chlorine_decay_per_hr=p["chlorine_decay_per_hr"] * 1.2,
+             fluoride_feed_gain=p.get("fluoride_feed_gain", 1.0) * 1.05)
     if fidelity == "high":          # structure the twin has wrong, not just parameters
         p.update(baffling_cells=p.get("baffling_cells", 1) + 1, kla_per_hr=0.25)
     return p
@@ -120,7 +124,8 @@ class Plant:
     def reset(self):
         self.compromise = None
         for k, v in NORMAL.items():
-            self.set(k, v)
+            if k in TAGS.holding:           # plants without a fluoride feed simply don't have that setpoint
+                self.set(k, v)
         self.set_scenario("normal", immediate=True)
         self.state: ProcessState = self.model.steady(self.raw, self.setpoints())
         self.demand_drift = 0.0
@@ -188,6 +193,7 @@ class Plant:
         if self.chlorine < 0.2: out.append("CHLORINE LOW")
         if self.tank_level > 95: out.append("TANK HIGH")
         if self.tank_level < 10: out.append("TANK LOW")
+        if "fluoride" in TAGS.all and self.state.fluoride > FLUORIDE_ALARM: out.append("FLUORIDE HIGH")
         return out
 
     def sensors(self) -> dict:
@@ -203,7 +209,9 @@ class Plant:
                 "raw_ph": round(self.raw.ph + self._noise(0.01), 2),
                 "raw_alkalinity": round(self.raw.alkalinity),
                 "raw_turbidity": round(self.raw.turbidity, 1),
-                "water_temp": round(self.raw.temp_c, 1)}
+                "water_temp": round(self.raw.temp_c, 1),
+                **({"fluoride": round(max(0.0, self.state.fluoride + self._noise(0.01)), 2)}
+                   if "fluoride" in TAGS.all else {})}
 
     def input_registers(self) -> list[int]:
         s = self.sensors()
@@ -238,6 +246,7 @@ class Plant:
         return {"ph": round(self.ph, 2), "chlorine_residual": round(self.chlorine, 2),
                 "naoh_dose_actual": self.physical_setpoints()["naoh_dose"],
                 "chlorine_dose_actual": self.physical_setpoints()["chlorine_dose"],
+                **({"fluoride": round(self.state.fluoride, 2)} if "fluoride" in TAGS.all else {}),
                 "compromised": bool(self.compromise), "sensors_frozen": bool(self.compromise and self.compromise.get("freeze"))}
 
     # ---- PLC: Modbus handler ----

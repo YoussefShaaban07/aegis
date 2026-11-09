@@ -10,7 +10,7 @@
 5. **AI-safe**: an AI copilot can only propose; Aegis checks its proposals like any other command.
 6. **Stolen passwords don't help**: a source refused 6 times is locked down, and a locked-down PC can't unlock itself even with the right password.
 
-Speaks **Modbus TCP, Modbus RTU over TCP (radio links to well sites) and EtherNet/IP (Allen-Bradley MicroLogix/SLC)**, the PLC family in this year's attacks. Starts in watch-only mode; no PLC reprogramming.
+Speaks **Modbus TCP, Modbus RTU over TCP (radio links to well sites) and EtherNet/IP (Allen-Bradley MicroLogix/SLC)**, the PLC family in this year's attacks. Covers lye (or lime, soda ash), chlorine (bleach or gas) and fluoride feeds. Starts in watch-only mode; no PLC reprogramming.
 
 **Evidence (simulated plant, measured, not assumed).**
 
@@ -22,7 +22,7 @@ Speaks **Modbus TCP, Modbus RTU over TCP (radio links to well sites) and EtherNe
 - Operator cost: 9 false twin blocks in 514 simulated operator writes (about 1 in 57), each one can be let through with *Allow this value once*; no operator was ever locked down.
 - A simulated year: **about 10 texts a week**, 24 on calm days in the whole year; 1 of 2,384 operator changes blocked.
 - Adds ~0.2 ms per command (static rules), ~13 ms with the twin.
-- 217 automated tests; tested against independent Modbus and EtherNet/IP clients (pymodbus, libmodbus, pycomm3).
+- 222 automated tests; tested against independent Modbus and EtherNet/IP clients (pymodbus, libmodbus, pycomm3).
 
 **Not yet done (said plainly).** Not tested on a real plant or real PLC hardware; the twin's chemistry matches the USGS reference code PHREEQC (mean 0.05 pH over 100 cases) but has not been checked against real plant data; no utility has used it yet.
 

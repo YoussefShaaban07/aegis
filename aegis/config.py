@@ -199,4 +199,10 @@ def save_policy(p: dict, path: Path = POLICY_PATH):
 
 
 def load_process(path: Path = PROCESS_PATH) -> dict:
-    return {k: v for k, v in json.loads(Path(path).read_text()).items() if not k.startswith("_")}
+    p = {k: v for k, v in json.loads(Path(path).read_text()).items() if not k.startswith("_")}
+    choices = {"alkali": ("naoh", "lime", "soda_ash", "bicarbonate"), "chlorine_source": ("hypochlorite", "gas"),
+               "fluoride_chemical": ("fsa", "na2sif6", "naf")}
+    for key, ok in choices.items():
+        if key in p and p[key] not in ok:
+            raise ValueError(f"process.json: {key} must be one of {', '.join(ok)} (got {p[key]!r})")
+    return p

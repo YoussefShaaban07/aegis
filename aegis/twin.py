@@ -34,7 +34,10 @@ from .process import ProcessModel, ProcessState, Raw, hocl_fraction, raw_from
 REQUIRED = ("ph", "chlorine_residual", "tank_level", "raw_ph", "raw_alkalinity", "raw_turbidity")
 DEFAULT_LIMITS = {"ph": [6.5, 8.5], "chlorine_residual": [0.2, 4.0], "tank_level": [5.0, 100.0, 180]}
 DEFAULT_UNCERTAINTY = {"naoh_feed_strength": 0.10, "chlorine_decay_per_hr": 0.30, "chlorine_demand": 0.25}
-LABELS = {"ph": ("pH", ""), "chlorine_residual": ("chlorine residual", " mg/L"), "tank_level": ("clearwell level", "%")}
+LABELS = {"ph": ("pH", ""), "chlorine_residual": ("chlorine residual", " mg/L"), "tank_level": ("clearwell level", "%"),
+          "fluoride": ("fluoride", " mg/L")}
+# Plants with a fluoride feed add "fluoride": [0, 2.0] to prediction.limits (2.0 mg/L = EPA secondary standard;
+# the enforceable maximum is 4.0). Not in DEFAULT_LIMITS: a plant without fluoride never forecasts it.
 
 
 @dataclass
@@ -51,7 +54,7 @@ class Verdict:
 # How far outside the band counts as "one unit" of badness, per variable. Dividing by the band width
 # made a total loss of disinfection (0.2 mg/L below a 0.2-4.0 band) look 20x smaller than a pH
 # excursion; these scales make 1 unit comparably serious for each variable.
-SCALE = {"ph": 1.0, "chlorine_residual": 0.2, "tank_level": 20.0}
+SCALE = {"ph": 1.0, "chlorine_residual": 0.2, "tank_level": 20.0, "fluoride": 0.5}
 
 RAW_KEYS = ("raw_ph", "raw_alkalinity", "raw_turbidity")
 RAW_BOUNDS = {"raw_ph": (5.5, 9.5), "raw_alkalinity": (5.0, 500.0), "raw_turbidity": (0.0, 300.0)}
@@ -129,6 +132,8 @@ class Twin:
     def _setpoints(self, state: dict, override: dict | None = None) -> dict:
         keys = ("intake_pump", "distribution_pump", "chlorine_dose", "naoh_dose", "distribution_rate")
         sp = {k: state.get(k) for k in keys}
+        if state.get("fluoride_dose") is not None:
+            sp["fluoride_dose"] = state["fluoride_dose"]
         sp.update(override or {})
         return sp
 
@@ -143,8 +148,11 @@ class Twin:
         while t <= horizon_min * 60 + 1e-6:
             if t >= next_pt - 1e-6:
                 ph = model.ph(s)
-                out.append({"min": round(t / 60), "ph": round(ph, 3), "chlorine_residual": round(s.chlorine, 3),
-                            "tank_level": round(s.tank_level, 2), "hocl_pct": round(100 * hocl_fraction(ph), 1)})
+                pt = {"min": round(t / 60), "ph": round(ph, 3), "chlorine_residual": round(s.chlorine, 3),
+                      "tank_level": round(s.tank_level, 2), "hocl_pct": round(100 * hocl_fraction(ph), 1)}
+                if "fluoride_dose" in sp:
+                    pt["fluoride"] = round(s.fluoride, 3)
+                out.append(pt)
                 next_pt += every_min * 60
             model.step(s, self._raw_at(state, slopes, t) if slopes else raw, sp, self.dt_s)
             t += self.dt_s
@@ -158,7 +166,10 @@ class Twin:
         if not sp.get("intake_pump"):
             return {"min": float("inf"), "ph": state["ph"], "chlorine_residual": state["chlorine_residual"]}
         ss = model.steady(raw, sp, state.get("tank_level", 60))
-        return {"min": float("inf"), "ph": model.ph(ss), "chlorine_residual": ss.chlorine}
+        out = {"min": float("inf"), "ph": model.ph(ss), "chlorine_residual": ss.chlorine}
+        if "fluoride_dose" in sp:
+            out["fluoride"] = ss.fluoride
+        return out
 
     @staticmethod
     def _violation(traj: list[dict], limits: dict) -> tuple[float, str | None, float | None, float | None]:
@@ -191,7 +202,8 @@ class Twin:
 
     # (variable, direction it's failing) -> (setpoint that moves it, sign of change that makes it worse)
     HARMFUL = {("chlorine_residual", "below"): ("chlorine_dose", -1), ("chlorine_residual", "above"): ("chlorine_dose", 1),
-               ("ph", "above"): ("naoh_dose", 1), ("ph", "below"): ("naoh_dose", -1)}
+               ("ph", "above"): ("naoh_dose", 1), ("ph", "below"): ("naoh_dose", -1),
+               ("fluoride", "above"): ("fluoride_dose", 1)}
 
     def _wrong_way(self, register: str, value: float, state: dict, base_viol: set):
         """Safety net for saturated cases (e.g. chlorine already forecast at zero either way): never

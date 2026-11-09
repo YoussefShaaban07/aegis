@@ -1,0 +1,20 @@
+{
+  "_doc": "Process parameters for the digital twin (and the simulator). Carbonate chemistry with temperature-dependent constants (water_temp sensor; 25 C if not measured). naoh_feed_strength converts the lye feed setpoint (ppm of feed solution) into mg/L NaOH actually added. baffling_cells: the clearwell as N stirred tanks in series (from your tracer study / baffling factor; 1 = unbaffled). kla_per_hr: CO2 exchange with air (0 = covered tank; fitted by calibration). chlorine_demand = demand_base + demand_per_ntu * turbidity.",
+  "alkali": "naoh",
+  "_doc_alkali": "Chemical on the alkali feed (the naoh_dose register, whatever it holds): naoh, lime, soda_ash or bicarbonate. Chlorine-only plants: leave naoh_dose out of tags.json.",
+  "capacity_gal": 100000,
+  "intake_gpm": 520,
+  "naoh_feed_strength": 0.1,
+  "chlorine_decay_per_hr": 0.15,
+  "chlorine_demand_base": 0.2,
+  "chlorine_demand_per_ntu": 0.08,
+  "baffling_cells": 3,
+  "kla_per_hr": 0.1,
+  "co2_sat": 1.4e-05,
+  "_doc_example": "Same plant as config/process.json, but chlorinated with chlorine gas and fluoridated with fluorosilicic acid.",
+  "chlorine_source": "gas",
+  "_doc_chlorine_source": "hypochlorite (liquid bleach, default) or gas: chlorine gas uses up ~1.4 mg/L alkalinity per mg/L fed, so pH drops.",
+  "fluoride_chemical": "fsa",
+  "_doc_fluoride_chemical": "fsa (fluorosilicic acid, ~2.6 mg/L alkalinity used per mg/L F), na2sif6 (sodium fluorosilicate, ~1.75) or naf (sodium fluoride, 0).",
+  "raw_fluoride": 0.2
+}

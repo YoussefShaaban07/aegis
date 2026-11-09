@@ -69,6 +69,9 @@ Short answers in plain words. Say the **bold line** first; add the rest only if 
 **21. You blocked the attack, but the water that already got through is still caustic. Why doesn't Aegis fix it?**
 **Lye already in the tank can't be taken back out; only fresh, normally dosed water flowing through brings pH down.** Aegis puts the dose back (safe-hold), and a "What now" text and dashboard box give the twin's recovery time (about 2 hours after the demo attack) and put the pump decision to the operator. Stopping the pump to town stays a person's decision: stopping it can drop pipe pressure, pull dirty water into the pipes and leave hydrants dry.
 
+**22. Does it only handle lye?**
+**No: lye (or lime and soda ash), chlorine as bleach or gas, and fluoride.** Fluoride matters here: in 1993 a faulty fluoride pump in a small Mississippi town sent water with up to 200 mg/L into homes (the limit is 4) and made dozens of people sick. Aegis blocks a commanded overfeed, and its forecast and alarm catch the water going over 2 mg/L. A pump failing on its own isn't a command, so there Aegis can only alarm, not block.
+
 ## The 2.5-minute script (same as the slide notes)
 
 Practise it out loud with a timer; the parts add up to 2:30 exactly, so aim for 2:20.

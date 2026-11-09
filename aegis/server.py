@@ -281,6 +281,8 @@ def state(who: dict = Depends(role("viewer"))):
     return {"plant": p.snapshot(), "history": [{k: h[k] for k in ("sim_t", "ph", "chlorine_residual", "hocl_pct",
                                                                   "naoh_dose", "chlorine_dose")} for h in hist],
             "forecast": S["forecast"], "sim_t": p.sim_time, "speed": p.speed,
+            "chemistry": {k: p.model.params.get(k, d) for k, d in (("chlorine_source", "hypochlorite"),
+                                                                   ("fluoride_chemical", "fsa"), ("alkali", "naoh"))},
             "guard_mode": g.mode, "guard_enabled": g.enabled,
             "log": log, "work_orders": S["orders"], "policy": g.policy,
             "alerts": list(S["alerter"].recent)[:20], "alerts_configured": S["alerter"].configured(),
@@ -553,6 +555,13 @@ def _alog(name: str, result: str):
 @app.post("/api/attack/lye")
 async def attack_lye(who: dict = Depends(role("operator", demo_only=True))):
     return _alog("Oldsmar-style lye 11,100 ppm (FC 6)", await attacks.lye_attack(GUARD_PORT))
+
+
+@app.post("/api/attack/fluoride")
+async def attack_fluoride(who: dict = Depends(role("operator", demo_only=True))):
+    if "fluoride_dose" not in HOLDING:
+        raise HTTPException(400, "this plant has no fluoride feed (see config/examples/gas-fluoride)")
+    return _alog("Fluoride overfeed 40 mg/L (FC 6)", await attacks.fluoride_attack(GUARD_PORT))
 
 
 @app.post("/api/attack/cip-lye")

@@ -14,7 +14,8 @@ One alert per crossing (re-armed when the forecast clears), nominal model
 from __future__ import annotations
 
 ALARM_BANDS = {"ph": (6.5, 8.5, 120, "pH", ""), "chlorine_residual": (0.2, 4.0, 120, "chlorine residual", " mg/L"),
-               "tank_level": (10.0, 95.0, 180, "clearwell level", "%")}
+               "tank_level": (10.0, 95.0, 180, "clearwell level", "%"),
+               "fluoride": (0.0, 2.0, 120, "fluoride", " mg/L")}      # only plants with a fluoride feed forecast it
 
 
 INFO_ONLY = {"tank_level:above"}
@@ -54,6 +55,8 @@ RECOVERY_TEXT = {
     "chlorine_residual:below": "Chlorine residual is below {limit:g} mg/L: the water isn't being disinfected. "
                                "Check the chlorine feed.",
     "chlorine_residual:above": "Chlorine residual is above {limit:g} mg/L. Check the chlorine feed.",
+    "fluoride:above": "Fluoride is above {limit:g} mg/L in water already made. Stop the fluoride feed and check "
+                      "the feed pump and saturator for siphoning.",
 }
 PUMP_TEXT = (" Until then, decide whether to stop P-2 to town or send the clearwell to waste. Aegis won't stop "
              "pumps on its own: stopping one can drop pipe pressure and pull dirty water in.")

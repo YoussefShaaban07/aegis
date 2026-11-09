@@ -82,6 +82,7 @@ Every write is checked in this order; the first failure blocks it:
 - **Tamper-evident audit log**: SQLite, hash-chained, HMAC-keyed if `AEGIS_AUDIT_KEY` is set. Head hash printed in reports so later rewrites are detectable. CSV export.
 - **Incident report** (`aegis/report.py`): timeline, sources, MITRE ATT&CK for ICS techniques, AI proposals, config changes, evidence integrity, and a "what this report does not establish" section.
 - **Operator alerts**: iMessage through [Photon Spectrum](https://photon.codes) (works with an iPhone, no Mac needed; `photon/bridge.ts`, started by `run.bat`) and/or SMS plus a phone call for critical events through Twilio. **Text back** `ACK` to acknowledge the newest alert or `STATUS` for the readings (only from numbers in `ALERT_TO`). *Send test text* button on the dashboard. Honest "not configured" otherwise.
+- **More chemical feeds**: chlorine **gas** as well as liquid bleach (gas uses up about 1.4 mg/L of alkalinity per mg/L fed, so pH drops), and a **fluoride** feed (fluorosilicic acid, sodium fluorosilicate or sodium fluoride) with its own range limit, twin forecast (limit 2.0 mg/L, EPA secondary standard), "What now" guidance and FLUORIDE HIGH alarm. Off unless a plant configures them: the default demo plant is unchanged (a 16-episode held-out run is identical before and after). Example plant: `config/examples/gas-fluoride` (`run_example.bat`). Checked against PHREEQC: mean pH difference 0.005 (fluorosilicic acid, 20 cases), 0.001 (sodium fluoride), 0.006 (chlorine gas, as its acid); `python -m scripts.validate_feeds_phreeqc`.
 - **Gateway mode** for a real PLC: guard-only, with the twin on if the PLC exposes the needed sensors.
 - **What-if** on the dashboard: ask the twin before you touch anything; the forecast is drawn on the trend chart.
 - **Robust twin**: every forecast runs across an uncertainty ensemble (lye feed ±10%, chlorine decay ±30%, demand ±25%) plus the long-run steady state; the worst case decides. Found necessary by our own evaluation (see below).
@@ -125,7 +126,7 @@ Every write is checked in this order; the first failure blocks it:
 pip install -r requirements.txt
 cp .env.example .env          # add GROQ_API_KEY for the AI copilot (free at console.groq.com)
 python -m aegis.server        # open http://127.0.0.1:8000
-python -m pytest -q           # 217 tests
+python -m pytest -q           # 222 tests
 python -m aegis.evaluate      # attack/operator evaluation (~10 min)
 python -m aegis.redteam       # prompt-injection red team against the real copilot (needs GROQ_API_KEY)
 python scripts/bench.py       # latency on your machine
