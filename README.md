@@ -4,8 +4,6 @@
 
 Built by **Youssef Shaaban** ([@YoussefShaaban07](https://github.com/YoussefShaaban07)) for the **VOXO Hatchathon 2026**, Legacy Tech track: *"Building tomorrow on the systems of today."*
 
-Inspired by [Control Seat (YC S26)](https://www.ycombinator.com/launches/RJ6-control-seat-the-operating-system-for-the-physical-world), an AI-native SCADA platform. Aegis focuses on one piece of that: making it safe to put AI (and anyone else) in front of the controllers small utilities already own.
-
 ![Aegis dashboard](docs/dashboard.png)
 
 | A fooled AI tries to raise lye to 9,000 (scripted demo model); Aegis blocks it | The on-call operator's phone |
