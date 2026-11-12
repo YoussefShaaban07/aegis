@@ -114,13 +114,23 @@ class Clock:
         return self.t
 
 
-def make_guard(plant: Plant, twin: bool, clock: Clock, policy: dict):
-    g = Guard(None, plant.snapshot, policy=policy, clock=clock, twin=Twin() if twin else None)
+def make_guard(plant: Plant, twin: bool, clock: Clock, policy: dict, audit=None):
+    """audit: optional AuditLog (use AuditLog(':memory:', clock=clock)) so the episode leaves a
+    hash-chained record; the Sentinel agent evaluation investigates those logs."""
+    g = Guard(None, plant.snapshot, policy=policy, clock=clock, twin=Twin() if twin else None, audit=audit)
     g.safehold = None
     if twin and SAFE_HOLD:
         from .safehold import SafeHold
         g.safehold = SafeHold(g, {**(policy.get("safe_hold") or {}), "enabled": True})
     return g
+
+
+def record(g: Guard, d, clock: "Clock") -> None:
+    """When the episode has an audit log, log the decision like the live gateway does (judge_writes ->
+    _record), stamped with simulated time. Without an audit log this is a no-op, so results are unchanged."""
+    if g.audit is not None:
+        d.t = clock.t
+        g._record(d)
 
 
 def run_safe_hold(g: Guard, plant: Plant, minute: int, every: int = 5):
@@ -134,13 +144,14 @@ def run_safe_hold(g: Guard, plant: Plant, minute: int, every: int = 5):
     return act
 
 
-def attack_episode(seed: int, use_twin: bool | None, policy: dict, hours: int = 8) -> dict:
+def attack_episode(seed: int, use_twin: bool | None, policy: dict, hours: int = 8, audit=None,
+                   clock: "Clock | None" = None) -> dict:
     """use_twin=None runs the same episode (same weather, same seed) with NO attacker: the baseline."""
     rng = random.Random(seed)
     plant = Plant(noise=True, seed=seed, fidelity=FIDELITY)
     plant.speed = 60
-    clock = Clock()
-    g = make_guard(plant, use_twin, clock, policy)
+    clock = clock or Clock()
+    g = make_guard(plant, use_twin, clock, policy, audit)
     goal = rng.choice(list(GOALS))
     strategy = rng.choice(STRATEGIES)
     reg, direction = GOALS[goal]
@@ -164,6 +175,7 @@ def attack_episode(seed: int, use_twin: bool | None, policy: dict, hours: int = 
     def attempt(new):
         nonlocal tries, blocked
         d = g.check(reg, new, seen(plant), src, peer)
+        record(g, d, clock)
         tries += 1
         if d.allowed:
             g._commit(d)
@@ -220,12 +232,13 @@ def attack_episode(seed: int, use_twin: bool | None, policy: dict, hours: int = 
             "forewarn_min": (harm_at - fore_at) if (harm_at is not None and fore_at is not None) else None}
 
 
-def operator_episode(seed: int, use_twin: bool, policy: dict, hours: int = 12) -> dict:
+def operator_episode(seed: int, use_twin: bool, policy: dict, hours: int = 12, audit=None,
+                     clock: "Clock | None" = None) -> dict:
     """A plausible operator: trims, reacts to weather, sometimes overshoots. Ground truth per write."""
     rng = random.Random(10_000 + seed)
     plant = Plant(noise=True, seed=seed, fidelity=FIDELITY)
-    clock = Clock()
-    g = make_guard(plant, use_twin, clock, policy)
+    clock = clock or Clock()
+    g = make_guard(plant, use_twin, clock, policy, audit)
     weather_at = rng.randint(30, hours * 60 - 120)
     weather = rng.choice(["storm", "bloom", "normal"])
     writes, reverts = [], []
@@ -258,6 +271,7 @@ def operator_episode(seed: int, use_twin: bool, policy: dict, hours: int = 12) -
                 lim = policy["limits"][reg]
                 new = round(min(lim["max"], max(lim["min"], cur + delta)), 2)
             d = g.check(reg, new, seen(plant), "Operator HMI", "10.0.0.5:5000")
+            record(g, d, clock)
             trial = copy.deepcopy(plant); trial.set(reg, new)
             truth_with, truth_without = forward_harm(trial), forward_harm(plant)
             writes.append({"reg": reg, "new": new, "allowed": d.allowed, "check": d.check,

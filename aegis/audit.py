@@ -45,7 +45,10 @@ def _hash(prev: str, t: float, kind: str, data: str, key: bytes | None = None) -
 
 
 class AuditLog:
-    def __init__(self, path: str | Path | None = None, key: str | None = None):
+    def __init__(self, path: str | Path | None = None, key: str | None = None, clock=None):
+        """clock: optional callable returning the entry timestamp. Default is wall time; the
+        evaluation harness passes its simulated clock so episodes produce a citable, replayable log."""
+        self.clock = clock or time.time
         k = key if key is not None else os.getenv("AEGIS_AUDIT_KEY", "")
         self.key = k.encode() if k else None
         self.path = str(path or os.getenv("AEGIS_DB", ROOT / "data" / "audit.db"))
@@ -80,7 +83,7 @@ class AuditLog:
         with self._lock:
             row = self.db.execute("SELECT hash FROM audit ORDER BY id DESC LIMIT 1").fetchone()
             prev = row[0] if row else GENESIS
-            t = time.time()
+            t = float(self.clock())
             payload = json.dumps(data, sort_keys=True, default=str)
             h = _hash(prev, t, kind, payload, self.key)
             cur = self.db.execute("INSERT INTO audit (t, kind, data, prev_hash, hash) VALUES (?,?,?,?,?)",
@@ -128,6 +131,13 @@ class AuditLog:
         q += " ORDER BY id LIMIT ?"; args.append(limit)
         with self._lock:
             rows = self.db.execute(q, args).fetchall()
+        return [{"id": i, "t": t, "kind": k, "data": json.loads(d), "hash": h} for i, t, k, d, h in rows]
+
+    def after(self, last_id: int, limit: int = 5000) -> list[dict]:
+        """Entries with id > last_id, oldest first (for consumers that tail the log, e.g. Sentinel)."""
+        with self._lock:
+            rows = self.db.execute("SELECT id, t, kind, data, hash FROM audit WHERE id > ? ORDER BY id LIMIT ?",
+                                   (last_id, limit)).fetchall()
         return [{"id": i, "t": t, "kind": k, "data": json.loads(d), "hash": h} for i, t, k, d, h in rows]
 
     def export_csv(self) -> str:
