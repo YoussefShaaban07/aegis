@@ -14,6 +14,7 @@ Triggers (spec section 4.1)
     forecast_warning    only if a write was allowed in the previous 60 min (otherwise it is weather,
                         handled by the operator, not an incident)
     ai_reply_flagged    always
+    proposal            an AI copilot proposal the guard pre-check blocked (never Sentinel's own)
     auth_failure        3 or more within 10 min
     safe_hold           always (Aegis had to revert a setpoint)
 
@@ -199,6 +200,8 @@ class IncidentManager:
             return False, False, ""
         if k == "ai_reply_flagged":
             return True, False, "AI reply flagged"
+        if k == "proposal" and d.get("status") == "blocked" and d.get("source") != "Sentinel":
+            return True, False, "AI proposal blocked by the guard"
         if k == "auth_failure":
             self._auth.append((t, e["id"]))
             while self._auth and t - self._auth[0][0] > self.cfg["auth_window_s"]:

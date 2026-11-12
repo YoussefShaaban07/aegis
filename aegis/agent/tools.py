@@ -31,7 +31,7 @@ TEXT_MAX = 300
 TREND_TAGS = ("ph", "chlorine_residual", "tank_level", "flow_out", "raw_ph", "raw_alkalinity", "raw_turbidity",
               "hocl_pct", "water_temp", "naoh_dose", "chlorine_dose", "distribution_rate", "fluoride")
 SETPOINTS = ("naoh_dose", "chlorine_dose", "distribution_rate", "fluoride_dose")
-HUMAN_KINDS = ("login", "logout", "auth_failure", "auth_denied", "permit_issued", "allow_once", "allow_once_used",
+HUMAN_KINDS = ("login", "logout", "dashboard_view", "auth_failure", "auth_denied", "permit_issued", "allow_once", "allow_once_used",
                "alert_ack", "alert_reply_ignored", "policy_change", "guard_mode", "guard_toggle", "settings",
                "lockdown_cleared", "hold_released", "proposal_decision", "lab_input", "lab_input_rejected",
                "grab_sample")
@@ -111,9 +111,17 @@ class Evidence:
         self.verify = self.audit.verify()
         self.head = self.audit.head()
         start = self.incident.opened_t - WINDOW_BEFORE_S
-        end = self.now if self.now is not None else max(self.incident.last_t, self.incident.opened_t)
-        rows = [e for e in self.audit.between(start, None) if e["id"] <= self.head["id"]]
-        end = max([end] + [e["t"] for e in rows])
+        if self.now is not None:
+            # replay (evaluation): evidence is what existed at `now`; nothing after it is visible
+            rows = self.audit.between(start, self.now)
+            prior = self.audit.between(0, self.now)
+            if prior:
+                self.head = {"id": prior[-1]["id"], "hash": prior[-1]["hash"]}
+            end = self.now
+        else:
+            rows = [e for e in self.audit.between(start, None) if e["id"] <= self.head["id"]]
+            end = max([self.incident.last_t] + [e["t"] for e in rows])
+        rows = [e for e in rows if e["id"] <= self.head["id"]]
         self.window = (start, end)
         self.entries = rows
         self.by_id = {e["id"]: e for e in rows}
