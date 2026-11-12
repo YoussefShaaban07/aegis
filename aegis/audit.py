@@ -140,6 +140,24 @@ class AuditLog:
                                    (last_id, limit)).fetchall()
         return [{"id": i, "t": t, "kind": k, "data": json.loads(d), "hash": h} for i, t, k, d, h in rows]
 
+    def check_rows(self, ids: list[int]) -> dict[int, dict]:
+        """Per-entry integrity check, for citing single entries as evidence. For each id: does the row
+        exist, does its stored hash match a recomputation from its own contents, and does it link to the
+        previous row's hash. (verify() checks the whole chain; this pinpoints individual rows.)"""
+        out: dict[int, dict] = {}
+        with self._lock:
+            for i in ids:
+                r = self.db.execute("SELECT id, t, kind, data, prev_hash, hash FROM audit WHERE id=?", (i,)).fetchone()
+                if r is None:
+                    out[i] = {"exists": False, "hash_ok": False, "link_ok": False}
+                    continue
+                _, t, k, d, p, h = r
+                prev = self.db.execute("SELECT hash FROM audit WHERE id < ? ORDER BY id DESC LIMIT 1", (i,)).fetchone()
+                out[i] = {"exists": True, "hash_ok": _hash(p, t, k, d, self.key) == h,
+                          "link_ok": p == (prev[0] if prev else GENESIS), "t": t, "kind": k,
+                          "data": json.loads(d), "hash": h}
+        return out
+
     def export_csv(self) -> str:
         buf = io.StringIO()
         w = csv.writer(buf)
