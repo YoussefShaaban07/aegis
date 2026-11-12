@@ -133,6 +133,13 @@ class AuditLog:
             rows = self.db.execute(q, args).fetchall()
         return [{"id": i, "t": t, "kind": k, "data": json.loads(d), "hash": h} for i, t, k, d, h in rows]
 
+    def after(self, last_id: int, limit: int = 5000) -> list[dict]:
+        """Entries with id > last_id, oldest first (for consumers that tail the log, e.g. Sentinel)."""
+        with self._lock:
+            rows = self.db.execute("SELECT id, t, kind, data, hash FROM audit WHERE id > ? ORDER BY id LIMIT ?",
+                                   (last_id, limit)).fetchall()
+        return [{"id": i, "t": t, "kind": k, "data": json.loads(d), "hash": h} for i, t, k, d, h in rows]
+
     def export_csv(self) -> str:
         buf = io.StringIO()
         w = csv.writer(buf)
