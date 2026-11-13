@@ -53,8 +53,9 @@ def consistent(cls: str, F: dict | None) -> bool:
         return True
     v = lambda k: (F.get(k) or {}).get("value")
     blocked = v("n_blocked") or 0
-    if cls in NEEDS_KNOWN_SOURCE and blocked and v("source_known") is False:
-        return False                          # an operator (or the operator's PC) is a source the plant knows
+    if blocked and v("source_known") is False and cls not in ("external_attack", "ai_manipulation",
+                                                              "insufficient_evidence"):
+        return False                          # an unknown device writing to the PLC is never weather or an operator
     if cls == "external_attack" and v("registered_source") and not v("recon_fc"):
         return False                          # a registered IP + label is the plant's own machine
     if cls == "plc_or_sensor_integrity" and not any(v(k) for k in ("drift_without_decision", "physics_mismatch",
@@ -223,6 +224,10 @@ class Sentinel:
                 fallback = f"model error: {type(ex).__name__}"
         else:
             fallback = "no model configured"
+        overridden = []
+        if verdict is not None and not consistent(verdict.classification.primary, det["F"]):
+            overridden.append(f"model class {verdict.classification.primary} contradicts the hard facts")
+            verdict, fallback = None, "model verdict contradicted hard facts"
         if verdict is None:
             verdict = det["draft"]
             self._log("agent_fallback", {"incident": incident.id, "reason": fallback})
@@ -239,6 +244,10 @@ class Sentinel:
             val = C.validate(ev, verdict, det["F"])
         live = (ev.latest_state() or (0, {}))[1]
         rcheck = check_reply(verdict.summary_for_operator, live)
+        if not rcheck["ok"]:
+            # never send flagged text (wrong readings, dangerous advice) to the operator's phone
+            overridden.append("operator summary flagged by the reply guard: " + "; ".join(rcheck["flags"])[:200])
+            verdict = verdict.model_copy(update={"summary_for_operator": det["draft"].summary_for_operator})
         self._log("agent_validation", {"incident": incident.id, "checked": val["checked"], "passed": val["passed"],
                                        "removed": len(removed), "reply_ok": rcheck["ok"]})
         cls = verdict.classification.primary
@@ -254,7 +263,7 @@ class Sentinel:
                   "model": self.model if self.mode == "llm" else None, "fallback": fallback,
                   "verdict": verdict.model_dump(by_alias=True), "baseline": det["baseline"],
                   "learned": det["learned"], "similar": det["similar"], "validation": val, "removed": removed,
-                  "repairs": repairs, "reply_check": rcheck, "recovery": rec, "counterfactual": cf, "steps": steps,
+                  "repairs": repairs, "reply_check": rcheck, "overridden": overridden, "recovery": rec, "counterfactual": cf, "steps": steps,
                   "tool_calls": self._calls, "elapsed_s": round(time.monotonic() - t0, 2),
                   "chain_end": {"ok": self.audit.verify()["ok"], "head": self.audit.head()}}
         rep = REP.build(ev, result)

@@ -120,6 +120,13 @@ details.demo>.in{padding:0 14px 12px}
 #p-ops svg stop[stop-color="#8b949b"]{stop-color:var(--lvl1)}#p-ops svg stop[stop-color="#6b7379"]{stop-color:var(--lvl2)}
 #simbanner{background:var(--panel2);color:var(--muted);border-bottom:1px solid var(--line)}
 </style>
+<style>
+.sen{border:1px solid #ccd;border-radius:8px;padding:8px 10px;margin:6px 0}
+.sen .badge{display:inline-block;padding:1px 7px;border-radius:10px;font-size:11px;font-weight:600;color:#fff;background:#667}
+.sen .HIGH{background:#c0392b}.sen .MEDIUM{background:#d68910}.sen .LOW{background:#1e8449}
+.sen pre{white-space:pre-wrap;margin:4px 0;font:inherit}
+.sen .steps{font-size:12px;margin-top:4px}
+</style>
 </head>
 <body>
 <div id="login"><div class="box"><h1 style="margin:0 0 4px;font-size:20px">AEGIS</h1>
@@ -234,6 +241,8 @@ details.demo>.in{padding:0 14px 12px}
       <div class="trace" id="trace"></div>
       <h2 style="margin-top:14px">AI proposals awaiting the operator</h2>
       <div id="props"><div class="trace">None.</div></div>
+      <h2 style="margin-top:14px">Sentinel incidents <span class="sp"></span><span class="trace" id="agentmode" style="margin:0"></span></h2>
+      <div id="agentinc"><div class="trace">No incidents yet.</div></div>
       <h2 style="margin-top:14px">Maintenance work orders (read by the AI)</h2>
       <div id="orders"></div>
     </div>
@@ -612,6 +621,34 @@ async function load(){let s;try{const r=await fetch('/api/state');if(r.status===
   $('acc').innerHTML=`<table class="t"><tr><th>forecast ahead</th><th>samples</th><th>pH mean abs error</th><th>chlorine mean abs error</th></tr>${Object.entries(A).map(([k,v])=>`<tr><td>${k} min</td><td>${v.n}</td><td>${v.ph_mae??'–'}</td><td>${v.cl_mae==null?'–':v.cl_mae+' mg/L'}</td></tr>`).join('')}</table><div class="trace">skipped (setpoint changed before due): ${s.accuracy.skipped}</div>`;
 }
 load();setInterval(load,600);
+</script>
+<script>
+// Sentinel incident cards. Read-only view: Sentinel's fix proposals are approved in the AI proposals panel above.
+const SEN_NAMES={external_attack:'External attack',compromised_trusted_source:'Compromised HMI PC',operator_error:'Operator error',
+  process_or_weather:'Process / weather',plc_or_sensor_integrity:'PLC / sensor integrity',ai_manipulation:'AI copilot manipulation',
+  benign_false_positive:'False positive',insufficient_evidence:'Insufficient evidence'};
+const senOpen=new Set();
+async function senSteps(id,keep){const el=document.getElementById('sensteps'+id);if(!el)return;
+  if(senOpen.has(id)&&!keep){senOpen.delete(id);el.innerHTML='';return;}
+  senOpen.add(id);const r=await fetch(`/api/agent/incidents/${id}`);if(!r.ok)return;const j=await r.json();
+  el.innerHTML=((j.result||{}).steps||[]).map(x=>`<div>&bull; <b>${esc(x.tool||x.kind)}</b> ${esc(x.args?JSON.stringify(x.args):'')} &rarr; ${esc(x.summary||'')}</div>`).join('')||'No steps yet.';}
+function senCard(i){
+  const props=(i.proposals||[]).filter(Boolean);
+  return `<div class="sen"><span class="badge ${esc(i.severity||'')}">${esc(SEN_NAMES[i.classification]||i.state)}</span>`+
+    (i.confidence?` <span class="trace" style="margin:0 6px">confidence ${esc(i.confidence)}</span>`:'')+
+    `<span class="trace" style="margin:0">#${i.id} &middot; ${esc(i.state)} &middot; ${i.events} events`+
+    (i.validity!=null?` &middot; citations ${Math.round(100*i.validity)}% verified`:'')+`</span>`+
+    (i.summary?`<pre>${esc(i.summary)}</pre>`:'<div class="trace">Collecting evidence&hellip;</div>')+
+    (props.length?`<div class="trace">Fix proposals waiting: ${props.map(x=>'#'+x).join(', ')} (approve above)</div>`:'')+
+    (i.classification?`<div><a href="/api/agent/incidents/${i.id}/report" target="_blank">Full report</a> &middot; <a href="#" onclick="senSteps(${i.id});return false">How Sentinel got here</a></div><div class="steps" id="sensteps${i.id}"></div>`:'')+
+    `</div>`;}
+async function senLoad(){let j;try{const r=await fetch('/api/agent/incidents');if(!r.ok)return;j=await r.json();}catch(e){return;}
+  const m=document.getElementById('agentmode');
+  if(m)m.textContent=j.enabled?(j.mode==='llm'?'model: '+j.model:'deterministic (no model)'):'disabled';
+  const el=document.getElementById('agentinc');if(!el)return;
+  el.innerHTML=j.incidents.length?j.incidents.slice(0,6).map(senCard).join(''):'<div class="trace">No incidents yet.</div>';
+  for(const id of senOpen)senSteps(id,true);}
+senLoad();setInterval(senLoad,3000);
 </script>
 </body>
 </html>

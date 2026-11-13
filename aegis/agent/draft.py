@@ -9,9 +9,10 @@ from __future__ import annotations
 from .schema import Verdict
 
 SIGNALS = {
-    "external_attack": ["recon_fc", "lockdown", "writes_after_block", "monotone_push", "probing"],
-    "compromised_trusted_source": ["ip_matches_label", "monotone_push", "regular_interval", "probing",
-                                   "writes_after_block", "lockdown"],
+    # "!name" = the signal is absent (value False), e.g. the source was never seen before
+    "external_attack": ["!source_known", "recon_fc", "lockdown", "writes_after_block", "monotone_push", "probing"],
+    "compromised_trusted_source": ["ip_matches_label", "!human_present", "monotone_push", "regular_interval",
+                                   "probing", "writes_after_block", "lockdown"],
     "operator_error": ["human_present", "correction_follows", "weather_aligned"],
     "process_or_weather": ["harm_forecast_without_writes", "forecast_warnings", "raw_water_changed_recently"],
     "plc_or_sensor_integrity": ["drift_without_decision", "physics_mismatch", "stuck_sensor", "lab_disagrees"],
@@ -40,7 +41,15 @@ LABEL = {"external_attack": "Likely an outside device writing to the plant.",
 
 
 def _signal(ev, F, key):
+    neg = key.startswith("!")
+    key = key.lstrip("!")
     f = F.get(key) or {}
+    if neg:
+        if f.get("value") is not False:
+            return None
+        # an absence is shown by the entries it is about: the incident's own triggering writes
+        ids = [i for i in ev.incident.trigger_ids if i in ev.by_id][:5]
+        return {"text": f"Signal {key} is absent for these writes.", "cite": ids} if ids else None
     ids = [i for i in f.get("ids") or [] if i in ev.by_id][:8]
     if not f.get("value") or not ids:
         return None
@@ -81,7 +90,7 @@ def build(ev, F: dict, cls: str, confidence: str, alternatives: list[str] = ()) 
         if ids:
             techs.append({"id": "LLM01", "name": "Prompt injection", "cite": ids})
     blocked = (F.get("n_blocked") or {}).get("value") or 0
-    summary = LABEL[cls] + "\n" + (f"Aegis blocked {blocked} write(s)." if blocked else "No write was blocked.")
+    summary = LABEL[cls] + " " + (f"Aegis blocked {blocked} write(s)." if blocked else "No write was blocked.")
     return Verdict.model_validate({
         "classification": {"primary": cls, "secondary": None, "confidence": confidence, "rationale": claims[:6]},
         "hypotheses": hyps[:6],

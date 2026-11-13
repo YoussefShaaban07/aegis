@@ -50,7 +50,7 @@ def build(ev, result: dict) -> dict:
     if rr:
         L.append(f"- Remaining risk: **{NAMES.get(rr, rr)}**: the forecast stays unsafe even without the "
                  "incident's writes.")
-    L.append(f"- Operator summary: {v['summary_for_operator']}")
+    L.append(f"- Operator summary: {' / '.join(x.strip() for x in v['summary_for_operator'].splitlines() if x.strip())}")
     b, lm = result.get("baseline") or {}, result.get("learned") or {}
     L.append(f"- Cross-checks: rule baseline says **{b.get('primary')}** ({b.get('rule')}); learned classifier says "
              f"**{lm.get('primary', 'n/a')}** (p={lm.get('p', 'n/a')}).")
@@ -91,9 +91,9 @@ def build(ev, result: dict) -> dict:
     for h in v.get("hypotheses") or []:
         L.append(f"- **{h['name']}**: {h['status']}")
         for c in h.get("for") or []:
-            L.append(f"  - for: {c['text']}{_cite(c['cite'])}")
+            L.append(f"- {h['name']}, for: {c['text']}{_cite(c['cite'])}")
         for c in h.get("against") or []:
-            L.append(f"  - against: {c['text']}{_cite(c['cite'])}")
+            L.append(f"- {h['name']}, against: {c['text']}{_cite(c['cite'])}")
     L.append("")
     L.append("## 5. Impact")
     cf = result.get("counterfactual")
@@ -138,6 +138,8 @@ def build(ev, result: dict) -> dict:
     val = result.get("validation") or {}
     L.append(f"- Citation check: {val.get('passed', 0)}/{val.get('checked', 0)} claims verified"
              f" (validity {100 * val.get('validity', 1):.0f}%); repair rounds: {result.get('repairs', 0)}.")
+    for o in result.get("overridden") or []:
+        L.append(f"- Safety override: {o}")
     for x in result.get("removed") or []:
         L.append(f"- Removed: unsupported: \"{x['text'][:120]}\" ({'; '.join(x['errors'])[:160]})")
     L.append(f"- Evidence frozen at entry #{ev.head.get('id')} hash `{ev.head.get('hash')}`; chain "
@@ -150,9 +152,8 @@ def build(ev, result: dict) -> dict:
     if result.get("similar"):
         L.append("- Similar past incidents (training library): " + ", ".join(
             f"{s['label']} (d={s['distance']})" for s in result["similar"][:5]))
-    L.append("- Sentinel's steps:")
     for s in result.get("steps") or []:
-        L.append(f"  - {s.get('tool') or s.get('kind')}: {str(s.get('args', ''))[:120]} → {s.get('summary', '')[:120]}")
+        L.append(f"- Step: {s.get('tool') or s.get('kind')} {str(s.get('args') or '')[:120]} → {s.get('summary', '')[:120]}")
     det = base_report.build(ev.entries, ev.verify, ev.head, "plant", ev.window[0], ev.window[1])
     md = "\n".join(L) + "\n\n---\n\n" + det["markdown"].replace("# Aegis incident report", "## Deterministic report")
     return {"markdown": md, "html": to_html(md, f"Sentinel incident #{ev.incident.id}"),
