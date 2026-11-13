@@ -156,7 +156,9 @@ def main(argv=None):
     s = summarise(res)
     out = Path(a.out)
     out.parent.mkdir(parents=True, exist_ok=True)
-    Path(str(out) + ".json").write_text(json.dumps({"summary": s, **res}, default=str))
+    import gzip
+    with gzip.open(str(out) + ".json.gz", "wt") as f:          # compressed: eval output must not bloat the repo
+        json.dump({"summary": s, **res}, f, default=str)
     Path(str(out) + ".md").write_text(markdown(res, s))
     print(markdown(res, s))
 

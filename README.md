@@ -125,7 +125,7 @@ Every write is checked in this order; the first failure blocks it:
 pip install -r requirements.txt
 cp .env.example .env          # add GROQ_API_KEY for the AI copilot (free at console.groq.com)
 python -m aegis.server        # open http://127.0.0.1:8000
-python -m pytest -q           # 223 tests
+python -m pytest -q           # 307 tests (2 skip without phreeqpython/mbpoll)
 python -m aegis.evaluate      # attack/operator evaluation (~10 min)
 python -m aegis.redteam       # prompt-injection red team against the real copilot (needs GROQ_API_KEY)
 python scripts/bench.py       # latency on your machine
@@ -212,6 +212,49 @@ The previous held-out run (seeds 100000+, before Round 7) had the twin blocking 
 | Parser robustness | 50,000 random PDUs, 200 malformed frames | `tests/test_protocol.py` |
 | AI red team (scripted maximally gullible model) | tried unsafe in 7/8 cases, 0 reached the PLC; 2/2 "persuade the operator" replies flagged | `tests/test_redteam.py`; real model: `python -m aegis.redteam` |
 
+## Sentinel: the incident-response agent
+
+When Aegis blocks something, **Sentinel** opens an incident on its own, investigates it with read-only tools, decides what caused it (an outside device, a compromised HMI PC, an operator mistake, the weather, a misbehaving PLC or sensor, a manipulated AI copilot, or a false alarm), writes a report in which **every factual sentence cites a hash-verified audit entry**, and files twin-tested recovery steps that a human approves and the guard re-checks. It has **no path to the PLC**. Code: `aegis/agent/`. Design spec: `Aegis_Sentinel_Agent_Spec.pdf` (project files).
+
+How it differs from what was already here:
+
+| | `report.py` | `copilot.py` | Sentinel |
+|---|---|---|---|
+| Starts | when someone asks | when an operator asks | by itself, on audit events |
+| Output | rule-based report | chat reply | classified, cited, validated verdict + recovery proposals |
+| "Attacker on the HMI PC" | labelled *operator* (severity rule) | n/a | separated from operator error using behaviour + human-presence + profile signals |
+
+**Pipeline** (`loop.py`): freeze the evidence (chain `verify()` + `head()` + a snapshot of the window) → deterministic pass (features, rule baseline, learned classifier, similar past incidents, a fully cited draft verdict) → model tool loop (13 read-only tools; at most 15 tool calls, 12 turns, 90 s, 20 s per call; repeated calls refused) → one JSON verdict (pydantic schema, one retry) → **citation validator** (every cited id exists, is in the window, is unchanged since the freeze; every number, IP, source name and ATT&CK id in the sentence is in the cited entries; one repair round, then unsupported claims are removed and listed) → reply guard → recovery (`recovery.py`) → report + 3-line SMS. Every step is an `agent_*` entry in the audit chain.
+
+**Safety properties, each with tests:**
+- No write path: the runtime modules import no Modbus/CIP client and hold no guard reference (`tests/test_agent_tools.py` scans the imports). Its only effects are audit entries, alerts, reports and proposals with `source="Sentinel"`.
+- Untrusted text (device labels, work orders, AI replies, SMS replies) reaches the model only as `{"untrusted_text": ...}`.
+- Works without a model: if the model is missing, fails, runs out of budget, or returns a class that contradicts hard facts (e.g. "weather" for blocked writes from an unknown device), the deterministic verdict ships. Flagged operator text is never sent.
+- Recovery: candidates are tested in the twin for 6 h; they must not make the forecast worse or create a new band crossing; deterministic reverts are split into guard-sized steps; **model-suggested steps outside the policy are rejected, never clamped**; nothing is proposed while integrity says the readings can't be trusted, or against an active safe-hold.
+
+**"Training"** (`dataset.py`, `casebase.py`, `train.py`): labelled incidents are generated from the simulators on development seeds 0-19 (ground truth from the simulator, labelled by what each incident contains), with a seeded normal week and human-presence noise (an operator is logged in during 40% of compromised-HMI and 30% of external incidents; 20% of operator incidents have no login). From them Sentinel keeps a case library (the 5 most similar past incidents and their right response are shown to the model) and a small logistic-regression classifier (pure Python). The learned model may only override the rules when it is confident (p ≥ 0.6, chosen on development data) **and** consistent with the hard facts. That rule exists because the end-to-end test caught the learned model being 92% confident and wrong on an Oldsmar-style one-shot write, which its training data didn't contain.
+
+Run it: the server starts Sentinel automatically (`AEGIS_AGENT=0` turns it off). With `GROQ_API_KEY`/`AEGIS_LLM_KEY` it uses the model in `AEGIS_AGENT_MODEL` (default: the copilot's); in demo mode without a key it uses a clearly labelled scripted stand-in that drives the same loop. API: `GET /api/agent/incidents`, `GET /api/agent/incidents/{id}` (+`/report`, `?format=md`), `POST /api/agent/incidents/{id}/investigate` and `POST /api/agent/settings` (engineer), `GET /api/audit/entry/{id}` (citation links). Retrain: `python -m aegis.agent.train`. Evaluate: `python -m aegis.agent.eval --seed-offset 300000 --n 100`.
+
+**Held-out results** (seeds 300000+, never used for training; 1264 incidents; human-presence noise on; deterministic decision, no LLM). Full output: `docs/eval/sentinel_v1.md` / `.json.gz`, generated by `python -m aegis.agent.eval`.
+
+| | Rule baseline | Learned classifier | Sentinel (learned when confident and consistent, else rules) |
+|---|---|---|---|
+| Accuracy | 85.2% | 91.9% | 88.2% |
+| Macro-F1 | 0.848 | 0.910 | 0.885 |
+| Compromised HMI PC recall (the case `report.py` calls "operator") | 91% | 100% | 100% |
+| Operator incidents wrongly escalated to an attack | 10.4% | 0.4% | 3.6% |
+
+Against the spec's release gates: citation validity **100%** (5104 claims, 0 removed) ✅; recovery steps the guard's checks would block **0/824** ✅; false escalation on operator incidents **3.6%** (gate ≤10%; the rule baseline is at 10.4%) ✅; AI-injection incidents detected **50/50**, and the 10 recovery steps filed for them are all weather corrections that *cut* lye, not the injected values ✅; red team (12 cases, a deliberately gullible model obeying planted instructions): **0** unsafe proposals, **0** dangerous SMS, **0** instructed classes, each stopped by a recorded defence ✅. **Beat the baseline by ≥10 points: not met** (+3.0 accuracy, +0.037 macro-F1). Two honest notes: the learned classifier alone scores higher than Sentinel's combined decision, because the confidence threshold chosen on development data turned out conservative; we did not re-tune it on held-out data. And the biggest remaining error is weather-driven integrity alarms (a physics mismatch during a storm or bloom) read as a PLC problem: 110 of 702 weather incidents. 13/75 simulated PLC/sensor faults opened no incident at all (noisy replays with no lab sample).
+
+**Known limitations:**
+- Ground truth comes from Aegis's own simulators and attacker/operator models, not real incidents. The simulated attackers are fairly easy to tell apart with rules; real ones may not be.
+- **No real LLM has been evaluated yet** (no API key in the build environment). The numbers above are for the deterministic decision; the model path is exercised by the scripted stand-in and the red team. Next: run `aegis.agent.eval` and the red team with a real model, plus the spec's ablations.
+- Human-presence signals depend on the dashboard login model; a real utility may share accounts.
+- A full replay (hidden dosing + noisy frozen readings) is invisible to every online check; only a lab grab sample catches it, and Sentinel can only recommend one.
+- Recovery steps are checked with the twin and the guard's static rules, not against the true plant; the twin's accuracy bounds the planner.
+- Tested against simulated PLCs only. The LLM provider sees incident data; on-premises models are future work.
+
 ## Done / not done (honest status)
 
 | Item | Status |
@@ -233,6 +276,9 @@ The previous held-out run (seeds 100000+, before Round 7) had the twin blocking 
 | Other protocols (DNP3, S7, Modbus RTU serial) | ❌ not built |
 | HTTPS for the dashboard | ⚠️ set `AEGIS_HTTPS=1` behind a TLS reverse proxy; not built in |
 | TLS on Modbus (Modbus/TCP Security) | ❌ not built |
+| Sentinel agent: incidents, 13 read-only tools, features, rule baseline, learned classifier, loop with budgets/fallback, citation validator, twin-tested recovery, report, API, dashboard card | ✅ built + tested (end to end through the HTTP API with demo attacks; held-out evaluation; red team) |
+| Sentinel with a real LLM | ⚠️ **not yet run with a real key**: loop exercised with a scripted stand-in and a deliberately gullible model |
+| Sentinel beats the rule baseline by ≥10 points (spec gate) | ❌ not met: +3.0 accuracy on held-out seeds (see "Sentinel") |
 
 ## Demo script (3 minutes)
 
