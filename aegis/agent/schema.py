@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import re
+import warnings
 from typing import Literal
 
 from pydantic import BaseModel, Field, ValidationError, field_validator
@@ -48,6 +49,9 @@ class Technique(BaseModel):
     id: str = Field(pattern=r"^(T0\d{3}|LLM\d{2})$")
     name: str = Field(max_length=60)
     cite: list[int] = Field(default_factory=list, max_length=20)
+
+
+warnings.filterwarnings("ignore", message='Field name "register"')
 
 
 class Step(BaseModel):

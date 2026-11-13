@@ -27,6 +27,9 @@ SUMMARY_KEYS = ("primary_source", "source_known", "ip_matches_label", "human_pre
                 "harm_forecast_without_writes", "writes_make_forecast_worse", "weather_aligned")
 
 
+META_KEYS = ("seed", "goal", "strategy", "weather", "kind", "injection", "human")
+
+
 def _softmax(z):
     m = max(z)
     e = [math.exp(x - m) for x in z]
@@ -110,7 +113,8 @@ class CaseBase:
             for r, z in items[:per]:
                 lib.append({"cid": r["cid"], "label": lab, "z": [round(v, 4) for v in z],
                             "summary": {k: (r["F"].get(k) or {}).get("value") for k in SUMMARY_KEYS},
-                            "response": CONTAIN.get(lab, [])[:2], "meta": r.get("meta", {})})
+                            "response": CONTAIN.get(lab, [])[:2],
+                            "meta": {k: v for k, v in (r.get("meta") or {}).items() if k in META_KEYS}})
         return cls({"version": 1, "feature_names": vector_names(), "mean": mean, "std": std, "classes": classes,
                     "model": {"W": W, "b": b}, "cases": lib, "trained_on": meta or {},
                     "n_train": len(rows), "class_counts": {c: y.count(c) for c in classes}})
