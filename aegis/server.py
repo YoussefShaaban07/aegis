@@ -22,6 +22,7 @@ from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 
 from . import attacks, modbus
+from .agent.service import Service as AgentService, attach as attach_agent
 from .alerts import Alerter
 from .attacks import INJECTION
 from .audit import AuditLog
@@ -29,7 +30,7 @@ from .auth import Auth, allowed
 from .calibrate import calibration_warnings as _cal_warnings, commissioned as _commissioned, fit as calibrate_fit, FIELDS as CAL_FIELDS
 from .config import POLICY_PATH, PolicyError, verify_policy_file
 from .copilot import Copilot
-from .guard import MODES, Guard
+from .guard import MODES, SOURCES, Guard
 from .forewarn import ForecastWatch
 from .integrity import IntegrityMonitor
 from .cip import CIPGuard, MicroLogixSim
@@ -187,6 +188,14 @@ async def lifespan(app: FastAPI):
                                             "forewarn": list(S["forewarn"].active.values())})
     S["copilot"].audit = audit
     S["copilot"].scripted_fallback = DEMO
+    # Sentinel: investigates incidents from the audit log; read-only, files proposals like the copilot
+    S["agent"] = AgentService(audit, alerter, props, lambda: guard.policy, orders,
+                              lambda: {"guard_mode": guard.mode, "guard_enabled": getattr(guard, "enabled", True),
+                                       "safe_hold_enabled": S["safehold"].enabled,
+                                       "locked_sources": sorted(getattr(guard, "lockdowns", {}) or {})}, DEMO,
+                              lambda: {**{lbl: set(guard.trusted_ips) for lbl in SOURCES.values()},
+                                       **{n: {ip for ip, m in guard.ip_sources.items() if m == n}
+                                          for n in set(guard.ip_sources.values())}})
     audit.append("startup", {"guard_port": GUARD_PORT, "plc_port": PLC_PORT, "plant": PLANT_NAME})
 
     async def tick():
@@ -205,6 +214,8 @@ async def lifespan(app: FastAPI):
                     snap = plant.snapshot()
                     S["forecast"] = twin.forecast(snap, None, 360, every_min=10)
                     S["forewarn"].update(S["forecast"], snap)
+                if n % 10 == 0:      # every 2 s: Sentinel reads new audit entries, investigates ready incidents
+                    await S["agent"].poll()
                 if n % 25 == 0:      # every 5 s: new accuracy sample, escalate unacknowledged incidents
                     S["accuracy"].predict(twin, plant)
                     alerter.tick()
@@ -222,6 +233,7 @@ async def lifespan(app: FastAPI):
                     S["integrity"].update(snap, plant.sim_time, guard.commanded)
                     guard.distrust = not S["integrity"].status.get("ok", True)
                     twin.observe(snap, plant.sim_time)          # raw-water trend for forecasts
+                    S["agent"].record(time.time(), snap, plant.sim_time)
                     sh = S["safehold"]
                     sh.cfg.update({k: v for k, v in (guard.policy.get("safe_hold") or {}).items()})
                     act = sh.update(snap, plant.sim_time, sensors_trusted=S["integrity"].status.get("ok", True))
@@ -242,6 +254,9 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Aegis", lifespan=lifespan)
+
+
+attach_agent(app, S, role)
 
 
 @app.get("/")

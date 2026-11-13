@@ -47,9 +47,15 @@ def extract(ev: Evidence, twin: bool = True) -> dict:
     # --- who: profile, label vs IP, humans
     prof = [e for e in ev.profile_entries if e["data"].get("source") == primary] if primary else []
     prof_ips = {ip_of(e["data"].get("peer")) for e in prof} - {""}
-    F["source_known"] = _f(bool(prof) and bool(ips) and set(ips) <= prof_ips, [e["id"] for e in prof[-3:]])
-    F["ip_matches_label"] = _f(bool(prof_ips) and bool(ips) and set(ips) <= prof_ips,
+    # known = seen in the 7-day profile, or registered in the guard's configuration (a fresh install has no
+    # history yet but does know which IPs its HMI and AI use)
+    reg_ips = set((ev.registry or {}).get(primary) or ())
+    known_ips = prof_ips | reg_ips
+    F["source_known"] = _f(bool(known_ips) and bool(ips) and set(ips) <= known_ips,
+                           [e["id"] for e in prof[-3:]] + [e["id"] for e in mine[:1]])
+    F["ip_matches_label"] = _f(bool(known_ips) and bool(ips) and set(ips) <= known_ips,
                                [e["id"] for e in mine[:2]] + [e["id"] for e in prof[-2:]])
+    F["registered_source"] = _f(bool(reg_ips) and bool(ips) and set(ips) <= reg_ips, [e["id"] for e in mine[:1]])
     t0 = min((ev.by_id[i]["t"] for i in inc.trigger_ids if i in ev.by_id), default=inc.opened_t)
     t1 = max((ev.by_id[i]["t"] for i in inc.trigger_ids if i in ev.by_id), default=inc.last_t)
     sess, last_login = [], None

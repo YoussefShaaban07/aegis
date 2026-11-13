@@ -44,9 +44,32 @@ def _sha(o) -> str:
     return hashlib.sha256(json.dumps(o, sort_keys=True, default=str).encode()).hexdigest()[:16]
 
 
-def combine(base: dict, learned: dict | None) -> tuple[str, str]:
-    """Deterministic decision: the learned classifier when it is confident, else the rule baseline."""
-    if learned and learned.get("p", 0) >= 0.6 and base["primary"] != "ai_manipulation":
+NEEDS_KNOWN_SOURCE = ("operator_error", "benign_false_positive", "compromised_trusted_source")
+
+
+def consistent(cls: str, F: dict | None) -> bool:
+    """Hard facts a class must not contradict (the learned model can be confidently wrong out of distribution)."""
+    if not F:
+        return True
+    v = lambda k: (F.get(k) or {}).get("value")
+    blocked = v("n_blocked") or 0
+    if cls in NEEDS_KNOWN_SOURCE and blocked and v("source_known") is False:
+        return False                          # an operator (or the operator's PC) is a source the plant knows
+    if cls == "external_attack" and v("registered_source") and not v("recon_fc"):
+        return False                          # a registered IP + label is the plant's own machine
+    if cls == "plc_or_sensor_integrity" and not any(v(k) for k in ("drift_without_decision", "physics_mismatch",
+                                                                    "stuck_sensor", "lab_disagrees")):
+        return False
+    if cls == "ai_manipulation" and not v("ai_origin"):
+        return False
+    return True
+
+
+def combine(base: dict, learned: dict | None, F: dict | None = None) -> tuple[str, str]:
+    """Deterministic decision: the learned classifier when it is confident and consistent with the hard facts,
+    else the rule baseline."""
+    if learned and learned.get("p", 0) >= 0.6 and base["primary"] != "ai_manipulation" \
+            and consistent(learned["primary"], F):
         conf = "high" if learned["p"] >= 0.85 and learned["primary"] == base["primary"] else "medium"
         return learned["primary"], conf
     return base["primary"], base["confidence"]
@@ -55,7 +78,7 @@ def combine(base: dict, learned: dict | None) -> tuple[str, str]:
 class Sentinel:
     def __init__(self, audit, history=None, *, policy=None, proposals=None, alerter=None, casebase=None,
                  transport=None, model=None, key=None, mode=None, budget=None, status_fn=None,
-                 work_orders_fn=None, file_proposals=True, report_link=None):
+                 work_orders_fn=None, file_proposals=True, report_link=None, registry_fn=None):
         self.audit, self.history, self.policy = audit, history, policy or {}
         self.proposals, self.alerter, self.casebase = proposals, alerter, casebase
         self.transport = transport
@@ -65,6 +88,7 @@ class Sentinel:
         self.budget = {**BUDGET, **(budget or {})}
         self.status_fn, self.work_orders_fn = status_fn, work_orders_fn
         self.file_proposals, self.report_link = file_proposals, report_link
+        self.registry_fn = registry_fn
         self.enabled = True
 
     def _log(self, kind, data):
@@ -73,15 +97,21 @@ class Sentinel:
 
     # ----------------------------------------------------------------------------- deterministic pass
     def evidence(self, incident, now=None) -> T.Evidence:
+        reg = None
+        if self.registry_fn:
+            try:
+                reg = self.registry_fn()
+            except Exception:
+                reg = None
         return T.Evidence(self.audit, incident, self.history, now=now, status_fn=self.status_fn,
-                          work_orders_fn=self.work_orders_fn).freeze()
+                          work_orders_fn=self.work_orders_fn, registry=reg).freeze()
 
     def deterministic(self, ev: T.Evidence) -> dict:
         F = FT.extract(ev)
         base = B.classify(F)
         learned = self.casebase.predict(F) if self.casebase else None
         similar = self.casebase.nearest(F, 5) if self.casebase else []
-        cls, conf = combine(base, learned)
+        cls, conf = combine(base, learned, F)
         alts = [c for c in ([base["primary"]] + ([learned["primary"]] if learned else [])) if c != cls]
         ev.features = {k: v for k, v in F.items()}
         ev.baseline = base

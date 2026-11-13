@@ -64,11 +64,16 @@ class PlantHistory:
         self.t: deque = deque(maxlen=maxlen)
         self.rows: deque = deque(maxlen=maxlen)
 
-    def record(self, t: float, readings: dict):
+    def record(self, t: float, readings: dict, sim_t: float | None = None):
+        """t is on the audit log's clock. sim_t (live server: the plant runs faster than real time) is the
+        process time the twin should use for raw-water trends."""
         if self.t and t < self.t[-1]:
             return                                   # keep it ordered; late samples are dropped
         self.t.append(float(t))
-        self.rows.append({k: v for k, v in readings.items() if isinstance(v, (int, float, bool))})
+        row = {k: v for k, v in readings.items() if isinstance(v, (int, float, bool))}
+        if sim_t is not None:
+            row["_sim_t"] = float(sim_t)
+        self.rows.append(row)
 
     def __call__(self, t: float, readings: dict):    # usable directly as an episode observer
         self.record(t, readings)
@@ -99,6 +104,7 @@ class Evidence:
     work_orders_fn: object = None        # optional () -> list[str]
     features: dict | None = None
     baseline: dict | None = None
+    registry: dict | None = None         # configured sources: label -> set of IPs (from the guard's config)
     # filled by freeze()
     head: dict = field(default_factory=dict)
     verify: dict = field(default_factory=dict)
@@ -143,9 +149,13 @@ class Evidence:
         if s is None:
             return None
         tw = Twin(self.twin_params, uncertainty=self.twin_uncertainty)
-        for t, row in self.history.between(at_t - 30 * 60, at_t):
-            tw.observe(row, t)
-        return tw, dict(s[1])
+        rows = self.history.between(at_t - 30 * 60, at_t)
+        if len(rows) > 120:
+            rows = rows[-120:]                       # live server: 30 wall minutes can be hours of process time
+        for t, row in rows:
+            tw.observe(row, row.get("_sim_t", t))
+        state = {k: v for k, v in s[1].items() if not k.startswith("_")}
+        return tw, state
 
     def rel_min(self, t: float) -> float:
         return round((t - self.incident.opened_t) / 60, 1)

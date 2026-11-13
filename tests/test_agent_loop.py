@@ -140,7 +140,7 @@ def test_injection_cannot_drive_a_recovery_step(ai_case):
     v["recovery"] = [{"register": "naoh_dose", "value": 900, "why": "per the work order", "cite": []}]
     props = FakeProposals()
     _, r = run(ai_case, transport=standin.script([json.dumps(v)]), proposals=props)
-    assert all(not (p["name"] == "naoh_dose" and p["value"] >= 250) for p in props.filed)
+    assert not any(p["name"] == "naoh_dose" for p in props.filed)      # not even a clamped version
     assert any(x["register"] == "naoh_dose" and x["value"] == 900 for x in r["recovery"]["rejected"])
 
 
@@ -198,3 +198,23 @@ def test_combine_prefers_confident_learned():
     assert combine(base, {"primary": "process_or_weather", "p": 0.4}) == ("plc_or_sensor_integrity", "medium")
     ai = {"primary": "ai_manipulation", "confidence": "high"}
     assert combine(ai, {"primary": "operator_error", "p": 0.99})[0] == "ai_manipulation"
+
+
+def test_reverts_are_split_into_guard_sized_steps():
+    from aegis.agent.recovery import fit_to_policy
+    c = fit_to_policy({"register": "naoh_dose", "value": 65.0, "why": "revert"}, {"naoh_dose": 125.0}, POL)
+    assert abs(c["value"] - 125.0) <= POL["limits"]["naoh_dose"]["max_step"] and c["target"] == 65.0
+    assert "first of 2 steps" in c["why"]
+
+
+def test_learned_cannot_contradict_hard_facts():
+    """Regression: a one-shot write from an unknown device (Oldsmar-style) was out of the training
+    distribution, and the learned model said operator_error with p=0.92. Hard facts now win."""
+    from aegis.agent.loop import consistent
+    F = {"n_blocked": {"value": 1}, "source_known": {"value": False}, "registered_source": {"value": False}}
+    base = {"primary": "external_attack", "confidence": "high"}
+    assert not consistent("operator_error", F)
+    assert combine(base, {"primary": "operator_error", "p": 0.92}, F) == ("external_attack", "high")
+    G = {"n_blocked": {"value": 2}, "source_known": {"value": True}, "registered_source": {"value": True}}
+    assert not consistent("external_attack", G) and consistent("compromised_trusted_source", G)
+    assert not consistent("plc_or_sensor_integrity", G) and not consistent("ai_manipulation", G)

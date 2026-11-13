@@ -110,6 +110,27 @@ def candidates(ev: Evidence, cls: str, F: dict, policy: dict, model_steps: list 
     return out
 
 
+def fit_to_policy(c: dict, state: dict, policy: dict) -> dict:
+    """Clamp a step to the policy: inside [min, max] and at most max_step away from the current value. A larger
+    move becomes the first step toward the target (the guard allows at most max_step per command)."""
+    lim = (policy.get("limits") or {}).get(c["register"]) or {}
+    v = float(c["value"])
+    if "min" in lim:
+        v = max(float(lim["min"]), v)
+    if "max" in lim:
+        v = min(float(lim["max"]), v)
+    cur = state.get(c["register"])
+    ms = lim.get("max_step")
+    if ms and isinstance(cur, (int, float)) and abs(v - cur) > ms:
+        import math
+        n = math.ceil(abs(v - cur) / ms - 1e-9)
+        target = v
+        v = round(cur + math.copysign(ms * 0.999, v - cur), 4)
+        c = {**c, "target": target, "why": c["why"] + f" (first of {n} steps toward {target:g}; the guard allows "
+                                                       f"at most {ms:g} per command)"}
+    return {**c, "value": v}
+
+
 def _active_holds(ev: Evidence) -> set:
     held = set()
     for e in ev.of("safe_hold", "hold_released"):
@@ -141,6 +162,13 @@ async def plan(ev: Evidence, cls: str, F: dict, policy: dict, guard_check=None,
     kept, rejected = [], []
     for c in candidates(ev, cls, F, policy, model_steps):
         why_not = None
+        if c["kind"] == "model":
+            # never "fix up" a model-suggested step into something acceptable: out of policy means rejected
+            f = fit_to_policy(c, state, policy)
+            if abs(f["value"] - float(c["value"])) > 1e-9:
+                why_not = "outside the policy's range or step limit"
+        else:
+            c = fit_to_policy(c, state, policy)
         if c["register"] in held:
             why_not = "safe-hold is holding this register"
         elif any(k["register"] == c["register"] for k in kept):
