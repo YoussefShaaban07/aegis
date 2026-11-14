@@ -267,7 +267,7 @@ v2 gates: citation validity 100.0% (5495 claims, 0 removed); recovery steps the 
 - Human-presence signals depend on the dashboard login model; a real utility may share accounts.
 - A full replay (hidden dosing + noisy frozen readings) is invisible to every online check; only a lab grab sample catches it, and Sentinel can only recommend one.
 - Recovery steps are checked with the twin and the guard's static rules, not against the true plant; the twin's accuracy bounds the planner.
-- Tested against simulated PLCs only. The LLM provider sees incident data; on-premises models are future work.
+- Tested against simulated PLCs only. With Groq, the provider sees incident data; a local open-weight model (see "Run Sentinel on a real model") avoids that, but none has been evaluated yet.
 
 ## Done / not done (honest status)
 
