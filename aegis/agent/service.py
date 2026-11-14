@@ -39,8 +39,9 @@ class Service:
         if os.getenv("AEGIS_AGENT_QUIET_S"):
             cfg = {**(cfg or {}), "quiet_s": float(os.getenv("AEGIS_AGENT_QUIET_S"))}
         self.incidents = IncidentManager(audit, config=cfg, alerter=alerter)
-        key = os.getenv("GROQ_API_KEY") or os.getenv("AEGIS_LLM_KEY")
-        use_standin = demo and not key
+        from .loop import endpoint, is_local
+        key = os.getenv("AEGIS_AGENT_KEY") or os.getenv("GROQ_API_KEY") or os.getenv("AEGIS_LLM_KEY")
+        use_standin = demo and not key and not is_local(endpoint())
         self.sentinel = Sentinel(audit, self.history, policy=guard_policy(), proposals=proposals, alerter=alerter,
                                  casebase=CaseBase.load(), transport=standin.transport() if use_standin else None,
                                  model=standin.NAME if use_standin else None, status_fn=status_fn,

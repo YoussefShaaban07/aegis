@@ -231,3 +231,25 @@ def test_casebase_is_tracked_by_git():
         pytest.skip("not a git checkout")
     r = subprocess.run(["git", "check-ignore", "-q", "aegis/agent/data/casebase.json"], cwd=root)
     assert r.returncode != 0, "aegis/agent/data/casebase.json is git-ignored"
+
+
+def test_local_endpoint_needs_no_key(monkeypatch, hmi_case):
+    """Sentinel on a local open-weight model (e.g. Ollama): no key, model mode on, requests go to that URL."""
+    import httpx
+    for k in ("AEGIS_AGENT_KEY", "GROQ_API_KEY", "AEGIS_LLM_KEY", "AEGIS_LLM_URL"):
+        monkeypatch.delenv(k, raising=False)
+    monkeypatch.setenv("AEGIS_AGENT_URL", "http://localhost:11434/v1/chat/completions")
+    monkeypatch.setenv("AEGIS_AGENT_MODEL", "gpt-oss:20b")
+    seen = []
+    inner = standin.transport()
+
+    def spy(req):
+        seen.append((str(req.url), json.loads(req.content)["model"]))
+        return inner.handle_request(req)
+    s = Sentinel(hmi_case.audit, hmi_case.history, policy=POL, transport=httpx.MockTransport(spy))
+    assert s.mode == "llm" and s.model == "gpt-oss:20b"
+    r = asyncio.run(s.investigate(hmi_case.incident, now=hmi_case.now))
+    assert r["mode"] == "llm" and seen and all(u.startswith("http://localhost:11434/") for u, _ in seen)
+    assert {m for _, m in seen} == {"gpt-oss:20b"}
+    monkeypatch.setenv("AEGIS_AGENT_URL", "https://api.example.com/v1/chat/completions")
+    assert Sentinel(None).mode == "deterministic"            # a remote endpoint still needs a key

@@ -24,8 +24,21 @@ from . import report as REP
 from . import tools as T
 from .schema import Verdict, parse
 
-BUDGET = {"tool_calls": 15, "turns": 12, "wall_s": 90.0, "call_s": 20.0, "context_chars": 96000, "repeat": 2}
-API = os.getenv("AEGIS_LLM_URL", "https://api.groq.com/openai/v1/chat/completions")
+BUDGET = {"tool_calls": 15, "turns": 12, "wall_s": 90.0, "call_s": float(os.getenv("AEGIS_AGENT_CALL_S", "20")),
+          "context_chars": 96000, "repeat": 2}
+GROQ = "https://api.groq.com/openai/v1/chat/completions"
+
+
+def endpoint() -> str:
+    """Sentinel's model endpoint: AEGIS_AGENT_URL, else the copilot's AEGIS_LLM_URL, else Groq. Any
+    OpenAI-compatible server works, including a local Ollama (http://localhost:11434/v1/chat/completions),
+    which keeps incident data on the plant's own machine."""
+    return os.getenv("AEGIS_AGENT_URL") or os.getenv("AEGIS_LLM_URL") or GROQ
+
+
+def is_local(url: str) -> bool:
+    from urllib.parse import urlparse
+    return (urlparse(url).hostname or "") in ("localhost", "127.0.0.1", "::1")
 
 SYSTEM = (
     "You are Sentinel, the incident investigator for Aegis, a safety guard in front of a water plant's PLC. "
@@ -79,12 +92,14 @@ def combine(base: dict, learned: dict | None, F: dict | None = None) -> tuple[st
 class Sentinel:
     def __init__(self, audit, history=None, *, policy=None, proposals=None, alerter=None, casebase=None,
                  transport=None, model=None, key=None, mode=None, budget=None, status_fn=None,
-                 work_orders_fn=None, file_proposals=True, report_link=None, registry_fn=None):
+                 work_orders_fn=None, file_proposals=True, report_link=None, registry_fn=None, url=None):
         self.audit, self.history, self.policy = audit, history, policy or {}
         self.proposals, self.alerter, self.casebase = proposals, alerter, casebase
         self.transport = transport
         self.model = model or os.getenv("AEGIS_AGENT_MODEL") or os.getenv("AEGIS_LLM_MODEL", "openai/gpt-oss-120b")
-        self.key = key if key is not None else (os.getenv("GROQ_API_KEY") or os.getenv("AEGIS_LLM_KEY"))
+        self.url = url or endpoint()
+        self.key = key if key is not None else (os.getenv("AEGIS_AGENT_KEY") or os.getenv("GROQ_API_KEY")
+                                                or os.getenv("AEGIS_LLM_KEY") or ("local" if is_local(self.url) else None))
         self.mode = mode or ("llm" if (self.key or transport) else "deterministic")
         self.budget = {**BUDGET, **(budget or {})}
         self.status_fn, self.work_orders_fn = status_fn, work_orders_fn
@@ -124,7 +139,7 @@ class Sentinel:
         body = {"model": self.model, "messages": messages, "temperature": 0.1}
         if tools:
             body["tools"] = T.schemas()
-        r = await client.post(API, json=body, headers={"Authorization": f"Bearer {self.key or 'none'}"},
+        r = await client.post(self.url, json=body, headers={"Authorization": f"Bearer {self.key or 'none'}"},
                               timeout=self.budget["call_s"])
         r.raise_for_status()
         return r.json()["choices"][0]["message"]
