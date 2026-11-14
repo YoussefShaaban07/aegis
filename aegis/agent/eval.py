@@ -54,7 +54,8 @@ def run(seed_offset: int, n: int, noise: bool, progress=True) -> dict:
     jobs = ([("unknown", s) for s in seeds] + [("hmi", s) for s in seeds]
             + [("operator", s) for s in range(seed_offset, seed_offset + 6 * n)]
             + [("plc", s) for s in range(seed_offset, seed_offset + max(1, n * 3 // 4))]
-            + [("ai", s) for s in range(seed_offset, seed_offset + max(1, n // 2))])
+            + [("ai", s) for s in range(seed_offset, seed_offset + max(1, n // 2))]
+            + [("oneshot", s) for s in range(seed_offset, seed_offset + n)])
     rows, t0 = [], time.time()
     for k, (kind, s) in enumerate(jobs):
         if kind in ("unknown", "hmi"):
@@ -63,6 +64,8 @@ def run(seed_offset: int, n: int, noise: bool, progress=True) -> dict:
             cases = D.operator_cases(s, pol, noise)
         elif kind == "plc":
             cases = D.plc_cases(s, pol, noise)
+        elif kind == "oneshot":
+            cases = D.oneshot_cases(s, pol, noise)
         else:
             cases = D.ai_cases(s, pol, noise)
         for c in cases:

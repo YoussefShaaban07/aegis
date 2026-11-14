@@ -154,6 +154,18 @@ def extract(ev: Evidence, twin: bool = True) -> dict:
     F["physics_mismatch"] = _f(bool(phys), [e["id"] for e in phys])
     F["stuck_sensor"] = _f(bool(stuck), [e["id"] for e in stuck])
     F["lab_disagrees"] = _f(bool(grab), [e["id"] for e in grab])
+    # the physics alarm's own numbers. On the steep part of the titration curve (model already predicting a high
+    # pH, e.g. an algae bloom) a few percent of model error is expected; hidden dosing shows up as a mismatch while
+    # the model predicts normal water.
+    first = phys[0]["data"] if phys else {}
+    num = lambda k: first.get(k) if isinstance(first.get(k), (int, float)) else None
+    F["integrity_ph_predicted"] = _f(num("ph_predicted"), [phys[0]["id"]] if phys else [])
+    F["integrity_alk_err"] = _f(abs(num("alk_err_pct")) if num("alk_err_pct") is not None else None,
+                                [phys[0]["id"]] if phys else [])
+    cp, cm = num("cl_predicted"), num("cl_measured")
+    F["integrity_cl_err"] = _f(round(abs(cm - cp) / max(0.1, cp), 3) if cp is not None and cm is not None else None,
+                               [phys[0]["id"]] if phys else [])
+    F["mismatch_on_steep_curve"] = _f(bool(phys) and (num("ph_predicted") or 0) > 8.3, [phys[0]["id"]] if phys else [])
     fw = ev.of("forecast_warning")
     F["forecast_warnings"] = _f(len(fw), [e["id"] for e in fw])
 
@@ -215,7 +227,7 @@ NUMERIC = ("source_known", "ip_matches_label", "human_present", "human_actions",
            "raw_water_changed_recently", "drift_without_decision", "physics_mismatch", "stuck_sensor",
            "lab_disagrees", "forecast_warnings", "ai_origin", "ai_proposal_blocked", "ai_reply_flagged",
            "untrusted_instructions", "auth_failures", "harm_forecast_without_writes", "writes_make_forecast_worse",
-           "reverses_trend")
+           "reverses_trend", "integrity_ph_predicted", "integrity_alk_err", "integrity_cl_err", "mismatch_on_steep_curve")
 
 
 def vector(F: dict) -> list[float]:

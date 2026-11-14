@@ -227,6 +227,54 @@ def operator_cases(seed: int, policy: dict, noise: bool = True, weather: str | N
     return out
 
 
+def oneshot_cases(seed: int, policy: dict, noise: bool = True, hours: int = 6) -> list[Case]:
+    """Short attacks: 1-3 writes (Oldsmar-style) from an unknown device or from the HMI PC, at a random time and
+    weather, values from plausible to absurd. The episode attackers in evaluate.py are all persistent; these
+    keep the learned classifier from treating 'few writes' as 'operator'."""
+    rng = random.Random(f"oneshot-{seed}")
+    hmi = rng.random() < 0.4
+    plant = Plant(noise=True, seed=seed)
+    clock = ev.Clock()
+    audit = AuditLog(":memory:", clock=clock)
+    seed_normal_week(audit, rng)
+    g = ev.make_guard(plant, True, clock, policy, audit)
+    obs = Episode(audit, clock, rng, _human("hmi" if hmi else "unknown", rng, noise), commanded=lambda: dict(g.commanded))
+    weather_at, weather = rng.randint(0, hours * 60), rng.choice(["normal", "normal", "storm", "bloom"])
+    at = rng.randint(60, hours * 60 - 90)
+    n = rng.choice([1, 1, 2, 3])
+    src, peer = (("Operator HMI", HMI_PEER) if hmi else
+                 (f"Unknown device (unit {rng.randint(2, 247)})", f"10.{rng.randint(1, 250)}.{rng.randint(0, 250)}.{rng.randint(2, 250)}:{rng.randint(1024, 65000)}"))
+    reg = rng.choice(["naoh_dose", "chlorine_dose", "distribution_rate"])
+    lim = (policy.get("limits") or {}).get(reg) or {}
+    for minute in range(hours * 60):
+        clock.t = minute * 60.0
+        if minute == weather_at:
+            plant.set_scenario(weather)
+        g.twin.observe(ev.seen(plant), clock.t)
+        if at <= minute < at + n:
+            cur = float(plant.setpoint(reg))
+            kind = rng.choice(["absurd", "edge", "step"])
+            val = {"absurd": cur * rng.choice([10, 50, 111]) + 1, "edge": float(lim.get("max", cur * 2)) * 0.98,
+                   "step": cur + rng.choice([-1, 1]) * float(lim.get("max_step", cur * 0.5)) * 1.6}[kind]
+            if reg == "chlorine_dose" and rng.random() < 0.5:
+                val = 0.0
+            d = g.check(reg, round(max(0.0, val), 2), ev.seen(plant), src, peer)
+            ev.record(g, d, clock)
+            if d.allowed:
+                g._commit(d)                 # as evaluate.attack_episode does
+                plant.set(reg, d.new)
+        obs(clock.t, ev.seen(plant))
+        plant.step(1.0)
+    out = []
+    for inc in _incidents(audit, clock):
+        label = _content_label(audit, inc, {src}, weather, "compromised_trusted_source" if hmi else "external_attack")
+        if label is None:
+            continue
+        out.append(Case(f"oneshot-{seed}-{inc.id}", label, audit, inc, obs.history, clock.t,
+                        meta={"strategy": "oneshot", "goal": reg, "weather": weather, "human": obs.human, "seed": seed}))
+    return out
+
+
 PLC_STATS: list = []      # every PLC episode, including the ones nothing detected (reported, not hidden)
 
 

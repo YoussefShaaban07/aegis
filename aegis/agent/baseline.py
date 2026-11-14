@@ -29,6 +29,10 @@ def classify(F: dict) -> dict:
                 "remaining_risk": "process_or_weather" if v(F, "harm_forecast_without_writes") else None}
 
     integ = v(F, "drift_without_decision") or v(F, "physics_mismatch") or v(F, "stuck_sensor") or v(F, "lab_disagrees")
+    hard_integ = v(F, "drift_without_decision") or v(F, "stuck_sensor") or v(F, "lab_disagrees")
+    if integ and not hard_integ and blocked == 0 and v(F, "mismatch_on_steep_curve"):
+        return out("process_or_weather", "low", "physics-only mismatch where the model already predicts a high pH "
+                   "(steep titration curve: model error, not dosing)", "mismatch_on_steep_curve", "physics_mismatch")
     if integ and blocked == 0:
         return out("plc_or_sensor_integrity", "high" if (v(F, "lab_disagrees") or v(F, "drift_without_decision"))
                    else "medium", "integrity signal with no blocked writes",

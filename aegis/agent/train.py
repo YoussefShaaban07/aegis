@@ -24,7 +24,8 @@ def generate(seeds=DEV_SEEDS, noise=True) -> list[dict]:
     gens = [(lambda x: D.attack_cases(x, "unknown", pol, noise), s), (lambda x: D.attack_cases(x, "hmi", pol, noise), s),
             (lambda x: D.operator_cases(x, pol, noise), range(s[0], s[0] + 6 * len(s))),
             (lambda x: D.plc_cases(x, pol, noise), s[: max(1, 3 * len(s) // 4)]),
-            (lambda x: D.ai_cases(x, pol, noise), s[: max(1, len(s) // 2)])]
+            (lambda x: D.ai_cases(x, pol, noise), s[: max(1, len(s) // 2)]),
+            (lambda x: D.oneshot_cases(x, pol, noise), s)]
     rows, t0 = [], time.time()
     for fn, seeds_ in gens:
         for x in seeds_:
