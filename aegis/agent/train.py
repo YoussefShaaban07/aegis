@@ -1,6 +1,6 @@
 """Rebuild Sentinel's case base from DEVELOPMENT seeds (never the held-out evaluation seeds).
 
-  python -m aegis.agent.train                    # generate seeds 0-19 and train (about 10 minutes)
+  python -m aegis.agent.train                    # generate seeds 0-59 and train (about 30 minutes)
   python -m aegis.agent.train --rows rows.json   # train from features saved by a previous run
 """
 from __future__ import annotations
@@ -14,7 +14,7 @@ from . import dataset as D
 from . import features as FT
 from .casebase import DEFAULT_PATH, CaseBase
 
-DEV_SEEDS = range(0, 20)        # held-out evaluation uses 300000+
+DEV_SEEDS = range(0, 60)        # tuning uses 100000+, held-out evaluation 300000+ (v1) and 400000+ (v2)
 
 
 def generate(seeds=DEV_SEEDS, noise=True) -> list[dict]:
@@ -52,7 +52,8 @@ def main(argv=None):
         if a.save_rows:
             json.dump([{**r, "F": {k: v["value"] for k, v in r["F"].items()}} for r in rows],
                       open(a.save_rows, "w"), default=str)
-    cb = CaseBase.train(rows, meta={"source": src, "seeds": "development only (0-19)", "noise": True})
+    cb = CaseBase.train(rows, meta={"source": src, "seeds": f"development only ({DEV_SEEDS.start}-{DEV_SEEDS.stop - 1})",
+                                    "noise": True})
     cb.save(a.out)
     print(f"trained on {len(rows)} incidents: {cb.data['class_counts']} -> {a.out}")
 

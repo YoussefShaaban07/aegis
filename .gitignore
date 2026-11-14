@@ -6,3 +6,6 @@ __pycache__/
 data/
 
 photon/node_modules/
+
+# Sentinel's trained case base ships with the code (only runtime data/ folders are ignored)
+!aegis/agent/data/

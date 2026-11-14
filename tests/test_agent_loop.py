@@ -218,3 +218,16 @@ def test_learned_cannot_contradict_hard_facts():
     G = {"n_blocked": {"value": 2}, "source_known": {"value": True}, "registered_source": {"value": True}}
     assert not consistent("external_attack", G) and consistent("compromised_trusted_source", G)
     assert not consistent("plc_or_sensor_integrity", G) and not consistent("ai_manipulation", G)
+
+
+def test_casebase_is_tracked_by_git():
+    """Regression: .gitignore's data/ rule silently kept the trained case base out of the repo, so fresh
+    clones ran without the learned classifier."""
+    import shutil
+    import subprocess
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[1]
+    if not shutil.which("git") or not (root / ".git").exists():
+        pytest.skip("not a git checkout")
+    r = subprocess.run(["git", "check-ignore", "-q", "aegis/agent/data/casebase.json"], cwd=root)
+    assert r.returncode != 0, "aegis/agent/data/casebase.json is git-ignored"
