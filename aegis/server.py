@@ -8,6 +8,7 @@ Engineer actions (guard mode, editing rules, AI autonomy) need AEGIS_ENGINEER_PI
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import hmac
 import copy
 import os
@@ -76,6 +77,25 @@ HORIZONS = (10, 30, 60)   # simulated minutes ahead for the live accuracy score
 COOKIE = "aegis_session"
 
 
+# Presenter lock (demo builds): every public visitor shares one simulated plant and the same demo accounts, so
+# while a presenter's pitch runs, other browser sessions can watch but not change anything. Tied to the session
+# cookie, not the user name (everyone signs in as "engineer" on the public demo).
+PRESENTER_S = 15 * 60
+PRESENTER_FREE = {"/api/login", "/api/logout", "/api/presenter/claim", "/api/presenter/release"}
+
+
+def _sess(request: Request) -> str:
+    tok = request.cookies.get(COOKIE) or ""
+    return hashlib.sha256(tok.encode()).hexdigest()[:16] if tok else ""
+
+
+def presenter_state() -> dict | None:
+    lk = S.get("presenter")
+    if lk and lk["until"] > time.time():
+        return lk
+    return None
+
+
 def role(need: str, demo_only: bool = False):
     """Dependency: require a logged-in user with at least this role (and the CSRF header on writes)."""
     def dep(request: Request) -> dict:
@@ -90,6 +110,12 @@ def role(need: str, demo_only: bool = False):
             raise HTTPException(403, f"needs the {need} role")
         if demo_only and not DEMO:
             raise HTTPException(404, "simulator controls are disabled (AEGIS_DEMO=0)")
+        lk = presenter_state() if DEMO else None
+        if lk and request.method != "GET" and request.url.path not in PRESENTER_FREE:
+            if _sess(request) != lk["session"]:
+                raise HTTPException(423, f"A presentation is running until {time.strftime('%H:%M', time.localtime(lk['until']))}"
+                                         f" ({lk['by']}). You can watch; changes are paused.")
+            lk["until"] = time.time() + PRESENTER_S        # the presenter's own actions keep the lock alive
         return who
     return dep
 
@@ -302,6 +328,27 @@ def login(body: LoginIn, request: Request, response: Response):
     return S["auth"].verify(token) | {"demo": DEMO}
 
 
+@app.post("/api/presenter/claim")
+def presenter_claim(request: Request, who: dict = Depends(role("engineer", demo_only=True))):
+    """Start presenting: other sessions become read-only for 15 min (renewed by the presenter's actions)."""
+    lk = presenter_state()
+    if lk and lk["session"] != _sess(request):
+        raise HTTPException(423, f"someone else is presenting until {time.strftime('%H:%M', time.localtime(lk['until']))}")
+    S["presenter"] = {"session": _sess(request), "by": _by(who), "until": time.time() + PRESENTER_S}
+    if not lk:
+        S["audit"].append("presenter_lock", {"by": _by(who), "minutes": PRESENTER_S // 60})
+    return {"presenting": True, "until": S["presenter"]["until"]}
+
+
+@app.post("/api/presenter/release")
+def presenter_release(request: Request, who: dict = Depends(role("viewer", demo_only=True))):
+    lk = presenter_state()
+    if lk and lk["session"] == _sess(request):
+        S["presenter"] = None
+        S["audit"].append("presenter_release", {"by": _by(who)})
+    return {"presenting": False}
+
+
 @app.post("/api/logout")
 def logout(response: Response, who: dict = Depends(role("viewer"))):
     response.delete_cookie(COOKIE)
@@ -315,7 +362,7 @@ def me(who: dict = Depends(role("viewer"))):
 
 
 @app.get("/api/state")
-def state(who: dict = Depends(role("viewer"))):
+def state(request: Request, who: dict = Depends(role("viewer"))):
     p, g = S["plant"], S["guard"]
     if time.time() - S["verify"]["t"] > 3:   # re-verify the audit chain every few seconds
         S["verify"] = {**S["audit"].verify(), "t": time.time()}
@@ -325,6 +372,8 @@ def state(who: dict = Depends(role("viewer"))):
                                                                   "naoh_dose", "chlorine_dose")} for h in hist],
             "forecast": S["forecast"], "sim_t": p.sim_time, "speed": p.speed,
             "public": PUBLIC,
+            "presenter": ({"active": True, "by": presenter_state()["by"], "until": presenter_state()["until"],
+                           "mine": presenter_state()["session"] == _sess(request)} if presenter_state() else None),
             "chemistry": {k: p.model.params.get(k, d) for k, d in (("chlorine_source", "hypochlorite"),
                                                                    ("fluoride_chemical", "fsa"), ("alkali", "naoh"))},
             "guard_mode": g.mode, "guard_enabled": g.enabled,
