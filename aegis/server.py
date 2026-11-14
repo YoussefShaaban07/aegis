@@ -198,6 +198,27 @@ async def lifespan(app: FastAPI):
                                           for n in set(guard.ip_sources.values())}})
     audit.append("startup", {"guard_port": GUARD_PORT, "plc_port": PLC_PORT, "plant": PLANT_NAME})
 
+    def refresh_forecast():
+        """The 6 h forecast shown on the trend chart, and the early warnings it drives."""
+        snap = plant.snapshot()
+        S["forecast"] = twin.forecast(snap, None, 360, every_min=10)
+        S["forewarn"].update(S["forecast"], snap)
+
+    async def per_minute():
+        """Once per simulated minute: is the process what the PLC claims? (shared by tick and /api/sim/advance)"""
+        snap = plant.snapshot()
+        S["integrity"].update(snap, plant.sim_time, guard.commanded)
+        guard.distrust = not S["integrity"].status.get("ok", True)
+        twin.observe(snap, plant.sim_time)          # raw-water trend for forecasts
+        S["agent"].record(time.time(), snap, plant.sim_time)
+        sh = S["safehold"]
+        sh.cfg.update({k: v for k, v in (guard.policy.get("safe_hold") or {}).items()})
+        act = sh.update(snap, plant.sim_time, sensors_trusted=S["integrity"].status.get("ok", True))
+        if act:                      # restore the earlier value through the PLC, then hold it
+            await safehold_execute(guard, act, upstream.write_tag)
+
+    S["refresh_forecast"], S["per_minute"] = refresh_forecast, per_minute
+
     async def tick():
         seen: set[str] = set()
         n = 0
@@ -211,9 +232,7 @@ async def lifespan(app: FastAPI):
                                         f"clearwell {plant.tank_level:.0f}%.")
                 seen = now
                 if n % 10 == 0:      # every 2 s: refresh the forecast shown on the trend chart
-                    snap = plant.snapshot()
-                    S["forecast"] = twin.forecast(snap, None, 360, every_min=10)
-                    S["forewarn"].update(S["forecast"], snap)
+                    refresh_forecast()
                 if n % 10 == 0:      # every 2 s: Sentinel reads new audit entries, investigates ready incidents
                     await S["agent"].poll()
                 if n % 25 == 0:      # every 5 s: new accuracy sample, escalate unacknowledged incidents
@@ -228,17 +247,8 @@ async def lifespan(app: FastAPI):
                                             f"Safety policy file on disk failed its integrity check: {msg}. Aegis "
                                             "keeps enforcing the last good policy it loaded.")
                 S["accuracy"].score(plant)
-                if n % 5 == 0:       # every simulated minute: is the process what the PLC claims?
-                    snap = plant.snapshot()
-                    S["integrity"].update(snap, plant.sim_time, guard.commanded)
-                    guard.distrust = not S["integrity"].status.get("ok", True)
-                    twin.observe(snap, plant.sim_time)          # raw-water trend for forecasts
-                    S["agent"].record(time.time(), snap, plant.sim_time)
-                    sh = S["safehold"]
-                    sh.cfg.update({k: v for k, v in (guard.policy.get("safe_hold") or {}).items()})
-                    act = sh.update(snap, plant.sim_time, sensors_trusted=S["integrity"].status.get("ok", True))
-                    if act:                      # restore the earlier value through the PLC, then hold it
-                        await safehold_execute(guard, act, upstream.write_tag)
+                if n % 5 == 0:       # every 1 s of wall time
+                    await per_minute()
             except Exception as e:   # the sim loop must never die silently
                 print("tick error:", e)
             n += 1
@@ -672,6 +682,27 @@ def plc_compromise(body: Compromise, who: dict = Depends(role("operator", demo_o
 
 class Speed(BaseModel):
     speed: float
+
+
+class Advance(BaseModel):
+    minutes: int = Field(ge=1, le=360)
+
+
+@app.post("/api/sim/advance")
+async def sim_advance(body: Advance, who: dict = Depends(role("operator", demo_only=True))):
+    """Run N simulated minutes right now, one minute at a time, with the same per-minute checks as the live
+    loop. Demo steps use this instead of waiting on wall-clock time, so they finish the same way on a slow
+    host (the expo failure: a guided step waited on a timer on Render's free plan)."""
+    p = S["plant"]
+    for m in range(body.minutes):
+        p.step(60.0 / p.speed)            # exactly one simulated minute
+        await S["per_minute"]()
+        if m % 10 == 9:
+            S["refresh_forecast"]()
+    S["refresh_forecast"]()
+    return {"sim_t": p.sim_time, "minutes": body.minutes, "ph": round(p.ph, 3),
+            "chlorine": round(p.chlorine, 3), "integrity_ok": S["integrity"].status.get("ok", True),
+            "forewarn": len(S["forewarn"].active)}
 
 
 @app.post("/api/sim/speed")

@@ -479,6 +479,13 @@ async function applyLearn(){if(learned&&await postChk('/api/policy',{policy:lear
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function until(cond,ms,msg){const t0=Date.now();while(Date.now()-t0<ms){await load();if(S&&cond(S))return true;$('g-st').textContent=msg+' '+Math.round((Date.now()-t0)/1000)+'s';await sleep(700);}return false;}
 async function speed(x){await post('/api/sim/speed',{speed:x});}
+// Fast-forward the simulation on the server, a few minutes at a time, until cond holds. No wall-clock timers,
+// so a slow host can't make a pitch step silently time out; if the point is never reached, the step shows an error.
+async function advanceUntil(cond,maxMin,msg,chunk=5){let m=0;
+  while(m<maxMin){await load();if(S&&cond(S))return true;$('g-st').textContent=`${msg} (+${m} simulated min)`;
+    const r=await fetch('/api/sim/advance',{method:'POST',headers:H,body:JSON.stringify({minutes:chunk})});
+    if(!r.ok)throw new Error(`fast-forward failed (${r.status})`);m+=chunk;}
+  await load();if(S&&cond(S))return true;throw new Error(`${msg}: not reached after ${maxMin} simulated minutes`);}
 async function needPin(){if(!pin())throw new Error('sign in as engineer and type the engineer PIN in the header first (demo: 2468)');}
 const STEPS=[
  {t:'The plant',d:'A simulated small-town water treatment plant: raw water, chlorine for disinfection, lye (NaOH) for pH, a clearwell tank, pumps to town.',
@@ -486,15 +493,15 @@ const STEPS=[
   run:async()=>{await post('/api/reset');await speed(60);tab('ops');}},
  {t:'Without Aegis: the Oldsmar attack',d:'Guard OFF. A hacker sends one Modbus packet: lye from 100 to 11,100 ppm. We fast-forward the chemistry.',
   say:'"In 2021 in Oldsmar, Florida, someone set the lye to 11,100 ppm. Watch what that does to the water."',
-  run:async()=>{await needPin();await post('/api/mode',{mode:'off',pin:pin()});await post('/api/attack/lye');await speed(300);
-   await until(s=>s.plant.ph>8.5,30000,'waiting for pH to cross 8.5…');await speed(60);}},
+  run:async()=>{await needPin();await post('/api/mode',{mode:'off',pin:pin()});await post('/api/attack/lye');
+   await advanceUntil(s=>s.plant.ph>8.5,180,'fast-forwarding the chemistry until pH crosses 8.5');}},
  {t:'With Aegis: blocked',d:'Reset, guard ON (enforce). Same attack, then the same attack hidden in a rarely used Modbus command (FC 22).',
   say:'"Same attack with Aegis in front of the controller: blocked, with the reason, and the operator gets a text. Hiding it in an obscure command doesn\'t help."',
   run:async()=>{await post('/api/reset');await post('/api/mode',{mode:'enforce',pin:pin()});await sleep(400);await post('/api/attack/lye');await sleep(600);await post('/api/attack/mask');}},
  {t:'Rules aren\'t enough: the twin',d:'An algae bloom pushes raw-water pH up. A routine +50 lye change passes every static rule (in range, legal step). The twin computes the chemistry, blocks it, and checks the right fix.',
   say:'"Afternoon algae bloom. Someone makes a routine +50 change to the lye. Every rule says fine: in range, small step. But the raw water is already alkaline, and pH is a titration curve: flat, then suddenly steep. Aegis simulates the next six hours before letting a command through, warns before the alarm, and confirms the fix: turn the lye off."',
-  run:async()=>{await post('/api/reset');await post('/api/scenario/bloom');await speed(240);
-   await until(s=>(s.forewarn||[]).length>0,25000,'bloom arriving, waiting for the early warning…');await speed(60);
+  run:async()=>{await post('/api/reset');await post('/api/scenario/bloom');
+   await advanceUntil(s=>(s.forewarn||[]).length>0,240,'bloom arriving, fast-forwarding to the early warning');
    const a=await post('/api/operator/setpoint',{name:'naoh_dose',value:150});
    $('wi-n').value='naoh_dose';$('wi-v').value='0';await whatif();await sleep(800);
    const b=await post('/api/operator/setpoint',{name:'naoh_dose',value:0});await load();
@@ -506,8 +513,8 @@ const STEPS=[
    if(S&&(S.llm||S.llm_scripted)){$('q').value='Any open work orders I should handle?';await ask();if(!S.llm)$('g-st').textContent='No API key: a clearly labelled scripted model played the fooled AI. Say so.';}else{$('g-st').textContent='AI is offline here: add GROQ_API_KEY to show this step live.';}}},
  {t:'A lying controller',d:'Malware inside the PLC secretly doses lye 200 while its registers still say 100. No command passes through Aegis.',
   say:'"What if the controller itself is hacked, like Stuxnet? Aegis runs the chemistry alongside the plant. When the water stops matching what the controller claims, it raises the alarm."',
-  run:async()=>{await post('/api/reset');await post('/api/attack/plc-compromise',{freeze_sensors:false});await speed(360);
-   await until(s=>!s.integrity.ok,90000,'watching the physics…');await speed(60);}},
+  run:async()=>{await post('/api/reset');await post('/api/attack/plc-compromise',{freeze_sensors:false});
+   await advanceUntil(s=>!s.integrity.ok,360,'fast-forwarding while Aegis checks the physics',10);}},
  {t:'Evidence',d:'Tamper-evident log, MITRE ATT&CK mapping, incident report.',
   say:'"Every decision is in a tamper-evident log, and Aegis writes the incident report. No new hardware, no PLC replacement: one box in front of what small utilities already own."',
   run:async()=>{tab('evi');window.open('/api/report?minutes=30','_blank');}},
@@ -517,7 +524,12 @@ const PITCH=[1,2,3,4];      // the deck's live demo: guard off, guard on, the tw
 function guideShow(){const s=STEPS[ORDER[gi]];ran=false;$('g-n').textContent=(ORDER.length<STEPS.length?'Pitch step ':'Step ')+`${gi+1} of ${ORDER.length}`;$('g-t').textContent=s.t;
   $('g-d').textContent=s.d;$('g-say').textContent=s.say;$('g-st').textContent='';$('g-next').textContent='Run step ▶';}
 async function guideStart(mode){stopBooth();boothWanted=false;ORDER=mode==='pitch'?PITCH:STEPS.map((_,i)=>i);gi=0;$('guide').classList.toggle('pitch',mode==='pitch');$('guide').style.display='block';guideShow();
-  if(mode==='pitch'){$('g-st').textContent='preparing: plant reset…';try{await STEPS[0].run();$('g-st').textContent='Ready. Space or → runs each step.';}catch(e){$('g-st').textContent='Error: '+(e.message||e);}}}
+  if(mode==='pitch'){$('g-st').textContent='preparing: checking sign-in and PIN…';
+    try{await needPin();   // check before the audience is watching: steps 1-2 need the engineer PIN
+      const r=await fetch('/api/mode',{method:'POST',headers:H,body:JSON.stringify({mode:'enforce',pin:pin()})});
+      if(r.status===401||r.status===403){const j=await r.json().catch(()=>({}));throw new Error(`sign in as engineer and check the PIN (${j.detail||r.status})`);}
+      $('g-st').textContent='preparing: plant reset…';await STEPS[0].run();$('g-st').textContent='Ready. Space or → runs each step.';}
+    catch(e){$('g-st').innerHTML='<b style="color:#c0392b">Not ready: '+esc(e.message||String(e))+'</b>';}}}
 addEventListener('keydown',e=>{if($('guide').style.display!=='block'||/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName))return;
   if(e.key===' '||e.key==='ArrowRight'){e.preventDefault();if(!$('g-next').disabled)guideGo(1);}else if(e.key==='ArrowLeft'){e.preventDefault();guideGo(-1);}});
 function guideStop(){$('guide').style.display='none';speed(60);}
