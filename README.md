@@ -125,7 +125,7 @@ Every write is checked in this order; the first failure blocks it:
 pip install -r requirements.txt
 cp .env.example .env          # add GROQ_API_KEY for the AI copilot (free at console.groq.com)
 python -m aegis.server        # open http://127.0.0.1:8000
-python -m pytest -q           # 307 tests (2 skip without phreeqpython/mbpoll)
+python -m pytest -q           # 314 tests (2 skip without phreeqpython/mbpoll)
 python -m aegis.evaluate      # attack/operator evaluation (~10 min)
 python -m aegis.redteam       # prompt-injection red team against the real copilot (needs GROQ_API_KEY)
 python scripts/bench.py       # latency on your machine
@@ -247,6 +247,18 @@ Run it: the server starts Sentinel automatically (`AEGIS_AGENT=0` turns it off).
 
 Against the spec's release gates: citation validity **100%** (5104 claims, 0 removed) ✅; recovery steps the guard's checks would block **0/824** ✅; false escalation on operator incidents **3.6%** (gate ≤10%; the rule baseline is at 10.4%) ✅; AI-injection incidents detected **50/50**, and the 10 recovery steps filed for them are all weather corrections that *cut* lye, not the injected values ✅; red team (12 cases, a deliberately gullible model obeying planted instructions): **0** unsafe proposals, **0** dangerous SMS, **0** instructed classes, each stopped by a recorded defence ✅. **Beat the baseline by ≥10 points: not met** (+3.0 accuracy, +0.037 macro-F1). Two honest notes: the learned classifier alone scores higher than Sentinel's combined decision, because the confidence threshold chosen on development data turned out conservative; we did not re-tune it on held-out data. And the biggest remaining error is weather-driven integrity alarms (a physics mismatch during a storm or bloom) read as a PLC problem: 110 of 702 weather incidents. 13/75 simulated PLC/sensor faults opened no incident at all (noisy replays with no lab sample).
 
+**v2 (Nov 13).** What changed, all decided on training seeds 0-59 and a separate tuning set (seeds 100000+, 542 incidents), never on held-out data: features from the physics alarm's own numbers (the biggest v1 error was weather read as a PLC problem: weather false alarms fire while the model already predicts a high pH, on the steep part of the titration curve), one-shot attacks in the training data (the cause of the Oldsmar-style mistake), 3x the training data, and the trained case base now actually ships with the repo (a `.gitignore` rule had kept it out). Evaluated once on fresh held-out seeds 400000+ (1400 incidents, now including one-shot attacks). Full output: `docs/eval/sentinel_v2.md` / `.json.gz`.
+
+| | Rule baseline | Learned classifier | Sentinel |
+|---|---|---|---|
+| Accuracy (v1 → v2) | 85.2% → 89.9% | 91.9% → 93.1% | 88.2% → **93.4%** |
+| Macro-F1 (v2) | 0.852 | 0.911 | **0.913** |
+| Compromised HMI PC recall (v2) | 59.8% | 95.7% | 91.5% |
+| Weather incidents recall (v2) | 93.6% | 93.6% | 93.6% |
+| Operator incidents escalated to an attack (v2) | 5.3% | 0.4% | 0.8% |
+
+v2 gates: citation validity 100.0% (5495 claims, 0 removed); recovery steps the guard's checks would block 0/860; AI injections detected 50/50. Note the v1 and v2 held-out sets differ (v2 adds one-shot attacks and the rule baseline also gained a rule), so compare systems within a column-pair, not across versions blindly. Spec gate "+10 points over the rule baseline": still not met (+3.5 points).
+
 **Known limitations:**
 - Ground truth comes from Aegis's own simulators and attacker/operator models, not real incidents. The simulated attackers are fairly easy to tell apart with rules; real ones may not be.
 - **No real LLM has been evaluated yet** (no API key in the build environment). The numbers above are for the deterministic decision; the model path is exercised by the scripted stand-in and the red team. Next: run `aegis.agent.eval` and the red team with a real model, plus the spec's ablations.
@@ -278,7 +290,7 @@ Against the spec's release gates: citation validity **100%** (5104 claims, 0 rem
 | TLS on Modbus (Modbus/TCP Security) | ❌ not built |
 | Sentinel agent: incidents, 13 read-only tools, features, rule baseline, learned classifier, loop with budgets/fallback, citation validator, twin-tested recovery, report, API, dashboard card | ✅ built + tested (end to end through the HTTP API with demo attacks; held-out evaluation; red team) |
 | Sentinel with a real LLM | ⚠️ **not yet run with a real key**: loop exercised with a scripted stand-in and a deliberately gullible model |
-| Sentinel beats the rule baseline by ≥10 points (spec gate) | ❌ not met: +3.0 accuracy on held-out seeds (see "Sentinel") |
+| Sentinel beats the rule baseline by ≥10 points (spec gate) | ❌ not met: v1 +3.0, v2 +3.5 accuracy on held-out seeds (see "Sentinel") |
 
 ## Demo script (3 minutes)
 
