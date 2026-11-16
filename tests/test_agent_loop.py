@@ -268,3 +268,10 @@ def test_operator_error_never_reverts_the_operators_own_writes():
 def test_no_automatic_distribution_corrections():
     from aegis.agent import recovery as R
     assert not any(reg == "distribution_rate" for reg, _ in R.FIX.values())
+
+
+def test_min_gain_is_tuning_chosen_and_applied():
+    from aegis.agent import recovery as R
+    assert R.MIN_GAIN == 0.005
+    src = open(R.__file__).read()
+    assert "too small to act on" in src

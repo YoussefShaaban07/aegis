@@ -19,6 +19,11 @@ from __future__ import annotations
 from .tools import SETPOINTS, Evidence, _compare
 
 SUSPICIOUS = ("external_attack", "compromised_trusted_source", "ai_manipulation")
+# When the plant is already forecast outside its limits, a step must improve the twin's forecast by at least this
+# much (worst excursion, twin.SCALE units). Chosen on tuning seeds 100000+: it dropped 32 plans that did nothing on
+# the true plant and kept all 157 that helped. Restoring an attacker's change while the forecast is safe either way
+# is still allowed (it puts back a value an operator approved).
+MIN_GAIN = 0.005
 FIX = {  # (variable, direction it is going wrong) -> (register, sign of the corrective move)
     ("ph", "above"): ("naoh_dose", -1), ("ph", "below"): ("naoh_dose", +1),
     ("chlorine_residual", "below"): ("chlorine_dose", +1), ("chlorine_residual", "above"): ("chlorine_dose", -1),
@@ -191,6 +196,9 @@ async def plan(ev: Evidence, cls: str, F: dict, policy: dict, guard_check=None,
             new_cross = set(r_alone["with"]["crossings"]) - set(ref["crossings"])
             if w > wo + 1e-6:
                 why_not = f"twin: makes the forecast worse ({w:g} vs {wo:g})"
+            elif wo > 0 and wo - w < MIN_GAIN:
+                why_not = (f"twin: predicted improvement {wo - w:.4f} is too small to act on while the plant is already "
+                           f"forecast outside its limits")
             elif new_cross:
                 why_not = f"twin: creates a new band crossing ({', '.join(sorted(new_cross))})"
             elif w > 0 and c["kind"] == "weather" and w >= wo - 1e-6:

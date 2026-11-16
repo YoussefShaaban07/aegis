@@ -116,6 +116,8 @@ def run(seed_offset: int, n: int, noise: bool, progress=True, llm: bool = False,
                          "removed": len(r["removed"]), "steps": [(x["register"], x["value"]) for x in steps],
                          "steps_guard_blocked": sum(guard_would_block(pol, x, state) for x in steps),
                          "steps_true_effect": true_effect(c, [(x["register"], x["value"]) for x in steps]),
+                         "plan_twin": ((lambda pf: [pf["with"]["excursion"], pf["without"]["excursion"]] if pf else None)
+                                       (r["recovery"].get("plan_forecast"))),
                          "elapsed_s": r["elapsed_s"]})
         if limit is not None and len(rows) >= limit:
             break
