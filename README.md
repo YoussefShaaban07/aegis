@@ -261,6 +261,19 @@ Against the spec's release gates: citation validity **100%** (5104 claims, 0 rem
 
 v2 gates: citation validity 100.0% (5495 claims, 0 removed); recovery steps the guard's checks would block 0/860; AI injections detected 50/50. Note the v1 and v2 held-out sets differ (v2 adds one-shot attacks and the rule baseline also gained a rule), so compare systems within a column-pair, not across versions blindly. Spec gate "+10 points over the rule baseline": still not met (+3.5 points).
 
+**Correction to v2, and v3 (Nov 15).** v2's "0.8% of operator incidents escalated to an attack" only held because `evaluate.py`'s simulated operator never mistypes: every operator write is a small, sensible step, so the learned model picked up "big jump from the HMI PC = attacker". On realistic fat-finger mistakes (an extra or repeated digit, a slipped decimal, the right value in the wrong field), v2 called **38 of 39 an attack** (26.8% false escalation on the tuning set). v3 adds those typos to the training and evaluation data (`dataset.typo_cases`, labelled from the true plant) and two features for how people fix their own mistakes: `retry_after_block` (one saner value for the same field right after the block, then stop) and `typo_like` (the blocked value is ×10/×0.1 or a repeated digit of a nearby value). All choices were made on training seeds 0-59 and the tuning set; evaluated once on fresh held-out seeds 500000+ (1437 incidents). Full output: `docs/eval/sentinel_v3.md` / `.json.gz`.
+
+| v3, held-out | Rule baseline | Learned classifier | Sentinel |
+|---|---|---|---|
+| Accuracy | 91.3% | 93.9% | **93.5%** |
+| Macro-F1 | 0.876 | 0.917 | **0.913** |
+| Operator typos called an attack | 0/95 | 5/95 | 5/95 |
+| Operator incidents escalated to an attack (all) | 4.6% | 2.8% | 2.8% |
+| Compromised HMI PC recall | 65.3% | 92.4% | 87.3% |
+| …of which one-shot writes from the HMI PC | 6/40 | 31/40 | 25/40 |
+
+v3 gates: citation validity 100.0% (6064 claims); recovery steps the guard's checks would block 0/916; **recovery plans replayed on the true plant (simulator ground truth, 6 h): 826, made it worse 4, helped 426, no change 396**; AI injections detected 50/50. **The 4 plans that made the true plant worse fail the spec's release gate** (all in storms: 2 were a planner bug that reverted an operator's legitimate writes, 2 were small weather corrections the twin judged helpful); fixed and re-measured on fresh seeds in v3.1 below. "+10 points over the rule baseline": not met (+2.2). Limit: an attacker who deliberately imitates a typo and a retry is indistinguishable by behaviour alone; only signals like "was anyone logged in" help then.
+
 **Known limitations:**
 - Ground truth comes from Aegis's own simulators and attacker/operator models, not real incidents. The simulated attackers are fairly easy to tell apart with rules; real ones may not be.
 - **No real LLM has been evaluated yet** (no API key in the build environment). The numbers above are for the deterministic decision; the model path is exercised by the scripted stand-in and the red team. Next: run `aegis.agent.eval` and the red team with a real model, plus the spec's ablations.
@@ -292,7 +305,7 @@ v2 gates: citation validity 100.0% (5495 claims, 0 removed); recovery steps the 
 | TLS on Modbus (Modbus/TCP Security) | ❌ not built |
 | Sentinel agent: incidents, 13 read-only tools, features, rule baseline, learned classifier, loop with budgets/fallback, citation validator, twin-tested recovery, report, API, dashboard card | ✅ built + tested (end to end through the HTTP API with demo attacks; held-out evaluation; red team) |
 | Sentinel with a real LLM | ⚠️ **not yet run with a real key**: loop exercised with a scripted stand-in and a deliberately gullible model |
-| Sentinel beats the rule baseline by ≥10 points (spec gate) | ❌ not met: v1 +3.0, v2 +3.5 accuracy on held-out seeds (see "Sentinel") |
+| Sentinel beats the rule baseline by ≥10 points (spec gate) | ❌ not met: v1 +3.0, v2 +3.5, v3 +2.2 accuracy on held-out seeds (see "Sentinel") |
 
 ## Demo script (3 minutes)
 
