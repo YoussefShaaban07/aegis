@@ -62,3 +62,17 @@ def test_settings_and_rerun_need_engineer(client):     # noqa: F811
     assert client.post("/api/agent/settings", json={"enabled": False}).status_code == 403
     assert client.post(f"/api/agent/incidents/{inc['id']}/investigate").status_code == 403
     assert client.get("/api/agent/incidents").status_code == 200
+
+
+def test_operator_approves_a_sentinel_fix_and_the_guard_rechecks(client):     # noqa: F811
+    """The ramp attack slips small chlorine steps through; Sentinel proposes the revert; an operator approves it."""
+    client.post("/api/attack/ramp")
+    inc, _ = wait_for(client, lambda i: i["classification"] and i["proposals"])
+    pid = inc["proposals"][0]
+    assert "fix waiting for your approval" in inc["sms"]
+    client.post("/api/logout")
+    assert client.post("/api/login", json={"username": "operator", "password": "operator"}).status_code == 200
+    p = client.post(f"/api/proposals/{pid}/approve").json()
+    assert p["source"] == "Sentinel" and p["status"] == "approved" and p["decided_by"].startswith("operator")
+    assert client.post(f"/api/proposals/{pid}/approve").status_code == 409        # only once
+    assert "Sentinel" in client.get("/operator").text

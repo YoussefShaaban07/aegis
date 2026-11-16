@@ -46,7 +46,9 @@ class Service:
                                  casebase=CaseBase.load(), transport=standin.transport() if use_standin else None,
                                  model=standin.NAME if use_standin else None, status_fn=status_fn,
                                  work_orders_fn=lambda: list(orders),
-                                 report_link=lambda i: f"/api/agent/incidents/{i}/report", registry_fn=registry_fn)
+                                 # SMS links need the server's public address (e.g. https://aegis-srp7.onrender.com)
+                                 report_link=lambda i: f"{os.getenv('AEGIS_BASE_URL', '').rstrip('/')}/api/agent/incidents/{i}/report",
+                                 registry_fn=registry_fn)
         self.guard_policy = guard_policy
         self.results: dict[int, dict] = {}
         self.enabled = os.getenv("AEGIS_AGENT", "1") == "1"
@@ -79,6 +81,7 @@ class Service:
             v = (r.get("verdict") or {}).get("classification") or {}
             out.append({**inc.summary(), "classification": v.get("primary"), "confidence": v.get("confidence"),
                         "summary": (r.get("verdict") or {}).get("summary_for_operator"),
+                        "sms": r.get("sms"),
                         "severity": (r.get("report") or {}).get("severity"), "mode": r.get("mode"),
                         "proposals": [s.get("proposal_id") for s in (r.get("recovery") or {}).get("steps") or []],
                         "validity": (r.get("validation") or {}).get("validity")})
