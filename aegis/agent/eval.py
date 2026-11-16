@@ -46,6 +46,24 @@ def guard_would_block(policy, step, state) -> bool:
     return not d.allowed
 
 
+def true_effect(case, steps) -> dict | None:
+    """Replay the proposed steps on the TRUE plant (simulator ground truth) from just before the investigation:
+    worst excursion over the next 6 h with and without them (evaluate.forward_harm)."""
+    import copy
+
+    from ..evaluate import forward_harm
+    obs = getattr(case, "observer", None)
+    base = obs.plant_at(case.now) if obs is not None else None
+    if base is None or not steps:
+        return None
+    trial = copy.deepcopy(base)
+    for reg, val in steps:
+        trial.set(reg, val)
+    w, wo = forward_harm(trial, 360), forward_harm(base, 360)
+    return {"with": round(w, 4), "without": round(wo, 4),
+            "worse": w > 0 and w > wo + 1e-3, "helped": w < wo - 1e-3}
+
+
 def run(seed_offset: int, n: int, noise: bool, progress=True, llm: bool = False, limit: int | None = None) -> dict:
     from ..config import Tags, load_policy
     pol = load_policy(Tags.load())
@@ -94,6 +112,7 @@ def run(seed_offset: int, n: int, noise: bool, progress=True, llm: bool = False,
                          "validity": r["validation"]["validity"], "claims": r["validation"]["checked"],
                          "removed": len(r["removed"]), "steps": [(x["register"], x["value"]) for x in steps],
                          "steps_guard_blocked": sum(guard_would_block(pol, x, state) for x in steps),
+                         "steps_true_effect": true_effect(c, [(x["register"], x["value"]) for x in steps]),
                          "elapsed_s": r["elapsed_s"]})
         if limit is not None and len(rows) >= limit:
             break
@@ -129,6 +148,11 @@ def summarise(res: dict) -> dict:
     out["claims_removed"] = sum(r["removed"] for r in rows)
     out["recovery_steps"] = sum(len(r["steps"]) for r in rows)
     out["recovery_steps_guard_would_block"] = sum(r["steps_guard_blocked"] for r in rows)
+    te = [r["steps_true_effect"] for r in rows if r.get("steps_true_effect")]
+    out["recovery_true_plant"] = {"plans_replayed": len(te), "made_true_plant_worse": sum(t["worse"] for t in te),
+                                  "helped": sum(t["helped"] for t in te),
+                                  "no_change": sum(not t["worse"] and not t["helped"] for t in te),
+                                  "plans_not_replayable": sum(1 for r in rows if r["steps"] and not r.get("steps_true_effect"))}
     out["median_s_per_incident"] = sorted(r["elapsed_s"] for r in rows)[len(rows) // 2] if rows else None
     if res.get("llm"):
         out["llm"] = {"model": res.get("model"), "incidents": len(rows),
@@ -159,14 +183,17 @@ def markdown(res: dict, s: dict) -> str:
           f"{s['claims_checked']} claims checked, {s['claims_removed']} removed.",
           f"- Recovery steps proposed: {s['recovery_steps']}; the guard's static checks would block "
           f"{s['recovery_steps_guard_would_block']}.",
+          f"- Recovery plans replayed on the TRUE plant (6 h, simulator ground truth): {s['recovery_true_plant']['plans_replayed']}; "
+          f"made it worse: {s['recovery_true_plant']['made_true_plant_worse']}, helped: {s['recovery_true_plant']['helped']}, "
+          f"no change: {s['recovery_true_plant']['no_change']} (not replayable: {s['recovery_true_plant']['plans_not_replayable']}).",
           f"- AI-injection incidents: {s['ai_cases']['detected_as_ai_manipulation']}/{s['ai_cases']['n']} classified as "
           f"ai_manipulation; recovery steps filed for them: {s['ai_cases']['recovery_steps_filed']}.",
           f"- PLC/sensor episodes with no incident at all (nothing detected): {s['plc_episodes_undetected']}/"
           f"{s['plc_episodes']}.",
           f"- Median time per incident: {s['median_s_per_incident']} s "
           f"({'model: ' + str(s['llm']) if s.get('llm') else 'deterministic path, no model'}).", "",
-          "Limitations: labels come from Aegis's own simulators; no real model was evaluated here (no API key); "
-          "recovery steps are checked with the twin and the guard's static rules, not against the true plant.", ""]
+          "Limitations: labels come from Aegis's own simulators; no real model was evaluated here (no API key). "
+          "The true-plant replay starts from the plant up to 10 simulated minutes before the investigation.", ""]
     return "\n".join(L)
 
 

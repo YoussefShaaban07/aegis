@@ -114,6 +114,12 @@ class Clock:
         return self.t
 
 
+def _attach(observer, plant):
+    """Sentinel evaluation: give the observer the TRUE plant (to replay proposed fixes on ground truth)."""
+    if observer is not None and hasattr(observer, "attach"):
+        observer.attach(plant)
+
+
 def make_guard(plant: Plant, twin: bool, clock: Clock, policy: dict, audit=None):
     """audit: optional AuditLog (use AuditLog(':memory:', clock=clock)) so the episode leaves a
     hash-chained record; the Sentinel agent evaluation investigates those logs."""
@@ -186,6 +192,7 @@ def attack_episode(seed: int, use_twin: bool | None, policy: dict, hours: int = 
         blocked += 1
         return False
 
+    _attach(observer, plant)
     for minute in range(hours * 60 + 360):
         lab_tick(plant, minute, seed)
         clock.t = minute * 60.0
@@ -247,6 +254,7 @@ def operator_episode(seed: int, use_twin: bool, policy: dict, hours: int = 12, a
     weather = rng.choice(["storm", "bloom", "normal"])
     writes, reverts = [], []
     next_action = rng.randint(10, 60)
+    _attach(observer, plant)
     for minute in range(hours * 60):
         lab_tick(plant, minute, seed)
         clock.t = minute * 60.0

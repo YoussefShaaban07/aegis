@@ -154,3 +154,21 @@ def test_operator_cases_labels_from_true_plant():
         w = c.truth["writes"]
         worse = any(x["truth_with"] > 0 and x["truth_with"] > x["truth_without"] + 1e-3 for x in w)
         assert (c.label == "operator_error") == worse
+
+
+def test_true_plant_snapshots_do_not_change_episodes():
+    """The evaluation hands the TRUE plant to the observer (to replay fixes); episodes must be unchanged."""
+    import random as _r
+    from aegis import evaluate as ev
+    from aegis.audit import AuditLog
+    plain = ev.attack_episode(5, True, POL)
+    clock = ev.Clock()
+    log = AuditLog(":memory:", clock=clock)
+    obs = D.Episode(log, clock, _r.Random(0))
+    assert ev.attack_episode(5, True, POL, audit=log, clock=clock, observer=obs) == plain
+    assert obs.snaps and obs.plant_at(obs.snaps[3][0]) is obs.snaps[3][1]
+    assert obs.plant_at(-1) is None
+    # snapshots are independent copies: changing one doesn't touch another
+    a, b = obs.snaps[1][1], obs.snaps[2][1]
+    a.set("naoh_dose", 7)
+    assert b.setpoint("naoh_dose") != 7 or a is not b

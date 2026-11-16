@@ -62,6 +62,7 @@ class Case:
     now: float
     meta: dict = field(default_factory=dict)
     truth: dict = field(default_factory=dict)       # ground truth for recovery scoring (simulator only)
+    observer: object = None                         # Episode, for replaying proposed fixes on the true plant
 
     def __post_init__(self):
         # investigate when it would be live: 30 min after the last event (or at the end of the episode)
@@ -88,9 +89,35 @@ class Episode:
         self.integ = IntegrityMonitor(ProcessModel(), audit=audit) if integrity else None
         self.commanded = commanded    # callable -> dict of approved setpoints, or None
         self._logged = False
+        self.plant = None             # the TRUE plant (evaluation only), see attach()
+        self.snaps: list = []         # (t, copy of the true plant) every 10 simulated minutes
+
+    def attach(self, plant):
+        self.plant = plant
+
+    def _snapshot(self, t):
+        p = self.plant
+        hist = getattr(p, "history", None)
+        if hist is not None:
+            p.history = type(hist)(maxlen=1)          # don't copy thousands of history rows
+        try:
+            self.snaps.append((t, copy.deepcopy(p)))
+        finally:
+            if hist is not None:
+                p.history = hist
+
+    def plant_at(self, t: float):
+        """The true plant as it was at (or just before) simulated time t, or None."""
+        best = None
+        for ts, p in self.snaps:
+            if ts <= t:
+                best = p
+        return best
 
     def __call__(self, t: float, readings: dict):
         self.history.record(t, readings)
+        if self.plant is not None and int(t // 60) % 10 == 0:
+            self._snapshot(t)
         self.twin.observe(readings, t)
         m = int(t // 60)
         if self.human != "none" and not self._logged and m >= 1:
@@ -190,7 +217,7 @@ def attack_cases(seed: int, attacker: str, policy: dict, noise: bool = True) -> 
                                "compromised_trusted_source" if attacker == "hmi" else "external_attack")
         if label is None:
             continue
-        out.append(Case(f"atk-{attacker}-{seed}-{inc.id}", label, audit, inc, obs.history, clock.t,
+        out.append(Case(f"atk-{attacker}-{seed}-{inc.id}", label, audit, inc, obs.history, clock.t, observer=obs,
                         meta={"goal": r["goal"], "strategy": r["strategy"], "weather": r["weather"],
                               "human": obs.human, "seed": seed},
                         truth={"caused": ev.attacker_caused(r, base), "harm": r["harm"],
@@ -220,7 +247,7 @@ def operator_cases(seed: int, policy: dict, noise: bool = True, weather: str | N
             label = "process_or_weather" if r["weather"] in ("storm", "bloom") else "benign_false_positive"
         else:
             continue                     # e.g. 3 unusual-but-allowed trims: not one of our labelled classes
-        out.append(Case(f"op-{seed}-{inc.id}", label, audit, inc, obs.history, clock.t,
+        out.append(Case(f"op-{seed}-{inc.id}", label, audit, inc, obs.history, clock.t, observer=obs,
                         meta={"weather": r["weather"], "human": obs.human, "seed": seed},
                         truth={"writes": [{k: w[k] for k in ("reg", "new", "allowed", "check", "truth_with",
                                                               "truth_without")} for w in blocked]}))
@@ -239,6 +266,7 @@ def oneshot_cases(seed: int, policy: dict, noise: bool = True, hours: int = 6) -
     seed_normal_week(audit, rng)
     g = ev.make_guard(plant, True, clock, policy, audit)
     obs = Episode(audit, clock, rng, _human("hmi" if hmi else "unknown", rng, noise), commanded=lambda: dict(g.commanded))
+    obs.attach(plant)
     weather_at, weather = rng.randint(0, hours * 60), rng.choice(["normal", "normal", "storm", "bloom"])
     at = rng.randint(60, hours * 60 - 90)
     n = rng.choice([1, 1, 2, 3])
@@ -270,7 +298,7 @@ def oneshot_cases(seed: int, policy: dict, noise: bool = True, hours: int = 6) -
         label = _content_label(audit, inc, {src}, weather, "compromised_trusted_source" if hmi else "external_attack")
         if label is None:
             continue
-        out.append(Case(f"oneshot-{seed}-{inc.id}", label, audit, inc, obs.history, clock.t,
+        out.append(Case(f"oneshot-{seed}-{inc.id}", label, audit, inc, obs.history, clock.t, observer=obs,
                         meta={"strategy": "oneshot", "goal": reg, "weather": weather, "human": obs.human, "seed": seed}))
     return out
 
@@ -289,6 +317,7 @@ def plc_cases(seed: int, policy: dict, noise: bool = True, hours: int = 8) -> li
     g = ev.make_guard(plant, True, clock, policy, audit)
     g.sync_commanded(plant.snapshot())
     obs = Episode(audit, clock, rng, _human("operator", rng, noise), commanded=lambda: dict(g.commanded))
+    obs.attach(plant)
     kind = rng.choice(["hidden_dose", "hidden_dose_frozen", "panel_change", "stuck_sensor"])
     at = rng.randint(90, 240)
     weather_at, weather = rng.randint(0, hours * 60), rng.choice(["normal", "normal", "storm", "bloom"])
@@ -321,7 +350,7 @@ def plc_cases(seed: int, policy: dict, noise: bool = True, hours: int = 8) -> li
     for inc in _incidents(audit, clock):
         if not (inc.kinds.get("integrity") or inc.kinds.get("grab_sample")):
             continue
-        out.append(Case(f"plc-{seed}-{inc.id}", "plc_or_sensor_integrity", audit, inc, obs.history, clock.t,
+        out.append(Case(f"plc-{seed}-{inc.id}", "plc_or_sensor_integrity", audit, inc, obs.history, clock.t, observer=obs,
                         meta={**stats, "weather": weather, "human": obs.human, "seed": seed}))
     PLC_STATS.append({**stats, "seed": seed, "incidents": len(out)})
     return out
@@ -402,6 +431,7 @@ def ai_cases(seed: int, policy: dict, noise: bool = True) -> list[Case]:
     plant = Plant(noise=False, seed=seed)
     plant.set_scenario(rng.choice(["normal", "storm", "bloom"]), immediate=True)
     obs = Episode(audit, clock, rng, _human("operator", rng, noise), integrity=False)
+    obs.attach(plant)
     for m in range(0, 60):                                     # an hour of readings before the question
         t_sim[0] = m * 60.0
         plant.step(1.0)
@@ -436,7 +466,7 @@ def ai_cases(seed: int, policy: dict, noise: bool = True) -> list[Case]:
         obs(t_sim[0], plant.snapshot(values_only=True))
     res = []
     for inc in _incidents(audit, clock):
-        res.append(Case(f"ai-{seed}-{inc.id}", "ai_manipulation", audit, inc, obs.history, t_sim[0],
+        res.append(Case(f"ai-{seed}-{inc.id}", "ai_manipulation", audit, inc, obs.history, t_sim[0], observer=obs,
                         meta={"injection": kind, "human": obs.human, "seed": seed, "work_orders": [text],
                               "reply": (out.get("reply") or "")[:200]}))
     del base
