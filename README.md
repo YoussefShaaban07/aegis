@@ -274,6 +274,8 @@ v2 gates: citation validity 100.0% (5495 claims, 0 removed); recovery steps the 
 
 v3 gates: citation validity 100.0% (6064 claims); recovery steps the guard's checks would block 0/916; **recovery plans replayed on the true plant (simulator ground truth, 6 h): 826, made it worse 4, helped 426, no change 396**; AI injections detected 50/50. **The 4 plans that made the true plant worse fail the spec's release gate** (all in storms: 2 were a planner bug that reverted an operator's legitimate writes, 2 were small weather corrections the twin judged helpful); fixed and re-measured on fresh seeds in v3.1 below. "+10 points over the rule baseline": not met (+2.2). Limit: an attacker who deliberately imitates a typo and a retry is indistinguishable by behaviour alone; only signals like "was anyone logged in" help then.
 
+**v3.1 (Nov 15): recovery fixes, re-measured on fresh seeds.** Two changes, decided on the tuning set only: reverts are only for attacker / compromised-PC / manipulated-AI changes (an operator's mistake is the write the guard blocked; their allowed writes are legitimate work), and no automatic distribution-rate corrections (on tuning seeds they helped the true plant in 6 of 89 cases). The classifier is unchanged from v3. Held-out seeds 700000+ (1422 incidents; `docs/eval/sentinel_v3_1.md`): rules 88.5%, learned 90.9%, **Sentinel 91.0%** (macro-F1 0.844 / 0.883 / 0.884); operator typos called an attack 6/97; compromised-HMI recall 80.5% (rules 66.9%); operator incidents escalated to an attack 2.4%. **Recovery on the true plant: 457 plans replayed, made it worse 1, helped 356, no change 100. Release gate "0 proposals that make the true plant worse": ❌ still failing (1).** The one case: an outside attacker raising lye during an algae bloom; Sentinel's first revert step (lye 160, the first of several guard-sized steps) left the true plant's worst excursion at 0.646 vs 0.642 without it, with the plant already well outside its limits from the bloom. Not tuned against (it is held-out data); the next step would be requiring a minimum predicted improvement, chosen on tuning data and checked on fresh seeds. Citation validity 100.0% (5974 claims); recovery steps the guard's checks would block 0/491; AI injections detected 50/50.
+
 **Known limitations:**
 - Ground truth comes from Aegis's own simulators and attacker/operator models, not real incidents. The simulated attackers are fairly easy to tell apart with rules; real ones may not be.
 - **No real LLM has been evaluated yet** (no API key in the build environment). The numbers above are for the deterministic decision; the model path is exercised by the scripted stand-in and the red team. Next: run `aegis.agent.eval` and the red team with a real model, plus the spec's ablations.
@@ -304,8 +306,9 @@ v3 gates: citation validity 100.0% (6064 claims); recovery steps the guard's che
 | HTTPS for the dashboard | ⚠️ set `AEGIS_HTTPS=1` behind a TLS reverse proxy; not built in |
 | TLS on Modbus (Modbus/TCP Security) | ❌ not built |
 | Sentinel agent: incidents, 13 read-only tools, features, rule baseline, learned classifier, loop with budgets/fallback, citation validator, twin-tested recovery, report, API, dashboard card | ✅ built + tested (end to end through the HTTP API with demo attacks; held-out evaluation; red team) |
+| Sentinel recovery: 0 proposals that make the true plant worse (spec gate) | ❌ still failing (1) on held-out seeds (v3.1) |
 | Sentinel with a real LLM | ⚠️ **not yet run with a real key**: loop exercised with a scripted stand-in and a deliberately gullible model |
-| Sentinel beats the rule baseline by ≥10 points (spec gate) | ❌ not met: v1 +3.0, v2 +3.5, v3 +2.2 accuracy on held-out seeds (see "Sentinel") |
+| Sentinel beats the rule baseline by ≥10 points (spec gate) | ❌ not met: v1 +3.0, v2 +3.5, v3 +2.2, v3.1 +2.5 accuracy on held-out seeds (see "Sentinel") |
 
 ## Demo script (3 minutes)
 
