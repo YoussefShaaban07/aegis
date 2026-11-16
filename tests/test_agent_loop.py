@@ -253,3 +253,18 @@ def test_local_endpoint_needs_no_key(monkeypatch, hmi_case):
     assert {m for _, m in seen} == {"gpt-oss:20b"}
     monkeypatch.setenv("AEGIS_AGENT_URL", "https://api.example.com/v1/chat/completions")
     assert Sentinel(None).mode == "deterministic"            # a remote endpoint still needs a key
+
+
+def test_operator_error_never_reverts_the_operators_own_writes():
+    """v3 held-out replay: reverting an operator's allowed chlorine increase in a storm made the true plant worse."""
+    from aegis.agent import recovery as R
+    c = next(x for s in range(60) for x in D.operator_cases(s, POL) if x.label == "operator_error")
+    s = Sentinel(c.audit, c.history, policy=POL, mode="deterministic")
+    ev = s.evidence(c.incident, c.now)
+    F = s.deterministic(ev)["F"]
+    assert not [k for k in R.candidates(ev, "operator_error", F, POL) if k["kind"] == "revert"]
+
+
+def test_no_automatic_distribution_corrections():
+    from aegis.agent import recovery as R
+    assert not any(reg == "distribution_rate" for reg, _ in R.FIX.values())

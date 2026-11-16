@@ -1,8 +1,9 @@
 """Recovery planning (spec section 8): deterministic candidates, tested in the twin, filed as proposals.
 
 Candidates
-  1. revert: for every register a suspicious source changed and got through, the last value an operator
-     approved before the incident;
+  1. revert: for every register a suspicious source (attacker, compromised PC, manipulated AI) changed and got
+     through, the last value an operator approved before the incident. Never for operator errors: their mistake
+     was blocked, and their allowed writes are legitimate;
   2. weather response: if the forecast crosses a band even with the incident's writes removed, the standard
      corrective move (cut lye in a bloom, raise chlorine in a storm, slow distribution if the clearwell is
      falling), in small steps within the policy's step limit;
@@ -21,8 +22,10 @@ SUSPICIOUS = ("external_attack", "compromised_trusted_source", "ai_manipulation"
 FIX = {  # (variable, direction it is going wrong) -> (register, sign of the corrective move)
     ("ph", "above"): ("naoh_dose", -1), ("ph", "below"): ("naoh_dose", +1),
     ("chlorine_residual", "below"): ("chlorine_dose", +1), ("chlorine_residual", "above"): ("chlorine_dose", -1),
-    ("tank_level", "below"): ("distribution_rate", -1), ("tank_level", "above"): ("distribution_rate", +1),
 }
+# No automatic distribution-rate corrections: on the tuning seeds they helped the true plant in 6 of 89 cases (83 no
+# effect), two made it worse in the v3 held-out replay, and they change the town's supply. Clearwell level is left
+# to the operator (containment text below).
 CONTAIN = {
     "external_attack": ["Keep the lockdown on the source's IPs; do not clear it until the device is identified.",
                         "Check the firewall: only the Aegis gateway should reach the PLC."],
@@ -36,7 +39,8 @@ CONTAIN = {
                                 "Check the PLC program and setpoints at the front panel; readings may not be "
                                 "trustworthy until the lab confirms them."],
     "operator_error": ["Confirm the intended setpoint with the operator on shift."],
-    "process_or_weather": ["Watch raw-water pH and turbidity; take a lab sample if the trend continues."],
+    "process_or_weather": ["Watch raw-water pH and turbidity; take a lab sample if the trend continues.",
+                           "Watch the clearwell level; adjust distribution by hand if it trends toward a limit."],
     "benign_false_positive": ["If the block was wrong, an operator can use Allow once (hard limits still apply)."],
     "insufficient_evidence": ["Take a lab grab sample and review the timeline with the operator on shift."],
 }
@@ -60,7 +64,10 @@ def candidates(ev: Evidence, cls: str, F: dict, policy: dict, model_steps: list 
     inc = ev.incident
     srcs = set(inc.sources)
     t_first = min((ev.by_id[i]["t"] for i in inc.trigger_ids if i in ev.by_id), default=inc.opened_t)
-    if cls in SUSPICIOUS or cls == "operator_error":
+    # revert only what a suspicious source changed. In an operator error the mistake is the write the guard
+    # BLOCKED (it never landed); the operator's allowed writes are their legitimate work, and undoing them in a
+    # storm made the true plant worse (v3 held-out replay).
+    if cls in SUSPICIOUS:
         allowed = [e for e in ev.of("decision") if e["data"].get("source") in srcs and e["data"].get("allowed")
                    and not e["data"].get("would_block") and e["data"].get("register") in SETPOINTS
                    and _num(e["data"].get("old")) and _num(e["data"].get("new"))
@@ -72,7 +79,7 @@ def candidates(ev: Evidence, cls: str, F: dict, policy: dict, model_steps: list 
                 continue
             seen.add(reg)
             first_t = min(x["t"] for x in allowed if x["data"]["register"] == reg)
-            good = _last_good(ev, reg, first_t - 1, srcs if cls != "operator_error" else set())
+            good = _last_good(ev, reg, first_t - 1, srcs)
             val = good if good is not None else float(next(x for x in allowed if x["data"]["register"] == reg)
                                                       ["data"]["old"])
             out.append({"register": reg, "value": val, "kind": "revert",
