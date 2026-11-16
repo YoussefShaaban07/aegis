@@ -73,7 +73,8 @@ def run(seed_offset: int, n: int, noise: bool, progress=True, llm: bool = False,
             + [("operator", s) for s in range(seed_offset, seed_offset + 6 * n)]
             + [("plc", s) for s in range(seed_offset, seed_offset + max(1, n * 3 // 4))]
             + [("ai", s) for s in range(seed_offset, seed_offset + max(1, n // 2))]
-            + [("oneshot", s) for s in range(seed_offset, seed_offset + n)])
+            + [("oneshot", s) for s in range(seed_offset, seed_offset + n)]
+            + [("typo", s) for s in range(seed_offset, seed_offset + n)])
     if limit is not None:                     # small (LLM) samples: alternate between incident types
         by: dict = {}
         for j in jobs:
@@ -89,6 +90,8 @@ def run(seed_offset: int, n: int, noise: bool, progress=True, llm: bool = False,
             cases = D.plc_cases(s, pol, noise)
         elif kind == "oneshot":
             cases = D.oneshot_cases(s, pol, noise)
+        elif kind == "typo":
+            cases = D.typo_cases(s, pol, noise)
         else:
             cases = D.ai_cases(s, pol, noise)
         for c in cases:

@@ -13,7 +13,7 @@ SIGNALS = {
     "external_attack": ["!source_known", "recon_fc", "lockdown", "writes_after_block", "monotone_push", "probing"],
     "compromised_trusted_source": ["ip_matches_label", "!human_present", "monotone_push", "regular_interval",
                                    "probing", "writes_after_block", "lockdown"],
-    "operator_error": ["human_present", "correction_follows", "weather_aligned"],
+    "operator_error": ["human_present", "retry_after_block", "typo_like", "correction_follows", "weather_aligned"],
     "process_or_weather": ["harm_forecast_without_writes", "forecast_warnings", "raw_water_changed_recently",
                            "mismatch_on_steep_curve"],
     "plc_or_sensor_integrity": ["drift_without_decision", "physics_mismatch", "stuck_sensor", "lab_disagrees"],

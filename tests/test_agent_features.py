@@ -172,3 +172,33 @@ def test_true_plant_snapshots_do_not_change_episodes():
     a, b = obs.snaps[1][1], obs.snaps[2][1]
     a.set("naoh_dose", 7)
     assert b.setpoint("naoh_dose") != 7 or a is not b
+
+
+def test_typo_and_retry_features_and_rule():
+    """An operator types 1000 instead of 100, is blocked, re-sends 100 a minute later and stops."""
+    def fill(c, log):
+        log.append("login", {"user": "operator"})
+        c.t += 60
+        dec(log, new=1000, old=90, check="range")
+        c.t += 60
+        dec(log, new=100, old=90, allowed=True, check="ok")
+    F, b = features(fill)
+    assert F["retry_after_block"]["value"] and F["typo_like"]["value"]
+    assert b["primary"] == "operator_error"
+
+
+def test_persistent_pusher_is_not_a_retry():
+    def fill(c, log):
+        for i in range(5):
+            c.t += 60
+            dec(log, new=200 + 10 * i, old=100, check="range")
+    F, _ = features(fill)
+    assert not F["retry_after_block"]["value"]
+
+
+def test_typo_generator_labels_from_true_plant():
+    found = []
+    for s in range(6):
+        found += D.typo_cases(s, POL)
+    assert found and {c.label for c in found} <= {"operator_error", "benign_false_positive"}
+    assert all(c.meta["strategy"] == "typo" for c in found)

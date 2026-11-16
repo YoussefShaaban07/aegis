@@ -106,6 +106,40 @@ def extract(ev: Evidence, twin: bool = True) -> dict:
     first_block = next((e for e in mine if not e["data"].get("allowed")), None)
     after = [e for e in mine if first_block and e["t"] > first_block["t"]]
     F["writes_after_block"] = _f(len(after), [e["id"] for e in after[:5]])
+    # how a human recovers from their own mistake: shortly after a block, ONE saner value for the same field, then
+    # stop (attackers either stop entirely or keep pushing); and a blocked value that is a typo of a nearby value
+    retry = []
+    if first_block is not None:
+        fb = first_block["data"]
+        for e in after:
+            d = e["data"]
+            if e["t"] - first_block["t"] > 15 * 60:
+                break
+            if d.get("register") == fb.get("register") and _num(d.get("new")) and _num(fb.get("new")) \
+                    and _num(fb.get("old")) and abs(d["new"] - fb["old"]) < abs(fb["new"] - fb["old"]):
+                retry.append(e)
+                break
+    F["retry_after_block"] = _f(bool(retry) and len(after) <= 2, [first_block["id"]] + [e["id"] for e in retry]
+                                if retry else [])
+
+    def typo_of(v, ref):
+        if not (_num(v) and _num(ref)) or not ref:
+            return False
+        r = abs(v / ref)
+        if any(abs(r - k) <= 0.02 * k for k in (10, 100, 0.1, 0.01)):
+            return True
+        sv, sr = f"{v:g}".replace(".", ""), f"{ref:g}".replace(".", "")
+        return len(sv) == len(sr) + 1 and any(sv[:k] + sv[k + 1:] == sr for k in range(len(sv)))
+    typos = []
+    for e in mine:
+        d = e["data"]
+        if d.get("allowed") and not d.get("would_block"):
+            continue
+        refs = [d.get("old")] + [x["data"].get("new") for x in mine if 0 < x["t"] - e["t"] <= 15 * 60
+                                 and x["data"].get("register") == d.get("register")]
+        if any(typo_of(d.get("new"), r) for r in refs):
+            typos.append(e["id"])
+    F["typo_like"] = _f(bool(typos), typos)
     corr = []
     for i, a in enumerate(mine):
         da = a["data"]
@@ -227,7 +261,8 @@ NUMERIC = ("source_known", "ip_matches_label", "human_present", "human_actions",
            "raw_water_changed_recently", "drift_without_decision", "physics_mismatch", "stuck_sensor",
            "lab_disagrees", "forecast_warnings", "ai_origin", "ai_proposal_blocked", "ai_reply_flagged",
            "untrusted_instructions", "auth_failures", "harm_forecast_without_writes", "writes_make_forecast_worse",
-           "reverses_trend", "integrity_ph_predicted", "integrity_alk_err", "integrity_cl_err", "mismatch_on_steep_curve")
+           "reverses_trend", "integrity_ph_predicted", "integrity_alk_err", "integrity_cl_err", "mismatch_on_steep_curve",
+           "retry_after_block", "typo_like")
 
 
 def vector(F: dict) -> list[float]:

@@ -49,6 +49,9 @@ def classify(F: dict) -> dict:
         return out("compromised_trusted_source", "medium",
                    "trusted label, no human present, and a push/probe/persistence pattern", "human_present",
                    "monotone_push", "regular_interval", "probing", "writes_after_block")
+    if blocked and v(F, "source_known") and v(F, "retry_after_block") and not v(F, "monotone_push"):
+        return out("operator_error", "medium", "a known source re-sent a saner value right after the block and "
+                   "stopped (how people fix their own typos)", "retry_after_block", "typo_like")
     if blocked and v(F, "correction_follows") and v(F, "human_present"):
         return out("operator_error", "medium", "known operator, present, corrected the write", "correction_follows",
                    "human_present")

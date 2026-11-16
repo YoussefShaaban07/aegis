@@ -303,6 +303,95 @@ def oneshot_cases(seed: int, policy: dict, noise: bool = True, hours: int = 6) -
     return out
 
 
+def _typo(rng: random.Random, intended: float, reg: str) -> tuple[str, float]:
+    """A fat-finger version of the value an operator meant to type."""
+    s = f"{intended:g}"
+    kind = rng.choice(["extra_digit", "repeat_digit", "decimal", "wrong_field"])
+    if kind == "extra_digit":
+        return kind, float(intended * 10)
+    if kind == "repeat_digit":
+        i = rng.randrange(len(s.replace(".", "")) or 1)
+        digits = [c for c in s if c.isdigit()]
+        if digits:
+            pos = [k for k, c in enumerate(s) if c.isdigit()][min(i, len(digits) - 1)]
+            return kind, float(s[:pos] + s[pos] + s[pos:])
+        return kind, float(intended * 10)
+    if kind == "decimal":
+        return kind, float(intended * 10) if "." in s or reg == "chlorine_dose" else float(intended / 10)
+    return kind, float(intended)              # right value, wrong register (chosen by the caller)
+
+
+def typo_cases(seed: int, policy: dict, noise: bool = True, hours: int = 6) -> list[Case]:
+    """An operator fat-fingers one value (extra digit, repeated digit, slipped decimal, or the right value in the
+    wrong field), then usually notices: retries the intended value after a block, or reverts within minutes.
+    evaluate.operator_episode's operator never mistypes; real ones do (Oldsmar may have been one), and without
+    these the classifier would learn 'big jump = attacker'. Labels come from the true plant, as for operator_cases."""
+    rng = random.Random(f"typo-{seed}")
+    plant = Plant(noise=True, seed=seed)
+    clock = ev.Clock()
+    audit = AuditLog(":memory:", clock=clock)
+    seed_normal_week(audit, rng)
+    g = ev.make_guard(plant, True, clock, policy, audit)
+    obs = Episode(audit, clock, rng, _human("operator", rng, noise), commanded=lambda: dict(g.commanded))
+    obs.attach(plant)
+    weather_at, weather = rng.randint(0, hours * 60), rng.choice(["normal", "normal", "storm", "bloom"])
+    at = rng.randint(60, hours * 60 - 120)
+    reg = rng.choice(["naoh_dose", "chlorine_dose", "distribution_rate"])
+    other = rng.choice([r for r in ("naoh_dose", "chlorine_dose", "distribution_rate") if r != reg])
+    delta = {"naoh_dose": rng.choice([-10, -5, 5, 10, 20]), "chlorine_dose": rng.choice([-0.2, -0.1, 0.1, 0.2, 0.3]),
+             "distribution_rate": rng.choice([-100, -50, 50, 100])}[reg]
+    notice = rng.random() < 0.85                       # most operators notice the mistake
+    react = rng.randint(1, 12)
+    plan = {}
+    truths = []
+    for minute in range(hours * 60):
+        clock.t = minute * 60.0
+        if minute == weather_at:
+            plant.set_scenario(weather)
+        g.twin.observe(ev.seen(plant), clock.t)
+        if minute == at:
+            lim = (policy.get("limits") or {}).get(reg) or {}
+            intended = round(min(lim.get("max", 1e9), max(lim.get("min", 0), plant.setpoint(reg) + delta)), 2)
+            kind, val = _typo(rng, intended, reg)
+            target = other if kind == "wrong_field" else reg
+            old = plant.setpoint(target)
+            d = g.check(target, round(val, 2), ev.seen(plant), "Operator HMI", HMI_PEER)
+            ev.record(g, d, clock)
+            trial = copy.deepcopy(plant)
+            trial.set(target, round(val, 2))
+            truths.append({"reg": target, "new": round(val, 2), "allowed": d.allowed, "check": d.check,
+                           "truth_with": ev.forward_harm(trial), "truth_without": ev.forward_harm(plant)})
+            if d.allowed:
+                g._commit(d)
+                plant.set(target, d.new)
+            plan = {"kind": kind, "target": target, "old": old, "intended": intended, "allowed": d.allowed}
+        if plan and notice and minute == at + react:
+            # blocked: retry the value they meant; got through: put the field back
+            fix_reg, fix_val = ((plan["target"], plan["intended"]) if not plan["allowed"] and plan["kind"] != "wrong_field"
+                                else (plan["target"], plan["old"]))
+            d = g.check(fix_reg, fix_val, ev.seen(plant), "Operator HMI", HMI_PEER)
+            ev.record(g, d, clock)
+            if d.allowed:
+                g._commit(d)
+                plant.set(fix_reg, d.new)
+        obs(clock.t, ev.seen(plant))
+        plant.step(1.0)
+    out = []
+    for inc in _incidents(audit, clock):
+        if not any(i for i in inc.entry_ids if audit.between(inc.opened_t - 1, inc.last_t + 1, kinds=("decision",))):
+            continue
+        dec = [e for e in audit.between(inc.opened_t - 1, inc.last_t + 1, kinds=("decision",))
+               if e["id"] in set(inc.entry_ids) and e["data"].get("source") == "Operator HMI"]
+        if not dec:
+            continue
+        worse = any(w["truth_with"] > 0 and w["truth_with"] > w["truth_without"] + 1e-3 for w in truths)
+        label = "operator_error" if worse or plan.get("allowed") else "benign_false_positive"
+        out.append(Case(f"typo-{seed}-{inc.id}", label, audit, inc, obs.history, clock.t, observer=obs,
+                        meta={"strategy": "typo", "kind": plan.get("kind"), "weather": weather, "human": obs.human,
+                              "noticed": notice, "seed": seed}, truth={"writes": truths}))
+    return out
+
+
 PLC_STATS: list = []      # every PLC episode, including the ones nothing detected (reported, not hidden)
 
 
