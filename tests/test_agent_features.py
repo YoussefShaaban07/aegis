@@ -202,3 +202,19 @@ def test_typo_generator_labels_from_true_plant():
         found += D.typo_cases(s, POL)
     assert found and {c.label for c in found} <= {"operator_error", "benign_false_positive"}
     assert all(c.meta["strategy"] == "typo" for c in found)
+
+
+def test_ablation_runs_and_removes_the_group(tmp_path):
+    import json as _j
+    from aegis.agent import ablate as A
+    rows = []
+    for s in range(3):
+        for c in D.plc_cases(s, POL) + D.ai_cases(s, POL) + D.typo_cases(s, POL):
+            rows.append({"cid": c.cid, "label": c.label, "F": {k: v["value"] for k, v in FT.extract(c.evidence()).items()}})
+    p = tmp_path / "rows.json"
+    p.write_text(_j.dumps(rows, default=str))
+    A.main(["--train", str(p), "--test", str(p), "--out", str(tmp_path / "abl")])
+    res = _j.loads((tmp_path / "abl.json").read_text())
+    assert "all signals" in res and len(res) == 1 + len(A.GROUPS)
+    dropped = A._drop(A._load(str(p)), set(A.GROUPS["human presence"]))
+    assert all("human_present" not in r["F"] for r in dropped)

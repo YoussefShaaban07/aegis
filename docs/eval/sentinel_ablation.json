@@ -1,0 +1,122 @@
+{
+ "all signals": {
+  "rules": {
+   "accuracy": 0.9195,
+   "macro_f1": 0.8938,
+   "hmi_recall": 0.7391,
+   "operator_false_escalation": 0.0483
+  },
+  "learned": {
+   "accuracy": 0.9341,
+   "macro_f1": 0.917,
+   "hmi_recall": 0.913,
+   "operator_false_escalation": 0.0338
+  },
+  "sentinel": {
+   "accuracy": 0.939,
+   "macro_f1": 0.9231,
+   "hmi_recall": 0.8696,
+   "operator_false_escalation": 0.0338
+  }
+ },
+ "without human presence": {
+  "rules": {
+   "accuracy": 0.9232,
+   "macro_f1": 0.8991,
+   "hmi_recall": 0.7826,
+   "operator_false_escalation": 0.0483
+  },
+  "learned": {
+   "accuracy": 0.9366,
+   "macro_f1": 0.9197,
+   "hmi_recall": 0.913,
+   "operator_false_escalation": 0.0483
+  },
+  "sentinel": {
+   "accuracy": 0.9378,
+   "macro_f1": 0.9215,
+   "hmi_recall": 0.8261,
+   "operator_false_escalation": 0.0193
+  }
+ },
+ "without source identity (profile, IP vs label, hours)": {
+  "rules": {
+   "accuracy": 0.6415,
+   "macro_f1": 0.4594,
+   "hmi_recall": 0.0,
+   "operator_false_escalation": 0.9807
+  },
+  "learned": {
+   "accuracy": 0.8415,
+   "macro_f1": 0.7807,
+   "hmi_recall": 0.3188,
+   "operator_false_escalation": 0.0483
+  },
+  "sentinel": {
+   "accuracy": 0.8256,
+   "macro_f1": 0.7604,
+   "hmi_recall": 0.2029,
+   "operator_false_escalation": 0.2271
+  }
+ },
+ "without behaviour (push, probe, rhythm, persistence, retries, typos)": {
+  "rules": {
+   "accuracy": 0.8695,
+   "macro_f1": 0.7705,
+   "hmi_recall": 0.0,
+   "operator_false_escalation": 0.0
+  },
+  "learned": {
+   "accuracy": 0.9366,
+   "macro_f1": 0.9196,
+   "hmi_recall": 0.8261,
+   "operator_false_escalation": 0.0048
+  },
+  "sentinel": {
+   "accuracy": 0.9341,
+   "macro_f1": 0.9146,
+   "hmi_recall": 0.7246,
+   "operator_false_escalation": 0.0
+  }
+ },
+ "without twin forecasts (counterfactual, weather risk)": {
+  "rules": {
+   "accuracy": 0.8354,
+   "macro_f1": 0.8008,
+   "hmi_recall": 0.7391,
+   "operator_false_escalation": 0.0483
+  },
+  "learned": {
+   "accuracy": 0.8902,
+   "macro_f1": 0.8623,
+   "hmi_recall": 0.913,
+   "operator_false_escalation": 0.0242
+  },
+  "sentinel": {
+   "accuracy": 0.8805,
+   "macro_f1": 0.8596,
+   "hmi_recall": 0.8551,
+   "operator_false_escalation": 0.0
+  }
+ },
+ "without integrity alarm numbers": {
+  "rules": {
+   "accuracy": 0.8561,
+   "macro_f1": 0.8491,
+   "hmi_recall": 0.7391,
+   "operator_false_escalation": 0.0483
+  },
+  "learned": {
+   "accuracy": 0.9244,
+   "macro_f1": 0.9087,
+   "hmi_recall": 0.913,
+   "operator_false_escalation": 0.0338
+  },
+  "sentinel": {
+   "accuracy": 0.8866,
+   "macro_f1": 0.8838,
+   "hmi_recall": 0.8696,
+   "operator_false_escalation": 0.0338
+  }
+ }
+}

@@ -278,6 +278,19 @@ v3 gates: citation validity 100.0% (6064 claims); recovery steps the guard's che
 
 **v3.2 (Nov 15): minimum predicted improvement.** When the twin forecasts the plant outside its limits, a recovery step must now improve the forecast by at least 0.005 (chosen on tuning seeds: it dropped 32 plans that did nothing on the true plant and kept all 157 that helped). Fresh held-out seeds 800000+ (1450 incidents; `docs/eval/sentinel_v3_2.md`): rules 89.3%, learned 91.9%, **Sentinel 91.8%** (macro-F1 0.848 / 0.890 / 0.889); typos called an attack 6/97; compromised-HMI recall 83.0% (rules 59.8%); operator incidents escalated 3.9%. **Recovery on the true plant: 418 plans, made it worse 0, helped 344, no change 74: the release gate "0 proposals that make the true plant worse" passes on these seeds** (it failed on v3 and v3.1). Citation validity 100.0%; guard would block 0/418 steps; AI injections detected 50/50. One seed set is not a guarantee; the gate should be re-checked on every change.
 
+**Ablations (Nov 19): what the decision rests on.** Each group of signals was removed from both the rules and the learned classifier (retrained without it), then scored on 820 fresh held-out incidents (seeds 900000+; `docs/eval/sentinel_ablation.md`, `python -m aegis.agent.ablate`).
+
+| Signals | Sentinel accuracy | Compromised-HMI recall | Operator incidents called an attack |
+|---|---|---|---|
+| all | 93.9% | 87% | 3.4% |
+| without human presence (logins, acks) | 93.8% | 83% | 1.9% |
+| without source identity (7-day profile, IP vs label, hours) | **82.6%** | **20%** | **22.7%** |
+| without behaviour (push, probe, rhythm, persistence, retries, typos) | 93.4% | **72%** | 0.0% |
+| without twin forecasts | **88.0%** | 86% | 0.0% |
+| without integrity alarm numbers | **88.7%** | 87% | 3.4% |
+
+Reading it: source identity is the backbone. Without "has this source used this IP and these hours before", attackers and operators blur together. Behaviour carries most of the compromised-HMI detection. The twin and the integrity numbers are what separate weather from attacks and PLC faults. Human presence adds almost nothing, which is intended: with the login noise, an attacker riding a live shift can't be told apart that way. One honest oddity: the twin-forecast features cause the few operator false escalations (3.4% with them, 0% without), while being worth about 6 points of accuracy overall.
+
 **Known limitations:**
 - Ground truth comes from Aegis's own simulators and attacker/operator models, not real incidents. The simulated attackers are fairly easy to tell apart with rules; real ones may not be.
 - **No real LLM has been evaluated yet** (no API key in the build environment). The numbers above are for the deterministic decision; the model path is exercised by the scripted stand-in and the red team. Next: run `aegis.agent.eval` and the red team with a real model, plus the spec's ablations.
