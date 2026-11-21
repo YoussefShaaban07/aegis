@@ -125,7 +125,7 @@ Every write is checked in this order; the first failure blocks it:
 pip install -r requirements.txt
 cp .env.example .env          # add GROQ_API_KEY for the AI copilot (free at console.groq.com)
 python -m aegis.server        # open http://127.0.0.1:8000
-python -m pytest -q           # 314 tests (2 skip without phreeqpython/mbpoll)
+python -m pytest -q           # 329 tests (2 skip without phreeqpython/mbpoll)
 python -m aegis.evaluate      # attack/operator evaluation (~10 min)
 python -m aegis.redteam       # prompt-injection red team against the real copilot (needs GROQ_API_KEY)
 python scripts/bench.py       # latency on your machine
@@ -278,6 +278,8 @@ v3 gates: citation validity 100.0% (6064 claims); recovery steps the guard's che
 
 **v3.2 (Nov 15): minimum predicted improvement.** When the twin forecasts the plant outside its limits, a recovery step must now improve the forecast by at least 0.005 (chosen on tuning seeds: it dropped 32 plans that did nothing on the true plant and kept all 157 that helped). Fresh held-out seeds 800000+ (1450 incidents; `docs/eval/sentinel_v3_2.md`): rules 89.3%, learned 91.9%, **Sentinel 91.8%** (macro-F1 0.848 / 0.890 / 0.889); typos called an attack 6/97; compromised-HMI recall 83.0% (rules 59.8%); operator incidents escalated 3.9%. **Recovery on the true plant: 418 plans, made it worse 0, helped 344, no change 74: the release gate "0 proposals that make the true plant worse" passes on these seeds** (it failed on v3 and v3.1). Citation validity 100.0%; guard would block 0/418 steps; AI injections detected 50/50. One seed set is not a guarantee; the gate should be re-checked on every change.
 
+**v3.3 (Nov 21): case base retrained without duplicated rows.** A data-generation bug had counted 300 of 866 training incidents two or three times (all operator incidents; see the ablation correction below). Retrained on 875 unique incidents (seeds 0-59); same threshold. Fresh held-out seeds 1100000+ (1441 incidents; `docs/eval/sentinel_v3_3.md`): rules 88.3%, learned 90.6%, **Sentinel 90.7%** (macro-F1 0.836 / 0.871 / 0.873); operator typos called an attack 7/98; compromised-HMI recall 83% (rules 61%); operator incidents escalated 3.0%. **Recovery on the true plant: 452 plans, 0 made it worse, 383 helped**: the release gate passes on a second fresh seed set. Citation validity 100% (5968 claims); 0/453 steps the guard would block; AI injections 50/50. A lab grab-sample reminder now appears after 12 h without one (dashboard only), because 19 of 75 simulated PLC faults were caught by nothing else.
+
 **Ablations: what the decision rests on** (corrected Nov 21). Each group of signals was removed from both the rules and the learned classifier (retrained without it), then scored on 558 fresh held-out incidents (seeds 900000+; `docs/eval/sentinel_ablation.md`, `python -m aegis.agent.ablate`). *Correction:* the first version (Nov 19) counted 262 operator incidents two or three times, because parallel data-generation chunks overlapped (fixed in `train.generate`, with deduplication and a regression test); the conclusions held, one claim did not.
 
 | Signals | Sentinel accuracy | Compromised-HMI recall | Operator incidents called an attack |
@@ -321,9 +323,9 @@ Reading it: source identity is the backbone. Without "has this source used this 
 | HTTPS for the dashboard | ⚠️ set `AEGIS_HTTPS=1` behind a TLS reverse proxy; not built in |
 | TLS on Modbus (Modbus/TCP Security) | ❌ not built |
 | Sentinel agent: incidents, 13 read-only tools, features, rule baseline, learned classifier, loop with budgets/fallback, citation validator, twin-tested recovery, report, API, dashboard card | ✅ built + tested (end to end through the HTTP API with demo attacks; held-out evaluation; red team) |
-| Sentinel recovery: 0 proposals that make the true plant worse (spec gate) | ✅ on held-out seeds 800000+ (v3.2: 0/418); failed in v3 (4) and v3.1 (1) |
+| Sentinel recovery: 0 proposals that make the true plant worse (spec gate) | ✅ on two fresh held-out sets (v3.2: 0/418, v3.3: 0/452); failed in v3 (4) and v3.1 (1) |
 | Sentinel with a real LLM | ⚠️ **not yet run with a real key**: loop exercised with a scripted stand-in and a deliberately gullible model |
-| Sentinel beats the rule baseline by ≥10 points (spec gate) | ❌ not met: v1 +3.0, v2 +3.5, v3 +2.2, v3.1 +2.5, v3.2 +2.5 accuracy on held-out seeds (see "Sentinel") |
+| Sentinel beats the rule baseline by ≥10 points (spec gate) | ❌ not met: v1 +3.0, v2 +3.5, v3 +2.2, v3.1 +2.5, v3.2 +2.5, v3.3 +2.4 accuracy on held-out seeds (see "Sentinel") |
 
 ## Demo script (3 minutes)
 
