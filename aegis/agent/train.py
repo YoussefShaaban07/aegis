@@ -22,7 +22,9 @@ def generate(seeds=DEV_SEEDS, noise=True) -> list[dict]:
     pol = load_policy(Tags.load())
     s = list(seeds)
     gens = [(lambda x: D.attack_cases(x, "unknown", pol, noise), s), (lambda x: D.attack_cases(x, "hmi", pol, noise), s),
-            (lambda x: D.operator_cases(x, pol, noise), range(s[0], s[0] + 6 * len(s))),
+            # 6 operator episodes per seed, numbered so that separate chunks never overlap (seeds 0-19 and 20-39
+            # used to share operator seeds 20-119, which duplicated 300 of 866 training incidents)
+            (lambda x: D.operator_cases(x, pol, noise), [6 * x + k for x in s for k in range(6)]),
             (lambda x: D.plc_cases(x, pol, noise), s[: max(1, 3 * len(s) // 4)]),
             (lambda x: D.ai_cases(x, pol, noise), s[: max(1, len(s) // 2)]),
             (lambda x: D.oneshot_cases(x, pol, noise), s),
@@ -36,6 +38,16 @@ def generate(seeds=DEV_SEEDS, noise=True) -> list[dict]:
     return rows
 
 
+def dedupe(rows: list[dict]) -> list[dict]:
+    """Keep the first row per incident id (rows from overlapping generator runs must not count twice)."""
+    seen, out = set(), []
+    for r in rows:
+        if r["cid"] not in seen:
+            seen.add(r["cid"])
+            out.append(r)
+    return out
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--rows", help="JSON rows with label and F (feature values or {value, ids} dicts)")
@@ -43,7 +55,7 @@ def main(argv=None):
     ap.add_argument("--out", default=str(DEFAULT_PATH))
     a = ap.parse_args(argv)
     if a.rows:
-        rows = json.load(open(a.rows))
+        rows = dedupe(json.load(open(a.rows)))
         for r in rows:
             r["F"] = {k: (v if isinstance(v, dict) and "value" in v else {"value": v}) for k, v in r["F"].items()}
         src = a.rows

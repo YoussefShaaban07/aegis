@@ -1,12 +1,12 @@
-# Sentinel ablations (820 held-out incidents, trained on 866)
+# Sentinel ablations (558 held-out incidents, trained on 875)
 
 Each group is removed from the rule baseline and from the learned classifier (retrained without it).
 
 | Signals | Sentinel accuracy | Macro-F1 | Compromised-HMI recall | Operator incidents called an attack | Rules accuracy |
 |---|---|---|---|---|---|
-| all signals | 93.9% | 0.923 | 87% | 3.4% | 92.0% |
-| without human presence | 93.8% | 0.921 | 83% | 1.9% | 92.3% |
-| without source identity (profile, IP vs label, hours) | 82.6% | 0.760 | 20% | 22.7% | 64.1% |
-| without behaviour (push, probe, rhythm, persistence, retries, typos) | 93.4% | 0.915 | 72% | 0.0% | 87.0% |
-| without twin forecasts (counterfactual, weather risk) | 88.0% | 0.860 | 86% | 0.0% | 83.5% |
-| without integrity alarm numbers | 88.7% | 0.884 | 87% | 3.4% | 85.6% |
+| all signals | 93.5% | 0.925 | 90% | 3.9% | 90.7% |
+| without human presence | 93.0% | 0.919 | 88% | 5.5% | 91.2% |
+| without source identity (profile, IP vs label, hours) | 78.7% | 0.763 | 20% | 24.2% | 62.4% |
+| without behaviour (push, probe, rhythm, persistence, retries, typos) | 92.3% | 0.910 | 75% | 0.0% | 82.3% |
+| without twin forecasts (counterfactual, weather risk) | 90.9% | 0.890 | 88% | 2.3% | 84.8% |
+| without integrity alarm numbers | 89.8% | 0.898 | 90% | 3.9% | 86.4% |

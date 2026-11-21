@@ -1,122 +1,122 @@
 {
  "all signals": {
   "rules": {
-   "accuracy": 0.9195,
-   "macro_f1": 0.8938,
+   "accuracy": 0.9068,
+   "macro_f1": 0.8862,
    "hmi_recall": 0.7391,
-   "operator_false_escalation": 0.0483
+   "operator_false_escalation": 0.0312
   },
   "learned": {
-   "accuracy": 0.9341,
-   "macro_f1": 0.917,
-   "hmi_recall": 0.913,
-   "operator_false_escalation": 0.0338
+   "accuracy": 0.9265,
+   "macro_f1": 0.9174,
+   "hmi_recall": 0.8986,
+   "operator_false_escalation": 0.0547
   },
   "sentinel": {
-   "accuracy": 0.939,
-   "macro_f1": 0.9231,
-   "hmi_recall": 0.8696,
-   "operator_false_escalation": 0.0338
+   "accuracy": 0.9355,
+   "macro_f1": 0.9251,
+   "hmi_recall": 0.8986,
+   "operator_false_escalation": 0.0391
   }
  },
  "without human presence": {
   "rules": {
-   "accuracy": 0.9232,
-   "macro_f1": 0.8991,
+   "accuracy": 0.9122,
+   "macro_f1": 0.8921,
    "hmi_recall": 0.7826,
-   "operator_false_escalation": 0.0483
+   "operator_false_escalation": 0.0312
   },
   "learned": {
-   "accuracy": 0.9366,
-   "macro_f1": 0.9197,
-   "hmi_recall": 0.913,
-   "operator_false_escalation": 0.0483
+   "accuracy": 0.9265,
+   "macro_f1": 0.9173,
+   "hmi_recall": 0.8986,
+   "operator_false_escalation": 0.0625
   },
   "sentinel": {
-   "accuracy": 0.9378,
-   "macro_f1": 0.9215,
-   "hmi_recall": 0.8261,
-   "operator_false_escalation": 0.0193
+   "accuracy": 0.9301,
+   "macro_f1": 0.9195,
+   "hmi_recall": 0.8841,
+   "operator_false_escalation": 0.0547
   }
  },
  "without source identity (profile, IP vs label, hours)": {
   "rules": {
-   "accuracy": 0.6415,
-   "macro_f1": 0.4594,
+   "accuracy": 0.6237,
+   "macro_f1": 0.4749,
    "hmi_recall": 0.0,
-   "operator_false_escalation": 0.9807
+   "operator_false_escalation": 0.9688
   },
   "learned": {
-   "accuracy": 0.8415,
-   "macro_f1": 0.7807,
+   "accuracy": 0.7867,
+   "macro_f1": 0.7681,
    "hmi_recall": 0.3188,
-   "operator_false_escalation": 0.0483
+   "operator_false_escalation": 0.0625
   },
   "sentinel": {
-   "accuracy": 0.8256,
-   "macro_f1": 0.7604,
+   "accuracy": 0.7867,
+   "macro_f1": 0.7628,
    "hmi_recall": 0.2029,
-   "operator_false_escalation": 0.2271
+   "operator_false_escalation": 0.2422
   }
  },
  "without behaviour (push, probe, rhythm, persistence, retries, typos)": {
   "rules": {
-   "accuracy": 0.8695,
-   "macro_f1": 0.7705,
+   "accuracy": 0.8226,
+   "macro_f1": 0.749,
    "hmi_recall": 0.0,
    "operator_false_escalation": 0.0
   },
   "learned": {
-   "accuracy": 0.9366,
-   "macro_f1": 0.9196,
-   "hmi_recall": 0.8261,
-   "operator_false_escalation": 0.0048
+   "accuracy": 0.9283,
+   "macro_f1": 0.9192,
+   "hmi_recall": 0.8406,
+   "operator_false_escalation": 0.0078
   },
   "sentinel": {
-   "accuracy": 0.9341,
-   "macro_f1": 0.9146,
-   "hmi_recall": 0.7246,
+   "accuracy": 0.9229,
+   "macro_f1": 0.9101,
+   "hmi_recall": 0.7536,
    "operator_false_escalation": 0.0
   }
  },
  "without twin forecasts (counterfactual, weather risk)": {
   "rules": {
-   "accuracy": 0.8354,
-   "macro_f1": 0.8008,
+   "accuracy": 0.8477,
+   "macro_f1": 0.8202,
    "hmi_recall": 0.7391,
-   "operator_false_escalation": 0.0483
+   "operator_false_escalation": 0.0312
   },
   "learned": {
-   "accuracy": 0.8902,
-   "macro_f1": 0.8623,
-   "hmi_recall": 0.913,
-   "operator_false_escalation": 0.0242
+   "accuracy": 0.905,
+   "macro_f1": 0.8839,
+   "hmi_recall": 0.8841,
+   "operator_false_escalation": 0.0547
   },
   "sentinel": {
-   "accuracy": 0.8805,
-   "macro_f1": 0.8596,
-   "hmi_recall": 0.8551,
-   "operator_false_escalation": 0.0
+   "accuracy": 0.9086,
+   "macro_f1": 0.8905,
+   "hmi_recall": 0.8841,
+   "operator_false_escalation": 0.0234
   }
  },
  "without integrity alarm numbers": {
   "rules": {
-   "accuracy": 0.8561,
-   "macro_f1": 0.8491,
+   "accuracy": 0.8638,
+   "macro_f1": 0.856,
    "hmi_recall": 0.7391,
-   "operator_false_escalation": 0.0483
+   "operator_false_escalation": 0.0312
   },
   "learned": {
-   "accuracy": 0.9244,
-   "macro_f1": 0.9087,
-   "hmi_recall": 0.913,
-   "operator_false_escalation": 0.0338
+   "accuracy": 0.9211,
+   "macro_f1": 0.9136,
+   "hmi_recall": 0.8986,
+   "operator_false_escalation": 0.0547
   },
   "sentinel": {
-   "accuracy": 0.8866,
-   "macro_f1": 0.8838,
-   "hmi_recall": 0.8696,
-   "operator_false_escalation": 0.0338
+   "accuracy": 0.8978,
+   "macro_f1": 0.8976,
+   "hmi_recall": 0.8986,
+   "operator_false_escalation": 0.0391
   }
  }
 }

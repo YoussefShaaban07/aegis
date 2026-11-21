@@ -218,3 +218,25 @@ def test_ablation_runs_and_removes_the_group(tmp_path):
     assert "all signals" in res and len(res) == 1 + len(A.GROUPS)
     dropped = A._drop(A._load(str(p)), set(A.GROUPS["human presence"]))
     assert all("human_present" not in r["F"] for r in dropped)
+
+
+def test_generator_chunks_do_not_overlap():
+    """Regression: train.generate on seeds 0-19 and 20-39 shared operator seeds 20-119 (300 duplicate rows)."""
+    import aegis.agent.train as TR
+    calls = []
+    orig = D.operator_cases
+    try:
+        D.operator_cases = lambda x, *a, **k: calls.append(x) or []
+        for gen in ("attack_cases", "plc_cases", "ai_cases", "oneshot_cases", "typo_cases"):
+            setattr(D, "_orig_" + gen, getattr(D, gen))
+            setattr(D, gen, lambda *a, **k: [])
+        TR.generate(range(0, 3))
+        first = list(calls)
+        calls.clear()
+        TR.generate(range(3, 6))
+        assert first == list(range(0, 18)) and not set(first) & set(calls)
+    finally:
+        D.operator_cases = orig
+        for gen in ("attack_cases", "plc_cases", "ai_cases", "oneshot_cases", "typo_cases"):
+            setattr(D, gen, getattr(D, "_orig_" + gen))
+    assert len(TR.dedupe([{"cid": "a"}, {"cid": "a"}, {"cid": "b"}])) == 2

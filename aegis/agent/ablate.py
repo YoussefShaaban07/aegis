@@ -34,7 +34,8 @@ ATTACK = ("external_attack", "compromised_trusted_source", "ai_manipulation")
 
 
 def _load(path):
-    rows = json.load(open(path))
+    from .train import dedupe
+    rows = dedupe(json.load(open(path)))
     for r in rows:
         r["F"] = {k: (v if isinstance(v, dict) and "value" in v else {"value": v}) for k, v in r["F"].items()}
     return rows

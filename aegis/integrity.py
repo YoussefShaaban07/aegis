@@ -31,6 +31,8 @@ nobody takes a grab sample, nothing that reads only from the PLC can tell.
 """
 from __future__ import annotations
 
+import os
+
 from collections import deque
 
 from .process import ProcessModel, ProcessState, Raw, alk_from_ph, raw_from
@@ -54,6 +56,12 @@ class IntegrityMonitor:
         self._flagged: set[str] = set()
         self._same: dict[str, list] = {}       # sensor -> [last value, consecutive identical readings]
         self.stuck_after = 20                  # polls (= minutes at 1/min) of a bit-identical reading
+        # A replay attack (hidden dosing + noisy frozen readings) passes every online check; only a lab grab sample
+        # catches it. In the Sentinel evaluation 14-20 of 75 simulated PLC faults were caught by nothing else. Remind
+        # the operator when none has been taken for a while (dashboard only, never texted, never an incident).
+        self.grab_every_s = float(os.getenv("AEGIS_GRAB_EVERY_H", "12")) * 3600
+        self.last_grab_t: float | None = None
+        self._grab_due_n = 0
 
     # ---------------------------------------------------------------- helpers
     def _event(self, key: str, severity: str, message: str, data: dict):
@@ -128,6 +136,13 @@ class IntegrityMonitor:
 
     def update(self, state: dict, t: float, commanded: dict | None = None) -> dict:
         """Call periodically with the PLC-reported state and the time in seconds."""
+        self.now = t
+        due = self.check_grab_due(t)
+        st = self._update(state, t, commanded)
+        st["grab_due"] = due
+        return st
+
+    def _update(self, state: dict, t: float, commanded: dict | None = None) -> dict:
         if commanded:
             self.check_setpoints(state, commanded)
         self.check_stuck(state)
@@ -180,6 +195,19 @@ class IntegrityMonitor:
             self._anchor(state, t)
         return self.status
 
+    def check_grab_due(self, t: float) -> bool:
+        if self.last_grab_t is None:
+            self.last_grab_t = t                # the clock starts when monitoring starts
+        due = self.grab_every_s > 0 and t - self.last_grab_t >= self.grab_every_s
+        if due:
+            self._grab_due_n += 1
+            hours = (t - self.last_grab_t) / 3600
+            self._event(f"grab_due:{self._grab_due_n}", "info",
+                        f"No lab grab sample for {hours:.0f} h. Take one and compare it with the PLC: it is the only "
+                        "check that catches a PLC replaying normal-looking readings.", {"hours": round(hours, 1)})
+            self.last_grab_t = t                # remind again one interval later
+        return due
+
     def grab_sample(self, state: dict, ph: float | None = None, chlorine: float | None = None,
                     ph_tol: float = 0.2, cl_tol: float = 0.2, by: str = "operator") -> dict:
         # lab pH meters are good to ~0.1 and DPD chlorine kits to ~0.1 mg/L; 0.2 leaves margin
@@ -193,6 +221,7 @@ class IntegrityMonitor:
                 abs(chlorine - state["chlorine_residual"]) > cl_tol:
             res["ok"] = False
             res["notes"].append(f"lab chlorine {chlorine:.2f} vs PLC {state['chlorine_residual']:.2f} mg/L")
+        self.last_grab_t = getattr(self, "now", self.last_grab_t)
         if self.audit:
             self.audit.append("grab_sample", res)
         if not res["ok"]:

@@ -8,6 +8,16 @@
 4. Rehearse with **▶ Guided demo** (sign in as `engineer` / `engineer`, PIN `2468`) until each step's line comes naturally. Whole run: ~3 minutes.
 5. Have `docs/dashboard.png`, `docs/copilot-reply-guard.png`, `docs/operator-view.png` and an incident report open in a browser tab as a backup if the laptop misbehaves.
 
+## Presenting from the public site (Render)
+
+What went wrong at the expo: the Oldsmar step froze on the Render site and ate the pitch time; the pitch had never been rehearsed end to end there. Since then (branch `sentinel`): pitch steps fast-forward the simulation on the server instead of waiting on timers and show an error instead of hanging; the PIN is checked before step 1; and a presenter lock stops other visitors from changing the shared plant during your pitch.
+
+1. **Open the site at least 2 minutes before you present.** The free plan sleeps after ~15 idle minutes; a cold start took ~30 s on Nov 19 (Render's loading screen, then the sign-in page). Keep the tab open so it stays awake.
+2. Sign in as engineer, type the PIN in the **Eng. PIN** box, click **Pitch demo**. It must say **Ready**. If it says **Not ready**, the reason is on screen (sign-in or PIN), fix it before you start talking.
+3. While your pitch runs, anyone else who opens the site (e.g. a judge scanning the QR code) can watch but not change anything; they see a banner. The lock ends when you close the guide, or after 15 minutes without your actions.
+4. Backup, in this order: `run.bat` on the laptop (no network needed), then `docs/video/pitch-demo-backup.mp4`.
+5. Do one full rehearsal on the live site after every deploy, watching Render's logs.
+
 ## The "hacker terminal" moment (makes it obviously not staged)
 
 Aegis's guarded Modbus port is **5502 on every network interface**. Open a second terminal (or use a second laptop on the same Wi-Fi with the laptop's IP instead of 127.0.0.1):
