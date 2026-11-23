@@ -204,9 +204,12 @@ def extract(ev: Evidence, twin: bool = True) -> dict:
     F["forecast_warnings"] = _f(len(fw), [e["id"] for e in fw])
 
     # --- AI
-    props = [e for e in ev.of("proposal") if e["data"].get("source") in AI_SOURCES]
+    # only the AI activity that belongs to THIS incident: an unrelated copilot proposal earlier in the evidence
+    # window must not turn a later attack into "AI manipulation" (found rehearsing the guided demo)
+    mine_ids = set(inc.entry_ids)
+    props = [e for e in ev.of("proposal") if e["data"].get("source") in AI_SOURCES and e["id"] in mine_ids]
     pblk = [e for e in props if e["data"].get("status") == "blocked"]
-    flag = ev.of("ai_reply_flagged")
+    flag = [e for e in ev.of("ai_reply_flagged") if e["id"] in mine_ids]
     ai_dec = [e for e in inc_dec if e["data"].get("source") in AI_SOURCES]
     texts = []
     if ev.work_orders_fn:
@@ -218,7 +221,8 @@ def extract(ev: Evidence, twin: bool = True) -> dict:
     F["ai_origin"] = _f(bool(props or flag or ai_dec), [e["id"] for e in props + flag + ai_dec])
     F["ai_proposal_blocked"] = _f(bool(pblk), [e["id"] for e in pblk])
     F["ai_reply_flagged"] = _f(bool(flag), [e["id"] for e in flag])
-    F["untrusted_instructions"] = _f(bool(injected) or any(IMPERATIVE.search(t) for t in texts),
+    F["untrusted_instructions"] = _f(bool(injected) or (bool(props or flag or ai_dec)
+                                                         and any(IMPERATIVE.search(t) for t in texts)),
                                      [e["id"] for e in injected])
     auth = ev.of("auth_failure")
     F["auth_failures"] = _f(len(auth), [e["id"] for e in auth])

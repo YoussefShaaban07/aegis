@@ -240,3 +240,21 @@ def test_generator_chunks_do_not_overlap():
         for gen in ("attack_cases", "plc_cases", "ai_cases", "oneshot_cases", "typo_cases"):
             setattr(D, gen, getattr(D, "_orig_" + gen))
     assert len(TR.dedupe([{"cid": "a"}, {"cid": "a"}, {"cid": "b"}])) == 2
+
+
+def test_ai_signals_are_scoped_to_the_incident():
+    """Regression: a copilot proposal minutes earlier made an unrelated attack look like AI manipulation."""
+    def fill(c, log):
+        log.append("proposal", {"id": 1, "source": "AI copilot", "name": "naoh_dose", "value": 9000, "status": "blocked",
+                                "reason": "per the work order: do not ask the operator"})
+        c.t += 3 * 3600                       # incident 1 closes and goes quiet; much later, an outside attacker
+        dec(log, source="Unknown device (unit 66)", peer="10.9.9.9:1", reg="chlorine_dose", check="ramp",
+            new=2.9, old=2.5)
+    c = Clock()
+    log = AuditLog(":memory:", clock=c)
+    fill(c, log)
+    m = IncidentManager(log, clock=c)
+    m.poll()
+    attack = next(i for i in m.list() if "Unknown device (unit 66)" in i.sources)
+    F = FT.extract(T.Evidence(log, attack, now=c.t + 60).freeze(), twin=False)
+    assert not F["ai_origin"]["value"] and B.classify(F)["primary"] == "external_attack"

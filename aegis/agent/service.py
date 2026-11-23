@@ -24,7 +24,8 @@ from .incidents import AWAITING_APPROVAL, REPORTED, IncidentManager
 from .loop import Sentinel
 from .tools import PlantHistory
 
-DEMO_WINDOWS = {"join_window_s": 45, "quiet_s": 20, "reopen_s": 180}   # demo: seconds, not the spec's minutes
+# demo: seconds, not the spec's minutes; and room for repeated rehearsals (the spec's 6/hour is for real plants)
+DEMO_WINDOWS = {"join_window_s": 45, "quiet_s": 20, "reopen_s": 180, "max_per_hour": 120}
 
 
 class AgentSettings(BaseModel):
@@ -74,6 +75,25 @@ class Service:
             self.running = asyncio.create_task(self._investigate(inc))
             break                                     # one at a time (IncidentManager also enforces this)
 
+    async def investigate_now(self) -> list[int]:
+        """Demo only: close every open incident's collection window and investigate them now, in order, so a
+        presenter never waits on Sentinel's quiet timer (the expo failure was a step waiting on wall-clock time)."""
+        if self.running and not self.running.done():
+            await self.running
+        self.incidents.poll()
+        for inc in self.incidents.incidents.values():
+            if inc.state in ("COLLECTING", "REOPENED"):
+                inc.urgent = True
+        done = []
+        for _ in range(10):
+            started = self.incidents.tick()
+            if not started:
+                break
+            for inc in started:
+                await self._investigate(inc)
+                done.append(inc.id)
+        return done
+
     def listing(self) -> list[dict]:
         out = []
         for inc in self.incidents.list()[:30]:
@@ -113,6 +133,15 @@ def attach(app, S: dict, role):
         if format == "md":
             return PlainTextResponse(r["report"]["markdown"], media_type="text/markdown")
         return HTMLResponse(r["html"])
+
+    @app.post("/api/agent/investigate-now")
+    async def agent_investigate_now(who: dict = Depends(role("operator", demo_only=True))):
+        """Demo builds: investigate open incidents now instead of after the quiet window."""
+        a = S["agent"]
+        ids = await a.investigate_now()
+        S["audit"].append("agent_investigate_now", {"incidents": ids, "by": who["user"]})
+        # all recent incidents: the background loop may already have investigated the one the caller wants
+        return {"investigated": ids, "incidents": a.listing()}
 
     @app.post("/api/agent/incidents/{iid}/investigate")
     async def agent_rerun(iid: int, who: dict = Depends(role("engineer"))):

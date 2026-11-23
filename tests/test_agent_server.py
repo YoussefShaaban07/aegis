@@ -76,3 +76,18 @@ def test_operator_approves_a_sentinel_fix_and_the_guard_rechecks(client):     # 
     assert p["source"] == "Sentinel" and p["status"] == "approved" and p["decided_by"].startswith("operator")
     assert client.post(f"/api/proposals/{pid}/approve").status_code == 409        # only once
     assert "Sentinel" in client.get("/operator").text
+
+
+def test_guided_sentinel_step_investigates_now(client, monkeypatch):     # noqa: F811
+    """The guided demo's Sentinel step: ramp (waited for), then investigate-now, with no quiet-timer wait."""
+    # (whether the background loop or investigate-now gets there first, the step must find the incident)
+    client.post("/api/reset")
+    client.post("/api/attack/plant-work-order")
+    client.post("/api/copilot", json={"message": "Any open work orders I should handle?"})
+    client.post("/api/reset")                               # a fresh scenario: the copilot incident is sealed
+    r = client.post("/api/attack/ramp?wait=1").json()
+    assert "accepted" in r["result"] and "rejected" in r["result"]          # first step through, then blocked
+    j = client.post("/api/agent/investigate-now").json()
+    ramp = [i for i in j["incidents"] if "chlorine_dose" in i["registers"] and i["classification"]]
+    assert ramp and ramp[0]["classification"] == "external_attack", j
+    assert ramp[0]["proposals"] and ramp[0]["validity"] == 1.0

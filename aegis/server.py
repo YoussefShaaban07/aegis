@@ -618,6 +618,7 @@ def reset(who: dict = Depends(role("operator", demo_only=True))):
     g.log.clear(); g._changes.clear(); g._attempts.clear(); g._dirs.clear(); g._big_dirs.clear(); g.counts.clear()
     S["alerter"].recent.clear(); S["alerter"]._last.clear(); S["alerter"].incidents.clear()
     S["proposals"].items.clear()
+    S["agent"].incidents.seal()        # a fresh scenario: new events open new Sentinel incidents
     S["orders"][:] = BASE_ORDERS
     S["attack_log"].clear()
     S["accuracy"].pending.clear()
@@ -689,10 +690,13 @@ async def attack_recon(who: dict = Depends(role("operator", demo_only=True))):
 
 
 @app.post("/api/attack/ramp")
-async def attack_ramp(who: dict = Depends(role("operator", demo_only=True))):
+async def attack_ramp(wait: bool = False, who: dict = Depends(role("operator", demo_only=True))):
     async def run():
         out = await attacks.ramp_attack(GUARD_PORT, lambda: S["plant"].setpoint("chlorine_dose"))
         _alog("stealth chlorine ramp", "; ".join(out))
+        return out
+    if wait:                     # guided demo: return when the ramp is over (~7 s), so the next action sees all of it
+        return _alog("stealth chlorine ramp", "; ".join(await run()))
     asyncio.create_task(run())
     return _alog("stealth chlorine ramp", "started: +0.4 mg/L every 1.2 s (each step under the 0.5 limit)")
 
