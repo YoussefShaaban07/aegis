@@ -146,6 +146,7 @@ class IncidentManager:
         self._unusual: dict[str, deque] = {}        # source -> recent unusual decisions (t, id)
         self._auth: deque = deque()                 # recent auth failures (t, id)
         self._last_allowed_write: float | None = None
+        self._recent_writes: deque = deque(maxlen=20)   # (t, entry) of allowed setpoint changes
         self._starts: deque = deque()               # times investigations started (rate limit)
         self._sealed: set[int] = set()             # incidents that later events may not join (see seal())
         self._overflow_alerted = False
@@ -179,6 +180,7 @@ class IncidentManager:
                 return True, False, "blocked write" if not d.get("allowed") else "would-block (monitor)"
             if d.get("allowed") and d.get("old") is not None and d.get("new") != d.get("old"):
                 self._last_allowed_write = t
+                self._recent_writes.append((t, e))
             if d.get("check") == "unusual":
                 q = self._unusual.setdefault(d.get("source", ""), deque())
                 q.append((t, e["id"]))
@@ -296,7 +298,18 @@ class IncidentManager:
             earlier = [i for _, i in self._unusual.get(e["data"].get("source", ""), ())]
         if trigger and e["kind"] == "auth_failure":
             earlier = [i for _, i in self._auth]
+        ctx = []
+        if trigger and e["kind"] == "forecast_warning":
+            # the forecast went bad after writes that were allowed (guard off / monitor, or within the rules):
+            # those writes are the evidence of who changed what, so they belong in the incident
+            ctx = [w for tw, w in self._recent_writes if 0 <= e["t"] - tw <= self.cfg["forecast_write_window_s"]]
+            earlier = [w["id"] for w in ctx]
         self._add(inc, e, trigger, why, urgent, earlier)
+        for w in ctx:
+            s_, i_, r_ = _keys(w)
+            inc.sources |= s_
+            inc.ips |= i_
+            inc.registers |= r_
         return inc
 
     def poll(self, now: float | None = None) -> list[Incident]:

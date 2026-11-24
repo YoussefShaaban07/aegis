@@ -135,3 +135,19 @@ def test_listing_shows_live_fix_status(client):     # noqa: F811
     assert client.post(f"/api/proposals/{fx['id']}/approve").status_code == 200
     again = next(x for x in client.get("/api/agent/incidents").json()["incidents"] if x["id"] == inc["id"])
     assert again["fixes"][0]["status"] == "approved"
+
+
+def test_guard_off_oldsmar_is_an_attack_not_weather(client):     # noqa: F811
+    """Pitch step 1: guard OFF, one write sets lye to 11,100 and the forecast goes bad. Nothing is blocked, so
+    Sentinel used to see only the forecast warning and call it weather. The write that got through is the
+    evidence: it is attached, and the twin replay starts from before it."""
+    client.post("/api/reset")
+    client.post("/api/mode", json={"mode": "off", "pin": "2468"})
+    client.post("/api/attack/lye")
+    for _ in range(36):
+        if client.get("/api/state").json()["plant"]["ph"] > 8.5:
+            break
+        client.post("/api/sim/advance", json={"minutes": 5})
+    j = client.post("/api/agent/investigate-now").json()
+    inc = next(x for x in j["incidents"] if x["classification"])
+    assert inc["classification"] == "external_attack", inc

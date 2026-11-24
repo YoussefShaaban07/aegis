@@ -85,7 +85,7 @@ details.demo>.in{padding:0 14px 12px}
 #guide{position:fixed;right:16px;bottom:16px;width:420px;max-width:calc(100vw - 32px);background:var(--panel2);border:1px solid var(--proc);
   border-radius:3px;padding:12px 14px;z-index:40;box-shadow:0 6px 24px rgba(0,0,0,.25);display:none}
 #guide h3{margin:0 0 4px;font-size:15px}#guide .say{background:var(--input);border-left:3px solid var(--blue);padding:8px 10px;margin:8px 0;font-size:13px}
-#guide.pitch{width:340px;padding-top:8px;padding-bottom:8px}#guide.pitch #g-d,#guide.pitch .say{display:none}#guide.pitch #g-st{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+#guide.pitch{width:340px;padding-top:8px;padding-bottom:8px}#guide.pitch #g-d,#guide.pitch .say{display:none}#guide.pitch #g-st{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
 #guide .meta{font-size:11.5px;color:var(--muted)}#guide .gst{font-size:12.5px;color:var(--warn);min-height:16px}
 #login{position:fixed;inset:0;background:var(--bg);display:none;align-items:center;justify-content:center;z-index:50}
 #login .box{background:var(--panel);border:1px solid var(--line);border-radius:3px;padding:24px;width:360px;max-width:calc(100vw - 32px)}
@@ -530,7 +530,9 @@ const STEPS=[
    $('g-st').innerHTML=`Sentinel: <b>${esc(nm)}</b> (${esc(i.confidence)} confidence), citations ${Math.round(100*(i.validity??1))}% verified, `+
      `${fixes} fix${fixes===1?'':'es'} waiting for approval. <a href="/api/agent/incidents/${i.id}/report" target="_blank">Open the report</a> · `+
      `<a href="/operator" target="_blank">Operator phone view</a>`;
-   await load();if(typeof senLoad==='function')await senLoad();}},
+   await load();if(typeof senLoad==='function')await senLoad();
+   // bring the Sentinel card up into view: on a 1366x768 screen it sits below the fold, behind the guide
+   const h=$('agentinc')&&$('agentinc').previousElementSibling;if(h)h.scrollIntoView({behavior:'smooth',block:'start'});}},
  {t:'A lying controller',d:'Malware inside the PLC secretly doses lye 200 while its registers still say 100. No command passes through Aegis.',
   say:'"What if the controller itself is hacked, like Stuxnet? Aegis runs the chemistry alongside the plant. When the water stops matching what the controller claims, it raises the alarm."',
   run:async()=>{await post('/api/reset');await post('/api/attack/plc-compromise',{freeze_sensors:false});
@@ -543,7 +545,7 @@ let gi=-1, ran=false, ORDER=null, ggen=0;   // ggen: a step from an earlier star
 const PITCH=[1,2,3,4,5];    // live demo: guard off, guard on, the twin, the AI, Sentinel (step 0 runs silently first)
 function guideShow(){const s=STEPS[ORDER[gi]];ran=false;$('g-n').textContent=(ORDER.length<STEPS.length?'Pitch step ':'Step ')+`${gi+1} of ${ORDER.length}`;$('g-t').textContent=s.t;
   $('g-d').textContent=s.d;$('g-say').textContent=s.say;$('g-st').textContent='';$('g-next').textContent='Run step ▶';}
-async function guideStart(mode){ggen++;$('g-next').disabled=false;stopBooth();boothWanted=false;ORDER=mode==='pitch'?PITCH:STEPS.map((_,i)=>i);gi=0;$('guide').classList.toggle('pitch',mode==='pitch');$('guide').style.display='block';guideShow();
+async function guideStart(mode){ggen++;$('g-next').disabled=false;stopBooth();boothWanted=false;ORDER=mode==='pitch'?PITCH:STEPS.map((_,i)=>i);gi=0;scrollTo({top:0});$('guide').classList.toggle('pitch',mode==='pitch');$('guide').style.display='block';guideShow();
   if(document.activeElement&&document.activeElement!==document.body)document.activeElement.blur();   // Space must reach the guide
   if(mode==='pitch'){$('g-st').textContent='preparing: checking sign-in and PIN…';
     try{await needPin();   // check before the audience is watching: steps 1-2 need the engineer PIN
@@ -566,6 +568,7 @@ async function guideGo(dir){const b=$('g-next');
   if(dir<0){gi=Math.max(0,gi-1);guideShow();return;}
   if(ran){if(gi>=ORDER.length-1)return;gi++;guideShow();if(ORDER!==PITCH)return;}  // next press: move on (pitch mode also runs it: one press per step)
   b.disabled=true;$('g-st').textContent='running…';const my=ggen;
+  if(ORDER===PITCH&&STEPS[ORDER[gi]].t!=='Sentinel investigates')scrollTo({top:0,behavior:'smooth'});   // the plant is at the top
   try{await STEPS[ORDER[gi]].run();if(my!==ggen)return;if(!/offline|Routine|^Sentinel:/.test($('g-st').textContent))$('g-st').textContent=ORDER===PITCH?(gi<ORDER.length-1?'Done · Space for the next step':'Done'):'Done: talk over the result, then go on';}
   catch(e){if(my!==ggen)return;$('g-st').textContent='Error: '+(e.message||e);b.disabled=false;return;}
   b.disabled=false;ran=true;b.textContent=gi<ORDER.length-1?'Next step ▶':(ORDER.length<STEPS.length?'Done: back to the slides':'Finished');}
