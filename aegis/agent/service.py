@@ -87,6 +87,18 @@ class Service:
             break                                     # one at a time (IncidentManager also enforces this)
 
     async def investigate_now(self) -> list[int]:
+        """Demo button: investigate whatever is open, right now, on a short model budget (a live audience can't
+        wait 90 s; if a real model is slow the deterministic verdict ships, as it does on any model failure)."""
+        saved = dict(self.sentinel.budget)
+        self.sentinel.budget.update(wall_s=min(saved["wall_s"], float(os.getenv("AEGIS_AGENT_DEMO_WALL_S", "15"))),
+                                    call_s=min(saved["call_s"], 10.0))
+        try:
+            return await self._investigate_now()
+        finally:
+            self.sentinel.budget.clear()
+            self.sentinel.budget.update(saved)
+
+    async def _investigate_now(self) -> list[int]:
         """Demo only: close every open incident's collection window and investigate them now, in order, so a
         presenter never waits on Sentinel's quiet timer (the expo failure was a step waiting on wall-clock time)."""
         if self.running and not self.running.done():

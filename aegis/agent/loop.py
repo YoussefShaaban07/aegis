@@ -7,6 +7,7 @@ If the model is missing, fails or runs out of budget, the deterministic verdict 
 """
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import os
@@ -234,7 +235,11 @@ class Sentinel:
         self._calls = 0
         if self.mode == "llm":
             try:
-                verdict, fallback = await self._model_loop(ev, det, incident.id, steps, t0)
+                # hard stop: the loop only checks the wall clock between turns, and one slow call can run long
+                verdict, fallback = await asyncio.wait_for(self._model_loop(ev, det, incident.id, steps, t0),
+                                                           self.budget["wall_s"] + 5)
+            except (asyncio.TimeoutError, TimeoutError):
+                fallback = "wall-clock budget (hard stop)"
             except Exception as ex:                # provider down, timeout, bad response
                 fallback = f"model error: {type(ex).__name__}"
         else:

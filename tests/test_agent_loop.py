@@ -275,3 +275,22 @@ def test_min_gain_is_tuning_chosen_and_applied():
     assert R.MIN_GAIN == 0.005
     src = open(R.__file__).read()
     assert "too small to act on" in src
+
+
+def test_hung_model_is_cut_off_and_the_deterministic_verdict_ships(monkeypatch, hmi_case):
+    """The wall clock is checked between turns; a model call that hangs must still be stopped (hard deadline),
+    and the incident gets the deterministic verdict, not a stuck investigation."""
+    import time
+    import httpx
+    monkeypatch.setenv("AEGIS_AGENT_KEY", "test")
+
+    async def hang(req):
+        await asyncio.sleep(60)
+    s = Sentinel(hmi_case.audit, hmi_case.history, policy=POL, transport=httpx.MockTransport(hang),
+                 budget={"wall_s": 0.5, "call_s": 120})
+    assert s.mode == "llm"
+    t = time.monotonic()
+    r = asyncio.run(s.investigate(hmi_case.incident, now=hmi_case.now))
+    assert time.monotonic() - t < 15
+    assert "hard stop" in (r.get("fallback") or "")
+    assert r["verdict"]["classification"]["primary"] == "compromised_trusted_source"
