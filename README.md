@@ -125,7 +125,7 @@ Every write is checked in this order; the first failure blocks it:
 pip install -r requirements.txt
 cp .env.example .env          # add GROQ_API_KEY for the AI copilot (free at console.groq.com)
 python -m aegis.server        # open http://127.0.0.1:8000
-python -m pytest -q           # 223 tests
+python -m pytest -q           # 329 tests (2 skip without phreeqpython/mbpoll)
 python -m aegis.evaluate      # attack/operator evaluation (~10 min)
 python -m aegis.redteam       # prompt-injection red team against the real copilot (needs GROQ_API_KEY)
 python scripts/bench.py       # latency on your machine
@@ -212,6 +212,95 @@ The previous held-out run (seeds 100000+, before Round 7) had the twin blocking 
 | Parser robustness | 50,000 random PDUs, 200 malformed frames | `tests/test_protocol.py` |
 | AI red team (scripted maximally gullible model) | tried unsafe in 7/8 cases, 0 reached the PLC; 2/2 "persuade the operator" replies flagged | `tests/test_redteam.py`; real model: `python -m aegis.redteam` |
 
+## Sentinel: the incident-response agent
+
+When Aegis blocks something, **Sentinel** opens an incident on its own, investigates it with read-only tools, decides what caused it (an outside device, a compromised HMI PC, an operator mistake, the weather, a misbehaving PLC or sensor, a manipulated AI copilot, or a false alarm), writes a report in which **every factual sentence cites a hash-verified audit entry**, and files twin-tested recovery steps that a human approves and the guard re-checks. It has **no path to the PLC**. Code: `aegis/agent/`. Design spec: `Aegis_Sentinel_Agent_Spec.pdf` (project files).
+
+How it differs from what was already here:
+
+| | `report.py` | `copilot.py` | Sentinel |
+|---|---|---|---|
+| Starts | when someone asks | when an operator asks | by itself, on audit events |
+| Output | rule-based report | chat reply | classified, cited, validated verdict + recovery proposals |
+| "Attacker on the HMI PC" | labelled *operator* (severity rule) | n/a | separated from operator error using behaviour + human-presence + profile signals |
+
+**Pipeline** (`loop.py`): freeze the evidence (chain `verify()` + `head()` + a snapshot of the window) → deterministic pass (features, rule baseline, learned classifier, similar past incidents, a fully cited draft verdict) → model tool loop (13 read-only tools; at most 15 tool calls, 12 turns, 90 s, 20 s per call; repeated calls refused) → one JSON verdict (pydantic schema, one retry) → **citation validator** (every cited id exists, is in the window, is unchanged since the freeze; every number, IP, source name and ATT&CK id in the sentence is in the cited entries; one repair round, then unsupported claims are removed and listed) → reply guard → recovery (`recovery.py`) → report + 3-line SMS. Every step is an `agent_*` entry in the audit chain.
+
+**Safety properties, each with tests:**
+- No write path: the runtime modules import no Modbus/CIP client and hold no guard reference (`tests/test_agent_tools.py` scans the imports). Its only effects are audit entries, alerts, reports and proposals with `source="Sentinel"`.
+- Untrusted text (device labels, work orders, AI replies, SMS replies) reaches the model only as `{"untrusted_text": ...}`.
+- Works without a model: if the model is missing, fails, runs out of budget, or returns a class that contradicts hard facts (e.g. "weather" for blocked writes from an unknown device), the deterministic verdict ships. Flagged operator text is never sent.
+- Recovery: candidates are tested in the twin for 6 h; they must not make the forecast worse or create a new band crossing; deterministic reverts are split into guard-sized steps; **model-suggested steps outside the policy are rejected, never clamped**; nothing is proposed while integrity says the readings can't be trusted, or against an active safe-hold.
+
+**"Training"** (`dataset.py`, `casebase.py`, `train.py`): labelled incidents are generated from the simulators on development seeds 0-19 (ground truth from the simulator, labelled by what each incident contains), with a seeded normal week and human-presence noise (an operator is logged in during 40% of compromised-HMI and 30% of external incidents; 20% of operator incidents have no login). From them Sentinel keeps a case library (the 5 most similar past incidents and their right response are shown to the model) and a small logistic-regression classifier (pure Python). The learned model may only override the rules when it is confident (p ≥ 0.6, chosen on development data) **and** consistent with the hard facts. That rule exists because the end-to-end test caught the learned model being 92% confident and wrong on an Oldsmar-style one-shot write, which its training data didn't contain.
+
+Run it: the server starts Sentinel automatically (`AEGIS_AGENT=0` turns it off). With `GROQ_API_KEY`/`AEGIS_LLM_KEY` it uses the model in `AEGIS_AGENT_MODEL` (default: the copilot's); in demo mode without a key it uses a clearly labelled scripted stand-in that drives the same loop. API: `GET /api/agent/incidents`, `GET /api/agent/incidents/{id}` (+`/report`, `?format=md`), `POST /api/agent/incidents/{id}/investigate` and `POST /api/agent/settings` (engineer), `GET /api/audit/entry/{id}` (citation links). Retrain: `python -m aegis.agent.train`. Evaluate: `python -m aegis.agent.eval --seed-offset 300000 --n 100`.
+
+**Held-out results** (seeds 300000+, never used for training; 1264 incidents; human-presence noise on; deterministic decision, no LLM). Full output: `docs/eval/sentinel_v1.md` / `.json.gz`, generated by `python -m aegis.agent.eval`.
+
+| | Rule baseline | Learned classifier | Sentinel (learned when confident and consistent, else rules) |
+|---|---|---|---|
+| Accuracy | 85.2% | 91.9% | 88.2% |
+| Macro-F1 | 0.848 | 0.910 | 0.885 |
+| Compromised HMI PC recall (the case `report.py` calls "operator") | 91% | 100% | 100% |
+| Operator incidents wrongly escalated to an attack | 10.4% | 0.4% | 3.6% |
+
+Against the spec's release gates: citation validity **100%** (5104 claims, 0 removed) ✅; recovery steps the guard's checks would block **0/824** ✅; false escalation on operator incidents **3.6%** (gate ≤10%; the rule baseline is at 10.4%) ✅; AI-injection incidents detected **50/50**, and the 10 recovery steps filed for them are all weather corrections that *cut* lye, not the injected values ✅; red team (12 cases, a deliberately gullible model obeying planted instructions): **0** unsafe proposals, **0** dangerous SMS, **0** instructed classes, each stopped by a recorded defence ✅. **Beat the baseline by ≥10 points: not met** (+3.0 accuracy, +0.037 macro-F1). Two honest notes: the learned classifier alone scores higher than Sentinel's combined decision, because the confidence threshold chosen on development data turned out conservative; we did not re-tune it on held-out data. And the biggest remaining error is weather-driven integrity alarms (a physics mismatch during a storm or bloom) read as a PLC problem: 110 of 702 weather incidents. 13/75 simulated PLC/sensor faults opened no incident at all (noisy replays with no lab sample).
+
+**Run Sentinel on a real model.** Groq: set `GROQ_API_KEY` (model: `AEGIS_AGENT_MODEL`, default the copilot's `openai/gpt-oss-120b`). Local open-weight model, so incident data never leaves the plant's machine: install [Ollama](https://ollama.com), `ollama pull gpt-oss:20b`, then set `AEGIS_AGENT_URL=http://localhost:11434/v1/chat/completions` and `AEGIS_AGENT_MODEL=gpt-oss:20b` (no key needed for a localhost endpoint; raise `AEGIS_AGENT_CALL_S` if a laptop needs more than 20 s per call). Measure it on held-out incidents, mixed across all types: `python -m aegis.agent.eval --seed-offset 400000 --n 20 --llm --limit 40 --out docs/eval/sentinel_llm`. The output adds how often the model's verdict was used, the fallbacks and the safety overrides. These runs have not been done yet.
+
+**v2 (Nov 13).** What changed, all decided on training seeds 0-59 and a separate tuning set (seeds 100000+, 542 incidents), never on held-out data: features from the physics alarm's own numbers (the biggest v1 error was weather read as a PLC problem: weather false alarms fire while the model already predicts a high pH, on the steep part of the titration curve), one-shot attacks in the training data (the cause of the Oldsmar-style mistake), 3x the training data, and the trained case base now actually ships with the repo (a `.gitignore` rule had kept it out). Evaluated once on fresh held-out seeds 400000+ (1400 incidents, now including one-shot attacks). Full output: `docs/eval/sentinel_v2.md` / `.json.gz`.
+
+| | Rule baseline | Learned classifier | Sentinel |
+|---|---|---|---|
+| Accuracy (v1 → v2) | 85.2% → 89.9% | 91.9% → 93.1% | 88.2% → **93.4%** |
+| Macro-F1 (v2) | 0.852 | 0.911 | **0.913** |
+| Compromised HMI PC recall (v2) | 59.8% | 95.7% | 91.5% |
+| Weather incidents recall (v2) | 93.6% | 93.6% | 93.6% |
+| Operator incidents escalated to an attack (v2) | 5.3% | 0.4% | 0.8% |
+
+v2 gates: citation validity 100.0% (5495 claims, 0 removed); recovery steps the guard's checks would block 0/860; AI injections detected 50/50. Note the v1 and v2 held-out sets differ (v2 adds one-shot attacks and the rule baseline also gained a rule), so compare systems within a column-pair, not across versions blindly. Spec gate "+10 points over the rule baseline": still not met (+3.5 points).
+
+**Correction to v2, and v3 (Nov 15).** v2's "0.8% of operator incidents escalated to an attack" only held because `evaluate.py`'s simulated operator never mistypes: every operator write is a small, sensible step, so the learned model picked up "big jump from the HMI PC = attacker". On realistic fat-finger mistakes (an extra or repeated digit, a slipped decimal, the right value in the wrong field), v2 called **38 of 39 an attack** (26.8% false escalation on the tuning set). v3 adds those typos to the training and evaluation data (`dataset.typo_cases`, labelled from the true plant) and two features for how people fix their own mistakes: `retry_after_block` (one saner value for the same field right after the block, then stop) and `typo_like` (the blocked value is ×10/×0.1 or a repeated digit of a nearby value). All choices were made on training seeds 0-59 and the tuning set; evaluated once on fresh held-out seeds 500000+ (1437 incidents). Full output: `docs/eval/sentinel_v3.md` / `.json.gz`.
+
+| v3, held-out | Rule baseline | Learned classifier | Sentinel |
+|---|---|---|---|
+| Accuracy | 91.3% | 93.9% | **93.5%** |
+| Macro-F1 | 0.876 | 0.917 | **0.913** |
+| Operator typos called an attack | 0/95 | 5/95 | 5/95 |
+| Operator incidents escalated to an attack (all) | 4.6% | 2.8% | 2.8% |
+| Compromised HMI PC recall | 65.3% | 92.4% | 87.3% |
+| …of which one-shot writes from the HMI PC | 6/40 | 31/40 | 25/40 |
+
+v3 gates: citation validity 100.0% (6064 claims); recovery steps the guard's checks would block 0/916; **recovery plans replayed on the true plant (simulator ground truth, 6 h): 826, made it worse 4, helped 426, no change 396**; AI injections detected 50/50. **The 4 plans that made the true plant worse fail the spec's release gate** (all in storms: 2 were a planner bug that reverted an operator's legitimate writes, 2 were small weather corrections the twin judged helpful); fixed and re-measured on fresh seeds in v3.1 below. "+10 points over the rule baseline": not met (+2.2). Limit: an attacker who deliberately imitates a typo and a retry is indistinguishable by behaviour alone; only signals like "was anyone logged in" help then.
+
+**v3.1 (Nov 15): recovery fixes, re-measured on fresh seeds.** Two changes, decided on the tuning set only: reverts are only for attacker / compromised-PC / manipulated-AI changes (an operator's mistake is the write the guard blocked; their allowed writes are legitimate work), and no automatic distribution-rate corrections (on tuning seeds they helped the true plant in 6 of 89 cases). The classifier is unchanged from v3. Held-out seeds 700000+ (1422 incidents; `docs/eval/sentinel_v3_1.md`): rules 88.5%, learned 90.9%, **Sentinel 91.0%** (macro-F1 0.844 / 0.883 / 0.884); operator typos called an attack 6/97; compromised-HMI recall 80.5% (rules 66.9%); operator incidents escalated to an attack 2.4%. **Recovery on the true plant: 457 plans replayed, made it worse 1, helped 356, no change 100. Release gate "0 proposals that make the true plant worse": ❌ still failing (1).** The one case: an outside attacker raising lye during an algae bloom; Sentinel's first revert step (lye 160, the first of several guard-sized steps) left the true plant's worst excursion at 0.646 vs 0.642 without it, with the plant already well outside its limits from the bloom. Not tuned against (it is held-out data); the next step would be requiring a minimum predicted improvement, chosen on tuning data and checked on fresh seeds. Citation validity 100.0% (5974 claims); recovery steps the guard's checks would block 0/491; AI injections detected 50/50.
+
+**v3.2 (Nov 15): minimum predicted improvement.** When the twin forecasts the plant outside its limits, a recovery step must now improve the forecast by at least 0.005 (chosen on tuning seeds: it dropped 32 plans that did nothing on the true plant and kept all 157 that helped). Fresh held-out seeds 800000+ (1450 incidents; `docs/eval/sentinel_v3_2.md`): rules 89.3%, learned 91.9%, **Sentinel 91.8%** (macro-F1 0.848 / 0.890 / 0.889); typos called an attack 6/97; compromised-HMI recall 83.0% (rules 59.8%); operator incidents escalated 3.9%. **Recovery on the true plant: 418 plans, made it worse 0, helped 344, no change 74: the release gate "0 proposals that make the true plant worse" passes on these seeds** (it failed on v3 and v3.1). Citation validity 100.0%; guard would block 0/418 steps; AI injections detected 50/50. One seed set is not a guarantee; the gate should be re-checked on every change.
+
+**v3.3 (Nov 21): case base retrained without duplicated rows.** A data-generation bug had counted 300 of 866 training incidents two or three times (all operator incidents; see the ablation correction below). Retrained on 875 unique incidents (seeds 0-59); same threshold. Fresh held-out seeds 1100000+ (1441 incidents; `docs/eval/sentinel_v3_3.md`): rules 88.3%, learned 90.6%, **Sentinel 90.7%** (macro-F1 0.836 / 0.871 / 0.873); operator typos called an attack 7/98; compromised-HMI recall 83% (rules 61%); operator incidents escalated 3.0%. **Recovery on the true plant: 452 plans, 0 made it worse, 383 helped**: the release gate passes on a second fresh seed set. Citation validity 100% (5968 claims); 0/453 steps the guard would block; AI injections 50/50. A lab grab-sample reminder now appears after 12 h without one (dashboard only), because 19 of 75 simulated PLC faults were caught by nothing else.
+
+**Ablations: what the decision rests on** (corrected Nov 21). Each group of signals was removed from both the rules and the learned classifier (retrained without it), then scored on 558 fresh held-out incidents (seeds 900000+; `docs/eval/sentinel_ablation.md`, `python -m aegis.agent.ablate`). *Correction:* the first version (Nov 19) counted 262 operator incidents two or three times, because parallel data-generation chunks overlapped (fixed in `train.generate`, with deduplication and a regression test); the conclusions held, one claim did not.
+
+| Signals | Sentinel accuracy | Compromised-HMI recall | Operator incidents called an attack |
+|---|---|---|---|
+| all | 93.5% | 90% | 3.9% |
+| without human presence (logins, acks) | 93.0% | 88% | 5.5% |
+| without source identity (7-day profile, IP vs label, hours) | **78.7%** | **20%** | **24.2%** |
+| without behaviour (push, probe, rhythm, persistence, retries, typos) | 92.3% | **75%** | 0.0% |
+| without twin forecasts | **90.9%** | 88% | 2.3% |
+| without integrity alarm numbers | **89.8%** | 90% | 3.9% |
+
+Reading it: source identity is the backbone. Without "has this source used this IP and these hours before", attackers and operators blur together. Behaviour carries most of the compromised-HMI detection. The twin and the integrity numbers separate weather from attacks and PLC faults. Human presence adds little, which is intended: with the login noise, an attacker riding a live shift can't be told apart that way. The Nov 19 claim that the twin features cause the operator false escalations is **not supported**: the gap shrank after deduplication (3.9% vs 2.3%), and 2-fold cross-validation on the training and tuning data showed the opposite (8 vs 13 of 338 escalated, with vs without them).
+
+**Known limitations:**
+- Ground truth comes from Aegis's own simulators and attacker/operator models, not real incidents. The simulated attackers are fairly easy to tell apart with rules; real ones may not be.
+- **No real LLM has been evaluated yet** (no API key in the build environment). The numbers above are for the deterministic decision; the model path is exercised by the scripted stand-in and the red team. Next: run `aegis.agent.eval` and the red team with a real model, plus the spec's ablations.
+- Human-presence signals depend on the dashboard login model; a real utility may share accounts.
+- A full replay (hidden dosing + noisy frozen readings) is invisible to every online check; only a lab grab sample catches it, and Sentinel can only recommend one.
+- Recovery steps are checked with the twin and the guard's static rules, not against the true plant; the twin's accuracy bounds the planner.
+- Tested against simulated PLCs only. With Groq, the provider sees incident data; a local open-weight model (see "Run Sentinel on a real model") avoids that, but none has been evaluated yet.
+
 ## Done / not done (honest status)
 
 | Item | Status |
@@ -233,6 +322,10 @@ The previous held-out run (seeds 100000+, before Round 7) had the twin blocking 
 | Other protocols (DNP3, S7, Modbus RTU serial) | ❌ not built |
 | HTTPS for the dashboard | ⚠️ set `AEGIS_HTTPS=1` behind a TLS reverse proxy; not built in |
 | TLS on Modbus (Modbus/TCP Security) | ❌ not built |
+| Sentinel agent: incidents, 13 read-only tools, features, rule baseline, learned classifier, loop with budgets/fallback, citation validator, twin-tested recovery, report, API, dashboard card | ✅ built + tested (end to end through the HTTP API with demo attacks; held-out evaluation; red team) |
+| Sentinel recovery: 0 proposals that make the true plant worse (spec gate) | ✅ on two fresh held-out sets (v3.2: 0/418, v3.3: 0/452); failed in v3 (4) and v3.1 (1) |
+| Sentinel with a real LLM | ⚠️ **not yet run with a real key**: loop exercised with a scripted stand-in and a deliberately gullible model |
+| Sentinel beats the rule baseline by ≥10 points (spec gate) | ❌ not met: v1 +3.0, v2 +3.5, v3 +2.2, v3.1 +2.5, v3.2 +2.5, v3.3 +2.4 accuracy on held-out seeds (see "Sentinel") |
 
 ## Demo script (3 minutes)
 

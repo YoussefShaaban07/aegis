@@ -114,6 +114,12 @@ class Clock:
         return self.t
 
 
+def _attach(observer, plant):
+    """Sentinel evaluation: give the observer the TRUE plant (to replay proposed fixes on ground truth)."""
+    if observer is not None and hasattr(observer, "attach"):
+        observer.attach(plant)
+
+
 def make_guard(plant: Plant, twin: bool, clock: Clock, policy: dict, audit=None):
     """audit: optional AuditLog (use AuditLog(':memory:', clock=clock)) so the episode leaves a
     hash-chained record; the Sentinel agent evaluation investigates those logs."""
@@ -145,8 +151,10 @@ def run_safe_hold(g: Guard, plant: Plant, minute: int, every: int = 5):
 
 
 def attack_episode(seed: int, use_twin: bool | None, policy: dict, hours: int = 8, audit=None,
-                   clock: "Clock | None" = None) -> dict:
-    """use_twin=None runs the same episode (same weather, same seed) with NO attacker: the baseline."""
+                   clock: "Clock | None" = None, observer=None) -> dict:
+    """use_twin=None runs the same episode (same weather, same seed) with NO attacker: the baseline.
+    audit/clock/observer are for the Sentinel evaluation: observer(t, readings) is called once a
+    simulated minute with what Aegis sees. None of them changes the episode."""
     rng = random.Random(seed)
     plant = Plant(noise=True, seed=seed, fidelity=FIDELITY)
     plant.speed = 60
@@ -184,6 +192,7 @@ def attack_episode(seed: int, use_twin: bool | None, policy: dict, hours: int = 
         blocked += 1
         return False
 
+    _attach(observer, plant)
     for minute in range(hours * 60 + 360):
         lab_tick(plant, minute, seed)
         clock.t = minute * 60.0
@@ -191,6 +200,8 @@ def attack_episode(seed: int, use_twin: bool | None, policy: dict, hours: int = 
             plant.set_scenario(weather)
         if g.twin is not None:
             g.twin.observe(seen(plant), clock.t)      # the deployed gateway does this every poll
+        if observer is not None:
+            observer(clock.t, seen(plant))
         if use_twin is not None and minute < hours * 60 and clock.t >= next_write:
             cur = plant.setpoint(reg)
             if goal == "cycle_equipment":
@@ -233,7 +244,7 @@ def attack_episode(seed: int, use_twin: bool | None, policy: dict, hours: int = 
 
 
 def operator_episode(seed: int, use_twin: bool, policy: dict, hours: int = 12, audit=None,
-                     clock: "Clock | None" = None) -> dict:
+                     clock: "Clock | None" = None, observer=None) -> dict:
     """A plausible operator: trims, reacts to weather, sometimes overshoots. Ground truth per write."""
     rng = random.Random(10_000 + seed)
     plant = Plant(noise=True, seed=seed, fidelity=FIDELITY)
@@ -243,6 +254,7 @@ def operator_episode(seed: int, use_twin: bool, policy: dict, hours: int = 12, a
     weather = rng.choice(["storm", "bloom", "normal"])
     writes, reverts = [], []
     next_action = rng.randint(10, 60)
+    _attach(observer, plant)
     for minute in range(hours * 60):
         lab_tick(plant, minute, seed)
         clock.t = minute * 60.0
@@ -250,6 +262,8 @@ def operator_episode(seed: int, use_twin: bool, policy: dict, hours: int = 12, a
             plant.set_scenario(weather)
         if g.twin is not None:
             g.twin.observe(seen(plant), clock.t)
+        if observer is not None:
+            observer(clock.t, seen(plant))
         if minute >= next_action:
             s = plant.snapshot()
             # what a reasonable operator would try

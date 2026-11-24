@@ -246,3 +246,25 @@ def test_clean_operator_episode_opens_nothing():
         m.poll()
         blocked = any(not w["allowed"] for w in r["writes"])
         assert (len(m.incidents) > 0) == blocked
+
+
+def test_loopback_ip_does_not_join_unrelated_activity(env):
+    """Demo simulator: attacker, HMI and copilot all connect from 127.0.0.1; that is not a shared identity."""
+    c, log, m = env
+    dec(log, source="AI copilot", peer="127.0.0.1:5001", reg="naoh_dose")
+    c.t += 30
+    dec(log, source="Unknown device (unit 66)", peer="127.0.0.1:5002", reg="chlorine_dose")
+    m.poll()
+    assert len(m.incidents) == 2
+
+
+def test_seal_starts_fresh_but_keeps_old_incidents(env):
+    c, log, m = env
+    dec(log)
+    m.poll()
+    m.seal()
+    c.t += 30
+    dec(log)                                   # same attacker, seconds later, but after a reset
+    m.poll()
+    assert len(m.incidents) == 2
+    assert m.get(1).state == "COLLECTING"      # the old one is still investigated in its own right

@@ -14,6 +14,7 @@ Triggers (spec section 4.1)
     forecast_warning    only if a write was allowed in the previous 60 min (otherwise it is weather,
                         handled by the operator, not an incident)
     ai_reply_flagged    always
+    proposal            an AI copilot proposal the guard pre-check blocked (never Sentinel's own)
     auth_failure        3 or more within 10 min
     safe_hold           always (Aegis had to revert a setpoint)
 
@@ -43,6 +44,7 @@ from collections import deque
 from dataclasses import dataclass, field
 
 SAFE_HOLD_SOURCE = "Aegis safe-hold"
+LOOPBACK = {"127.0.0.1", "::1", "localhost"}
 
 DEFAULTS = {
     "join_window_s": 15 * 60,       # an event joins an incident whose last event is this recent
@@ -126,6 +128,9 @@ def _keys(e: dict) -> tuple[set, set, set]:
             regs.add(d["register"])
     src.discard("")
     ips.discard("")
+    # loopback means "same machine as Aegis" (in the demo simulator: every actor), not a device identity, so it
+    # must not glue unrelated activity into one incident
+    ips -= LOOPBACK
     return src, ips, regs
 
 
@@ -142,6 +147,7 @@ class IncidentManager:
         self._auth: deque = deque()                 # recent auth failures (t, id)
         self._last_allowed_write: float | None = None
         self._starts: deque = deque()               # times investigations started (rate limit)
+        self._sealed: set[int] = set()             # incidents that later events may not join (see seal())
         self._overflow_alerted = False
 
     # ------------------------------------------------------------------ helpers
@@ -199,6 +205,8 @@ class IncidentManager:
             return False, False, ""
         if k == "ai_reply_flagged":
             return True, False, "AI reply flagged"
+        if k == "proposal" and d.get("status") == "blocked" and d.get("source") != "Sentinel":
+            return True, False, "AI proposal blocked by the guard"
         if k == "auth_failure":
             self._auth.append((t, e["id"]))
             while self._auth and t - self._auth[0][0] > self.cfg["auth_window_s"]:
@@ -211,12 +219,21 @@ class IncidentManager:
         return False, False, ""
 
     # ------------------------------------------------------------------ matching
+    def seal(self):
+        """A fresh scenario starts (demo: plant reset). Existing incidents keep their state and still get
+        investigated, but no later event joins or reopens them."""
+        if self.audit is not None:
+            self.poll()
+        self._sealed |= set(self.incidents)
+
     def _match(self, e: dict, keyed: bool) -> Incident | None:
         """Open incident this event belongs to (or a recently finished one to reopen)."""
         src, ips, regs = _keys(e)
         t = e["t"]
         cands = []
         for inc in self.incidents.values():
+            if inc.id in self._sealed:
+                continue
             open_ = inc.state in ACTIVE and t - inc.last_t <= self.cfg["join_window_s"]
             reopen = inc.state in DONE and inc.done_t is not None and t - inc.done_t <= self.cfg["reopen_s"]
             if not (open_ or reopen):

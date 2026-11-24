@@ -46,6 +46,7 @@ a{color:#0b5cad}.muted{color:var(--muted);font-size:13px}
     </div>
     <div class="card" id="hold-card" style="display:none"><h2>Safe-hold</h2><div id="holds"></div></div>
     <div class="card" id="inc-card"><h2>Open incidents</h2><div id="inc"></div></div>
+    <div class="card" id="sen-card" style="display:none"><h2>Sentinel (what happened, and fixes to approve)</h2><div id="sen"></div></div>
     <div class="card"><h2>Coming up (twin forecast)</h2><div id="fw"></div></div>
     <div class="card"><h2>Recently blocked</h2><div id="tix"></div><div id="blk"></div></div>
     <div class="muted" style="margin-top:14px">Full console: <a href="/">dashboard</a></div>
@@ -62,6 +63,11 @@ async function act(url,body){const r=await fetch(url,{method:'POST',headers:H,bo
     clearTimeout(t._h);t._h=setTimeout(()=>{t.style.display='none';},12000);}
   load();}
 async function ack(id){await act(`/api/incidents/${id}/ack`);}
+async function decide(pid,ok,label){if(!confirm(ok?`Apply Sentinel's fix: ${label}? The guard checks it again before it reaches the PLC.`:`Reject Sentinel's fix: ${label}?`))return;
+  await act(`/api/proposals/${pid}/${ok?'approve':'reject'}`);}
+const SEN={external_attack:'Outside device',compromised_trusted_source:'HMI PC compromised',operator_error:'Operator mistake',
+  process_or_weather:'Weather / process',plc_or_sensor_integrity:'PLC or sensor problem',ai_manipulation:'AI copilot was manipulated',
+  benign_false_positive:'False alarm',insufficient_evidence:'Not enough evidence'};
 async function allowOnce(name,value){if(!confirm(`Let ${name} = ${value} through ONCE in the next 30 minutes, past the twin and step checks? Hard limits still apply. Everyone on call is told, and it's logged with your name.`))return;
   await act('/api/allow-once',{name,value});}
 async function release(name){if(!confirm(`Release the safe-hold on ${name}? Writes to it will be judged normally again.`))return;
@@ -88,6 +94,18 @@ async function load(){
   $('v-g').textContent=s.guard_mode.toUpperCase();$('v-int').textContent=s.integrity.ok?'PLC readings consistent':'PLC readings suspect';
   $('inc').innerHTML=(s.incidents||[]).length?(s.incidents).map(i=>`<div class="item"><b>#${i.id} · ${esc(i.severity)}</b> · ${i.count} ${i.count===1?'event':'events'} · ${ago(i.opened)}<br>${esc(i.title)}
     ${i.acked_by?`<div class="muted">acknowledged by ${esc(i.acked_by)}</div>`:`<button class="big" onclick="ack(${i.id})">Acknowledge</button>`}</div>`).join(''):'<div class="muted">None.</div>';
+  // Sentinel: the SMS-style summary, and one Approve / Reject per pending fix it proposed
+  try{const a=await (await fetch('/api/agent/incidents')).json();
+    const done=(a.incidents||[]).filter(i=>i.classification).slice(0,3);
+    const pend=(s.proposals||[]).filter(x=>x.source==='Sentinel'&&x.status==='pending');
+    $('sen-card').style.display=done.length||pend.length?'':'none';
+    $('sen').innerHTML=done.map(i=>{const mine=pend.filter(x=>(i.proposals||[]).includes(x.id));
+      return `<div class="item"><b>#${i.id} · ${esc(SEN[i.classification]||i.classification)}</b> · ${esc(i.confidence)} confidence
+        <div style="white-space:pre-wrap;margin:4px 0">${esc(i.sms||i.summary||'')}</div>
+        ${mine.map(x=>`<div style="margin:6px 0"><b>${esc(x.name)} → ${esc(x.value)}</b><div class="muted">${esc(x.reason).slice(0,160)}</div>
+          <button class="big" onclick='decide(${x.id},true,${JSON.stringify(x.name+" = "+x.value)})'>Approve</button>
+          <button onclick='decide(${x.id},false,${JSON.stringify(x.name+" = "+x.value)})'>Reject</button></div>`).join('')}
+        <div class="muted"><a href="/api/agent/incidents/${i.id}/report" target="_blank">Full report</a></div></div>`;}).join('');}catch(e){}
   $('fw').innerHTML=(s.forewarn||[]).length?s.forewarn.map(w=>`<div class="item">${esc(w.message)}</div>`).join(''):'<div class="muted">Nothing forecast to cross a limit in the next 2–3 hours.</div>';
   // blocked AI proposals count too (they're judged as dry runs, so they aren't in the write log)
   const aiBlk=(s.proposals||[]).filter(x=>x.status==='blocked').map(x=>({source:'AI copilot (proposal)',register:x.name,new:x.value,

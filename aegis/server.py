@@ -8,6 +8,7 @@ Engineer actions (guard mode, editing rules, AI autonomy) need AEGIS_ENGINEER_PI
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import hmac
 import copy
 import os
@@ -22,6 +23,7 @@ from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 
 from . import attacks, modbus
+from .agent.service import Service as AgentService, attach as attach_agent
 from .alerts import Alerter
 from .attacks import INJECTION
 from .audit import AuditLog
@@ -29,7 +31,7 @@ from .auth import Auth, allowed
 from .calibrate import calibration_warnings as _cal_warnings, commissioned as _commissioned, fit as calibrate_fit, FIELDS as CAL_FIELDS
 from .config import POLICY_PATH, PolicyError, verify_policy_file
 from .copilot import Copilot
-from .guard import MODES, Guard
+from .guard import MODES, SOURCES, Guard
 from .forewarn import ForecastWatch
 from .integrity import IntegrityMonitor
 from .cip import CIPGuard, MicroLogixSim
@@ -75,6 +77,25 @@ HORIZONS = (10, 30, 60)   # simulated minutes ahead for the live accuracy score
 COOKIE = "aegis_session"
 
 
+# Presenter lock (demo builds): every public visitor shares one simulated plant and the same demo accounts, so
+# while a presenter's pitch runs, other browser sessions can watch but not change anything. Tied to the session
+# cookie, not the user name (everyone signs in as "engineer" on the public demo).
+PRESENTER_S = 15 * 60
+PRESENTER_FREE = {"/api/login", "/api/logout", "/api/presenter/claim", "/api/presenter/release"}
+
+
+def _sess(request: Request) -> str:
+    tok = request.cookies.get(COOKIE) or ""
+    return hashlib.sha256(tok.encode()).hexdigest()[:16] if tok else ""
+
+
+def presenter_state() -> dict | None:
+    lk = S.get("presenter")
+    if lk and lk["until"] > time.time():
+        return lk
+    return None
+
+
 def role(need: str, demo_only: bool = False):
     """Dependency: require a logged-in user with at least this role (and the CSRF header on writes)."""
     def dep(request: Request) -> dict:
@@ -89,6 +110,12 @@ def role(need: str, demo_only: bool = False):
             raise HTTPException(403, f"needs the {need} role")
         if demo_only and not DEMO:
             raise HTTPException(404, "simulator controls are disabled (AEGIS_DEMO=0)")
+        lk = presenter_state() if DEMO else None
+        if lk and request.method != "GET" and request.url.path not in PRESENTER_FREE:
+            if _sess(request) != lk["session"]:
+                raise HTTPException(423, f"A presentation is running until {time.strftime('%H:%M', time.localtime(lk['until']))}"
+                                         f" ({lk['by']}). You can watch; changes are paused.")
+            lk["until"] = time.time() + PRESENTER_S        # the presenter's own actions keep the lock alive
         return who
     return dep
 
@@ -187,7 +214,36 @@ async def lifespan(app: FastAPI):
                                             "forewarn": list(S["forewarn"].active.values())})
     S["copilot"].audit = audit
     S["copilot"].scripted_fallback = DEMO
+    # Sentinel: investigates incidents from the audit log; read-only, files proposals like the copilot
+    S["agent"] = AgentService(audit, alerter, props, lambda: guard.policy, orders,
+                              lambda: {"guard_mode": guard.mode, "guard_enabled": getattr(guard, "enabled", True),
+                                       "safe_hold_enabled": S["safehold"].enabled,
+                                       "locked_sources": sorted(getattr(guard, "lockdowns", {}) or {})}, DEMO,
+                              lambda: {**{lbl: set(guard.trusted_ips) for lbl in SOURCES.values()},
+                                       **{n: {ip for ip, m in guard.ip_sources.items() if m == n}
+                                          for n in set(guard.ip_sources.values())}})
     audit.append("startup", {"guard_port": GUARD_PORT, "plc_port": PLC_PORT, "plant": PLANT_NAME})
+
+    def refresh_forecast():
+        """The 6 h forecast shown on the trend chart, and the early warnings it drives."""
+        snap = plant.snapshot()
+        S["forecast"] = twin.forecast(snap, None, 360, every_min=10)
+        S["forewarn"].update(S["forecast"], snap)
+
+    async def per_minute():
+        """Once per simulated minute: is the process what the PLC claims? (shared by tick and /api/sim/advance)"""
+        snap = plant.snapshot()
+        S["integrity"].update(snap, plant.sim_time, guard.commanded)
+        guard.distrust = not S["integrity"].status.get("ok", True)
+        twin.observe(snap, plant.sim_time)          # raw-water trend for forecasts
+        S["agent"].record(time.time(), snap, plant.sim_time)
+        sh = S["safehold"]
+        sh.cfg.update({k: v for k, v in (guard.policy.get("safe_hold") or {}).items()})
+        act = sh.update(snap, plant.sim_time, sensors_trusted=S["integrity"].status.get("ok", True))
+        if act:                      # restore the earlier value through the PLC, then hold it
+            await safehold_execute(guard, act, upstream.write_tag)
+
+    S["refresh_forecast"], S["per_minute"] = refresh_forecast, per_minute
 
     async def tick():
         seen: set[str] = set()
@@ -202,9 +258,9 @@ async def lifespan(app: FastAPI):
                                         f"clearwell {plant.tank_level:.0f}%.")
                 seen = now
                 if n % 10 == 0:      # every 2 s: refresh the forecast shown on the trend chart
-                    snap = plant.snapshot()
-                    S["forecast"] = twin.forecast(snap, None, 360, every_min=10)
-                    S["forewarn"].update(S["forecast"], snap)
+                    refresh_forecast()
+                if n % 10 == 0:      # every 2 s: Sentinel reads new audit entries, investigates ready incidents
+                    await S["agent"].poll()
                 if n % 25 == 0:      # every 5 s: new accuracy sample, escalate unacknowledged incidents
                     S["accuracy"].predict(twin, plant)
                     alerter.tick()
@@ -217,16 +273,8 @@ async def lifespan(app: FastAPI):
                                             f"Safety policy file on disk failed its integrity check: {msg}. Aegis "
                                             "keeps enforcing the last good policy it loaded.")
                 S["accuracy"].score(plant)
-                if n % 5 == 0:       # every simulated minute: is the process what the PLC claims?
-                    snap = plant.snapshot()
-                    S["integrity"].update(snap, plant.sim_time, guard.commanded)
-                    guard.distrust = not S["integrity"].status.get("ok", True)
-                    twin.observe(snap, plant.sim_time)          # raw-water trend for forecasts
-                    sh = S["safehold"]
-                    sh.cfg.update({k: v for k, v in (guard.policy.get("safe_hold") or {}).items()})
-                    act = sh.update(snap, plant.sim_time, sensors_trusted=S["integrity"].status.get("ok", True))
-                    if act:                      # restore the earlier value through the PLC, then hold it
-                        await safehold_execute(guard, act, upstream.write_tag)
+                if n % 5 == 0:       # every 1 s of wall time
+                    await per_minute()
             except Exception as e:   # the sim loop must never die silently
                 print("tick error:", e)
             n += 1
@@ -242,6 +290,9 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Aegis", lifespan=lifespan)
+
+
+attach_agent(app, S, role)
 
 
 @app.get("/")
@@ -277,6 +328,27 @@ def login(body: LoginIn, request: Request, response: Response):
     return S["auth"].verify(token) | {"demo": DEMO}
 
 
+@app.post("/api/presenter/claim")
+def presenter_claim(request: Request, who: dict = Depends(role("engineer", demo_only=True))):
+    """Start presenting: other sessions become read-only for 15 min (renewed by the presenter's actions)."""
+    lk = presenter_state()
+    if lk and lk["session"] != _sess(request):
+        raise HTTPException(423, f"someone else is presenting until {time.strftime('%H:%M', time.localtime(lk['until']))}")
+    S["presenter"] = {"session": _sess(request), "by": _by(who), "until": time.time() + PRESENTER_S}
+    if not lk:
+        S["audit"].append("presenter_lock", {"by": _by(who), "minutes": PRESENTER_S // 60})
+    return {"presenting": True, "until": S["presenter"]["until"]}
+
+
+@app.post("/api/presenter/release")
+def presenter_release(request: Request, who: dict = Depends(role("viewer", demo_only=True))):
+    lk = presenter_state()
+    if lk and lk["session"] == _sess(request):
+        S["presenter"] = None
+        S["audit"].append("presenter_release", {"by": _by(who)})
+    return {"presenting": False}
+
+
 @app.post("/api/logout")
 def logout(response: Response, who: dict = Depends(role("viewer"))):
     response.delete_cookie(COOKIE)
@@ -290,7 +362,7 @@ def me(who: dict = Depends(role("viewer"))):
 
 
 @app.get("/api/state")
-def state(who: dict = Depends(role("viewer"))):
+def state(request: Request, who: dict = Depends(role("viewer"))):
     p, g = S["plant"], S["guard"]
     if time.time() - S["verify"]["t"] > 3:   # re-verify the audit chain every few seconds
         S["verify"] = {**S["audit"].verify(), "t": time.time()}
@@ -300,6 +372,8 @@ def state(who: dict = Depends(role("viewer"))):
                                                                   "naoh_dose", "chlorine_dose")} for h in hist],
             "forecast": S["forecast"], "sim_t": p.sim_time, "speed": p.speed,
             "public": PUBLIC,
+            "presenter": ({"active": True, "by": presenter_state()["by"], "until": presenter_state()["until"],
+                           "mine": presenter_state()["session"] == _sess(request)} if presenter_state() else None),
             "chemistry": {k: p.model.params.get(k, d) for k, d in (("chlorine_source", "hypochlorite"),
                                                                    ("fluoride_chemical", "fsa"), ("alkali", "naoh"))},
             "guard_mode": g.mode, "guard_enabled": g.enabled,
@@ -544,6 +618,7 @@ def reset(who: dict = Depends(role("operator", demo_only=True))):
     g.log.clear(); g._changes.clear(); g._attempts.clear(); g._dirs.clear(); g._big_dirs.clear(); g.counts.clear()
     S["alerter"].recent.clear(); S["alerter"]._last.clear(); S["alerter"].incidents.clear()
     S["proposals"].items.clear()
+    S["agent"].incidents.seal()        # a fresh scenario: new events open new Sentinel incidents
     S["orders"][:] = BASE_ORDERS
     S["attack_log"].clear()
     S["accuracy"].pending.clear()
@@ -615,10 +690,13 @@ async def attack_recon(who: dict = Depends(role("operator", demo_only=True))):
 
 
 @app.post("/api/attack/ramp")
-async def attack_ramp(who: dict = Depends(role("operator", demo_only=True))):
+async def attack_ramp(wait: bool = False, who: dict = Depends(role("operator", demo_only=True))):
     async def run():
         out = await attacks.ramp_attack(GUARD_PORT, lambda: S["plant"].setpoint("chlorine_dose"))
         _alog("stealth chlorine ramp", "; ".join(out))
+        return out
+    if wait:                     # guided demo: return when the ramp is over (~7 s), so the next action sees all of it
+        return _alog("stealth chlorine ramp", "; ".join(await run()))
     asyncio.create_task(run())
     return _alog("stealth chlorine ramp", "started: +0.4 mg/L every 1.2 s (each step under the 0.5 limit)")
 
@@ -657,6 +735,27 @@ def plc_compromise(body: Compromise, who: dict = Depends(role("operator", demo_o
 
 class Speed(BaseModel):
     speed: float
+
+
+class Advance(BaseModel):
+    minutes: int = Field(ge=1, le=360)
+
+
+@app.post("/api/sim/advance")
+async def sim_advance(body: Advance, who: dict = Depends(role("operator", demo_only=True))):
+    """Run N simulated minutes right now, one minute at a time, with the same per-minute checks as the live
+    loop. Demo steps use this instead of waiting on wall-clock time, so they finish the same way on a slow
+    host (the expo failure: a guided step waited on a timer on Render's free plan)."""
+    p = S["plant"]
+    for m in range(body.minutes):
+        p.step(60.0 / p.speed)            # exactly one simulated minute
+        await S["per_minute"]()
+        if m % 10 == 9:
+            S["refresh_forecast"]()
+    S["refresh_forecast"]()
+    return {"sim_t": p.sim_time, "minutes": body.minutes, "ph": round(p.ph, 3),
+            "chlorine": round(p.chlorine, 3), "integrity_ok": S["integrity"].status.get("ok", True),
+            "forewarn": len(S["forewarn"].active)}
 
 
 @app.post("/api/sim/speed")

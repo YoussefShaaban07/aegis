@@ -113,3 +113,20 @@ def test_noisy_real_analyzer_never_flagged_stuck():
     plant, mon, cmd = fresh()
     run(plant, mon, 300, cmd)
     assert not any(e["key"].startswith("stuck") for e in mon.events)
+
+
+def test_grab_sample_reminder(monkeypatch):
+    """No lab sample for 12 h -> one info reminder (dashboard only, no incident); a sample resets the clock."""
+    from aegis.integrity import IntegrityMonitor
+    m = IntegrityMonitor(None)
+    m.grab_every_s = 12 * 3600
+    st = {"ph": 7.4, "chlorine_residual": 1.2}
+    for h in range(0, 12):
+        assert m.update(st, h * 3600.0)["grab_due"] is False
+    assert m.update(st, 12 * 3600.0)["grab_due"] is True
+    ev = m.events[0]
+    assert ev["severity"] == "info" and ev["key"].startswith("grab_due") and "grab sample" in ev["message"]
+    assert m.update(st, 13 * 3600.0)["grab_due"] is False       # reminded once, not every minute
+    m.grab_sample(st, ph=7.4, chlorine=1.2)
+    assert m.update(st, 24 * 3600.0)["grab_due"] is False       # sample at 13 h resets the 12 h clock
+    assert m.update(st, 25 * 3600.0)["grab_due"] is True
