@@ -320,5 +320,8 @@ def test_pccc_client_survives_an_idle_drop(rig):
         await c.write_tag(rig.tags.holding["distribution_rate"], 450)
         await c.close()
     rig.run(go())
-    srv.close()
+
+    async def shut():
+        srv.close()
+    rig.run(shut())
     assert rig.plant.setpoint("distribution_rate") == 450
