@@ -539,11 +539,12 @@ const STEPS=[
   say:'"Every decision is in a tamper-evident log, and Aegis writes the incident report. No new hardware, no PLC replacement: one box in front of what small utilities already own."',
   run:async()=>{tab('evi');window.open('/api/report?minutes=30','_blank');}},
 ];
-let gi=-1, ran=false, ORDER=null;
+let gi=-1, ran=false, ORDER=null, ggen=0;   // ggen: a step from an earlier start/exit must not touch the guide
 const PITCH=[1,2,3,4,5];    // live demo: guard off, guard on, the twin, the AI, Sentinel (step 0 runs silently first)
 function guideShow(){const s=STEPS[ORDER[gi]];ran=false;$('g-n').textContent=(ORDER.length<STEPS.length?'Pitch step ':'Step ')+`${gi+1} of ${ORDER.length}`;$('g-t').textContent=s.t;
   $('g-d').textContent=s.d;$('g-say').textContent=s.say;$('g-st').textContent='';$('g-next').textContent='Run step ▶';}
-async function guideStart(mode){stopBooth();boothWanted=false;ORDER=mode==='pitch'?PITCH:STEPS.map((_,i)=>i);gi=0;$('guide').classList.toggle('pitch',mode==='pitch');$('guide').style.display='block';guideShow();
+async function guideStart(mode){ggen++;$('g-next').disabled=false;stopBooth();boothWanted=false;ORDER=mode==='pitch'?PITCH:STEPS.map((_,i)=>i);gi=0;$('guide').classList.toggle('pitch',mode==='pitch');$('guide').style.display='block';guideShow();
+  if(document.activeElement&&document.activeElement!==document.body)document.activeElement.blur();   // Space must reach the guide
   if(mode==='pitch'){$('g-st').textContent='preparing: checking sign-in and PIN…';
     try{await needPin();   // check before the audience is watching: steps 1-2 need the engineer PIN
       // presenter lock: other visitors of the shared demo can watch but not change the plant during the pitch
@@ -554,15 +555,19 @@ async function guideStart(mode){stopBooth();boothWanted=false;ORDER=mode==='pitc
       $('g-st').textContent='preparing: plant reset…';await STEPS[0].run();$('g-st').textContent='Ready. Space or → runs each step.';}
     catch(e){$('g-st').innerHTML='<b style="color:#c0392b">Not ready: '+esc(e.message||String(e))+'</b>';}}}
 addEventListener('keydown',e=>{if($('guide').style.display!=='block'||/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName))return;
+  // a button keeps focus after a mouse click (e.g. "Pitch demo"); Space would then also "click" it on key-up and
+  // restart or skip a step. Take focus off it first, and ignore auto-repeat from a held key.
+  if(document.activeElement&&document.activeElement.tagName==='BUTTON'&&(e.key===' '||e.key==='Enter'))document.activeElement.blur();
+  if(e.repeat&&(e.key===' '||e.key==='ArrowRight')){e.preventDefault();return;}
   if(e.key===' '||e.key==='ArrowRight'){e.preventDefault();if(!$('g-next').disabled)guideGo(1);}else if(e.key==='ArrowLeft'){e.preventDefault();guideGo(-1);}});
-function guideStop(){$('guide').style.display='none';speed(60);
+function guideStop(){ggen++;$('g-next').disabled=false;$('guide').style.display='none';speed(60);
   fetch('/api/presenter/release',{method:'POST',headers:H}).catch(()=>{});}
 async function guideGo(dir){const b=$('g-next');
   if(dir<0){gi=Math.max(0,gi-1);guideShow();return;}
   if(ran){if(gi>=ORDER.length-1)return;gi++;guideShow();if(ORDER!==PITCH)return;}  // next press: move on (pitch mode also runs it: one press per step)
-  b.disabled=true;$('g-st').textContent='running…';
-  try{await STEPS[ORDER[gi]].run();if(!/offline|Routine|^Sentinel:/.test($('g-st').textContent))$('g-st').textContent=ORDER===PITCH?(gi<ORDER.length-1?'Done · Space for the next step':'Done'):'Done: talk over the result, then go on';}
-  catch(e){$('g-st').textContent='Error: '+(e.message||e);b.disabled=false;return;}
+  b.disabled=true;$('g-st').textContent='running…';const my=ggen;
+  try{await STEPS[ORDER[gi]].run();if(my!==ggen)return;if(!/offline|Routine|^Sentinel:/.test($('g-st').textContent))$('g-st').textContent=ORDER===PITCH?(gi<ORDER.length-1?'Done · Space for the next step':'Done'):'Done: talk over the result, then go on';}
+  catch(e){if(my!==ggen)return;$('g-st').textContent='Error: '+(e.message||e);b.disabled=false;return;}
   b.disabled=false;ran=true;b.textContent=gi<ORDER.length-1?'Next step ▶':(ORDER.length<STEPS.length?'Done: back to the slides':'Finished');}
 // ---- Booth loop (expo table): the three blocked attacks on repeat, captions big enough to read from the aisle
 let booth=false,boothGen=0,boothWanted=false,wakeLock=null,lastInput=Date.now();

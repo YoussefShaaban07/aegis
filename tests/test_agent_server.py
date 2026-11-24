@@ -91,3 +91,33 @@ def test_guided_sentinel_step_investigates_now(client, monkeypatch):     # noqa:
     ramp = [i for i in j["incidents"] if "chlorine_dose" in i["registers"] and i["classification"]]
     assert ramp and ramp[0]["classification"] == "external_attack", j
     assert ramp[0]["proposals"] and ramp[0]["validity"] == 1.0
+
+
+def test_sentinel_step_works_on_every_rerun(client):     # noqa: F811
+    """Rehearse, then present: the Sentinel step must find a new incident every time. Before the fix the guard's
+    log-flood counter survived the plant reset, so a rerun's blocked writes were counted as more of the last
+    run's burst and never logged, and Sentinel had nothing to investigate."""
+    for run in range(3):
+        client.post("/api/reset")
+        client.post("/api/mode", json={"mode": "enforce", "pin": "2468"})
+        before = {x["id"]: x["events"] for x in client.get("/api/agent/incidents").json()["incidents"]}
+        client.post("/api/attack/ramp?wait=1")
+        j = client.post("/api/agent/investigate-now").json()
+        new = [x for x in j["incidents"] if x["classification"] and x["events"] > before.get(x["id"], 0)]
+        assert new and new[0]["classification"] == "external_attack", (run, j)
+
+
+def test_orphaned_investigation_does_not_stall_sentinel(client):     # noqa: F811
+    """An incident left INVESTIGATING with nothing working on it used to block every later investigation
+    (one at a time). investigate-now and the background loop must pick it up."""
+    from aegis.server import S
+    client.post("/api/reset")
+    client.post("/api/mode", json={"mode": "enforce", "pin": "2468"})
+    client.post("/api/attack/ramp?wait=1")
+    a = S["agent"]
+    a.incidents.poll()
+    inc = next(i for i in a.incidents.list() if "chlorine_dose" in i.registers)
+    a.incidents._set(inc, "INVESTIGATING", 0.0)           # orphan: state says running, no task
+    assert inc in a.orphans()
+    j = client.post("/api/agent/investigate-now").json()
+    assert inc.id in j["investigated"] and inc.state in ("AWAITING_APPROVAL", "REPORTED"), j

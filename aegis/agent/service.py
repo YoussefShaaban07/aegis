@@ -54,12 +54,14 @@ class Service:
         self.results: dict[int, dict] = {}
         self.enabled = os.getenv("AEGIS_AGENT", "1") == "1"
         self.running: asyncio.Task | None = None
+        self._inflight: set[int] = set()          # incidents an investigation coroutine is working on right now
 
     def record(self, t, snap, sim_t):
         self.history.record(t, snap, sim_t)
 
     async def _investigate(self, inc):
         self.sentinel.policy = self.guard_policy()
+        self._inflight.add(inc.id)
         try:
             r = await self.sentinel.investigate(inc)
             self.results[inc.id] = r
@@ -67,11 +69,19 @@ class Service:
                                   result={"classification": r["verdict"]["classification"]["primary"]})
         except Exception as ex:                       # never let the agent take the server down
             self.incidents.fallback(inc.id, f"investigation error: {type(ex).__name__}: {ex}"[:200])
+        finally:
+            self._inflight.discard(inc.id)
+
+    def orphans(self) -> list:
+        """Incidents marked INVESTIGATING that nothing is working on. With one investigation at a time, a single
+        orphan would stall Sentinel for good, so the caller runs them (watchdog; should never trigger)."""
+        return [i for i in self.incidents.incidents.values()
+                if i.state == "INVESTIGATING" and i.id not in self._inflight]
 
     async def poll(self):
         if not self.enabled or (self.running and not self.running.done()):
             return
-        for inc in self.incidents.poll():
+        for inc in self.orphans() or self.incidents.poll():
             self.running = asyncio.create_task(self._investigate(inc))
             break                                     # one at a time (IncidentManager also enforces this)
 
@@ -80,18 +90,20 @@ class Service:
         presenter never waits on Sentinel's quiet timer (the expo failure was a step waiting on wall-clock time)."""
         if self.running and not self.running.done():
             await self.running
-        self.incidents.poll()
-        for inc in self.incidents.incidents.values():
-            if inc.state in ("COLLECTING", "REOPENED"):
-                inc.urgent = True
+        started = self.orphans() + list(self.incidents.poll())   # poll() may start one: run it, never drop it
         done = []
         for _ in range(10):
-            started = self.incidents.tick()
+            for inc in self.incidents.incidents.values():
+                if inc.state in ("COLLECTING", "REOPENED"):
+                    inc.urgent = True
+            started = started or self.incidents.tick()
             if not started:
                 break
             for inc in started:
-                await self._investigate(inc)
-                done.append(inc.id)
+                if inc.id not in self._inflight:
+                    await self._investigate(inc)
+                    done.append(inc.id)
+            started = []
         return done
 
     def listing(self) -> list[dict]:

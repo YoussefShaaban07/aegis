@@ -122,3 +122,20 @@ def test_physics_normal_stable():
     for _ in range(120):
         plant.step(1.0)
     assert 7.1 < plant.ph < 7.6 and not plant.alarms()
+
+
+def test_flood_suppression_restarts_when_clock_goes_back():
+    """A simulated clock can jump back (demo reset). The burst counter must restart, not suppress forever."""
+    from aegis.guard import Guard, LOG_BURST
+    from aegis.plant import Plant
+    t = [1000.0]
+    plant = Plant(noise=False)
+    g = Guard(None, plant.snapshot, clock=lambda: t[0])
+
+    class D:
+        allowed, peer, register, check, source = False, "10.0.0.9:5", "chlorine_dose", "ramp", "x"
+    for _ in range(LOG_BURST + 3):
+        g._suppress(D)
+    assert g._suppress(D) is True
+    t[0] = 10.0                                   # clock went backwards
+    assert g._suppress(D) is False

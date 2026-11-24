@@ -649,7 +649,7 @@ class Guard:
         key = (who, d.register, d.check)
         now = self.clock()
         e = self._rec.get(key)
-        if e is None or now - e[0] > 60:
+        if e is None or not 0 <= now - e[0] <= 60:     # also restart if the clock went backwards
             if e is not None and e[2]:
                 self._flush_one(key, e)
             self._rec[key] = [now, 1, 0]
@@ -673,7 +673,7 @@ class Guard:
             if e[2] and (force or now - e[0] > 60):
                 self._flush_one(key, e)
                 e[2] = 0
-            if now - e[0] > 120:
+            if not 0 <= now - e[0] <= 120:
                 del self._rec[key]
 
     def _record(self, d: Decision):
