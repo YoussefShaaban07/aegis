@@ -121,3 +121,17 @@ def test_orphaned_investigation_does_not_stall_sentinel(client):     # noqa: F81
     assert inc in a.orphans()
     j = client.post("/api/agent/investigate-now").json()
     assert inc.id in j["investigated"] and inc.state in ("AWAITING_APPROVAL", "REPORTED"), j
+
+
+def test_listing_shows_live_fix_status(client):     # noqa: F811
+    """The screens read each fix's status from the listing; after approval it must not still say 'waiting'."""
+    client.post("/api/reset")
+    client.post("/api/mode", json={"mode": "enforce", "pin": "2468"})
+    client.post("/api/attack/ramp?wait=1")
+    j = client.post("/api/agent/investigate-now").json()
+    inc = next(x for x in j["incidents"] if x["fixes"])
+    fx = inc["fixes"][0]
+    assert fx["status"] == "pending" and fx["name"] == "chlorine_dose"
+    assert client.post(f"/api/proposals/{fx['id']}/approve").status_code == 200
+    again = next(x for x in client.get("/api/agent/incidents").json()["incidents"] if x["id"] == inc["id"])
+    assert again["fixes"][0]["status"] == "approved"

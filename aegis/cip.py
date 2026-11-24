@@ -712,6 +712,14 @@ class PCCCClient:
             self.session = f.session
         return self._rw
 
+    def _drop(self):
+        if self._rw:
+            try:
+                self._rw[1].close()
+            except Exception:              # noqa: BLE001
+                pass
+        self._rw = None
+
     async def close(self):
         if self._rw:
             r, w = self._rw
@@ -725,21 +733,30 @@ class PCCCClient:
 
     async def pccc(self, cmd: int, fnc: int, params: bytes = b"") -> tuple[int, bytes]:
         async with self._lock:
-            try:
-                r, w = await self._conn()
-                self._tns = (self._tns + 1) & 0xFFFF
-                req = bytes([7]) + VENDOR_ID + b"AEGS" + bytes([cmd, 0]) + struct.pack("<H", self._tns) + bytes([fnc]) + params
-                msg = CIPRequest(EXECUTE_PCCC, b"\x20\x67\x24\x01", req).encode()
-                w.write(Frame(SEND_RR, self.session, data=build_cpf([[NULL_ADDR, b""], [UNCONN_DATA, msg]],
-                                                                    b"\x00" * 4 + struct.pack("<H", 10))).encode())
-                await w.drain()
-                f = await asyncio.wait_for(read_frame(r), self.timeout)
-            except (OSError, asyncio.TimeoutError, CIPError, asyncio.IncompleteReadError) as e:
-                self._rw = None
-                raise ConnectionError(f"EtherNet/IP: {e}") from e
-            if f is None:
-                self._rw = None
-                raise ConnectionError("EtherNet/IP connection closed")
+            for attempt in (0, 1):
+                reused = self._rw is not None
+                try:
+                    r, w = await self._conn()
+                    self._tns = (self._tns + 1) & 0xFFFF
+                    req = bytes([7]) + VENDOR_ID + b"AEGS" + bytes([cmd, 0]) + struct.pack("<H", self._tns) + bytes([fnc]) + params
+                    msg = CIPRequest(EXECUTE_PCCC, b"\x20\x67\x24\x01", req).encode()
+                    w.write(Frame(SEND_RR, self.session, data=build_cpf([[NULL_ADDR, b""], [UNCONN_DATA, msg]],
+                                                                        b"\x00" * 4 + struct.pack("<H", 10))).encode())
+                    await w.drain()
+                    f = await asyncio.wait_for(read_frame(r), self.timeout)
+                except (OSError, asyncio.TimeoutError, CIPError, asyncio.IncompleteReadError) as e:
+                    self._drop()
+                    # same as the Modbus client: a kept-open session the PLC closed while idle is reopened once
+                    if attempt == 0 and reused and isinstance(e, (asyncio.IncompleteReadError, ConnectionResetError,
+                                                                  BrokenPipeError, ConnectionAbortedError)):
+                        continue
+                    raise ConnectionError(f"EtherNet/IP: {e}") from e
+                if f is None:
+                    self._drop()
+                    if attempt == 0 and reused:
+                        continue
+                    raise ConnectionError("EtherNet/IP connection closed")
+                break
             if f.status:
                 raise CIPError(f"encapsulation status 0x{f.status:04X}")
             _, items = parse_cpf(f.data)

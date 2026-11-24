@@ -638,7 +638,7 @@ async function load(){let s;try{const r=await fetch('/api/state');if(r.status===
   $('llm').textContent=s.llm?'model connected':s.llm_scripted?'scripted demo model':'offline: add GROQ_API_KEY';
   $('alcfg').innerHTML=s.alerts_configured?`texts on: ${esc((s.alert_channels||[]).join(' + '))} <button class="mini" onclick="testText()">Send test text</button>`:'texts not configured (dashboard only)';
   $('incidents').innerHTML=(s.incidents||[]).map(i=>`<div class="verdict ${i.severity==='critical'&&!i.acked_by?'bad':''}" style="margin:0 0 8px">
-    <b>Incident #${i.id}</b> · ${esc(i.severity)} · ${i.count} event${i.count>1?'s':''} grouped (one text sent${i.level?`, escalated to contact ${i.level+1}`:''})<br>${esc(i.title)}
+    <b>Alert #${i.id}</b> · ${esc(i.severity)} · ${i.count} event${i.count>1?'s':''} grouped (one text sent${i.level?`, escalated to contact ${i.level+1}`:''})<br>${esc(i.title)}
     <div style="margin-top:6px">${i.acked_by?`<span class="okm">Acknowledged by ${esc(i.acked_by)}</span>`:`<button onclick="post('/api/incidents/${i.id}/ack').then(load)">Acknowledge</button> <span class="trace">unacknowledged critical incidents escalate to the next contact every 10 min</span>`}</div></div>`).join('');
   $('holds').innerHTML=(s.lockdowns||[]).map(l=>`<div class="verdict bad" style="margin:0 0 8px"><b>LOCKDOWN</b> ${esc(l.source)} was refused ${l.blocks} times (last: ${esc(l.last)}). Possible intrusion or a misconfigured HMI. It can only make changes that make the plant safer.
     <div style="margin-top:6px"><button onclick="post('/api/lockdown/clear',{source:${esc(JSON.stringify(l.source))}}).then(load)">Clear lockdown</button> <span class="trace">only after checking who sent those commands; logged</span></div></div>`).join('')+(s.holds||[]).map(h=>`<div class="verdict bad" style="margin:0 0 8px"><b>SAFE-HOLD</b> ${esc(h.register)} held at ${fmt(h.value)} (${esc(h.reason)}; ${h.remaining_min} min left). Modbus writes that move it are refused unless the twin calls them corrective.
@@ -675,14 +675,19 @@ async function senSteps(id,keep){const el=document.getElementById('sensteps'+id)
   if(senOpen.has(id)&&!keep){senOpen.delete(id);el.innerHTML='';return;}
   senOpen.add(id);const r=await fetch(`/api/agent/incidents/${id}`);if(!r.ok)return;const j=await r.json();
   el.innerHTML=((j.result||{}).steps||[]).map(x=>`<div>&bull; <b>${esc(x.tool||x.kind)}</b> ${esc(x.args?JSON.stringify(x.args):'')} &rarr; ${esc(x.summary||'')}</div>`).join('')||'No steps yet.';}
+function senFixes(i){   // live status of each fix, not the text written when the investigation finished
+  const f=i.fixes||[];if(!f.length)return '';
+  const W={pending:'waiting for approval (above, or on the operator phone view)',approved:'applied after approval',
+    rejected:'rejected',blocked:'blocked by the guard on re-check'};
+  return f.map(x=>`<div class="trace">Fix: ${esc(x.name)} ${x.old!=null?esc(x.old)+' &rarr; ':'&rarr; '}${esc(x.value)} ${esc(x.unit||'')} &middot; <b>${esc(W[x.status]||x.status)}</b>${x.decided_by?' by '+esc(x.decided_by):''}</div>`).join('');}
 function senCard(i){
   const props=(i.proposals||[]).filter(Boolean);
   return `<div class="sen"><span class="badge ${esc(i.severity||'')}">${esc(SEN_NAMES[i.classification]||'Open')}</span>`+
     (i.confidence?` <span class="trace" style="margin:0 6px">confidence ${esc(i.confidence)}</span>`:'')+
-    `<span class="trace" style="margin:0">#${i.id} &middot; ${esc(i.state)} &middot; ${i.events} events`+
+    `<span class="trace" style="margin:0">Sentinel #${i.id} &middot; ${esc(i.state)} &middot; ${i.events} events`+
     (i.validity!=null?` &middot; citations ${Math.round(100*i.validity)}% verified`:'')+`</span>`+
     (i.summary?`<pre>${esc(i.summary)}</pre>`:'<div class="trace">Collecting evidence&hellip;</div>')+
-    (props.length?`<div class="trace">Fix proposals waiting: ${props.map(x=>'#'+x).join(', ')} (approve above)</div>`:'')+
+    senFixes(i)+
     (i.classification?`<div><a href="/api/agent/incidents/${i.id}/report" target="_blank">Full report</a> &middot; <a href="#" onclick="senSteps(${i.id});return false">How Sentinel got here</a></div><div class="steps" id="sensteps${i.id}"></div>`:'')+
     `</div>`;}
 async function senLoad(){let j;try{const r=await fetch('/api/agent/incidents');if(!r.ok)return;j=await r.json();}catch(e){return;}

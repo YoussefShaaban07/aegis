@@ -213,7 +213,7 @@ class Guard:
         if self.clock() > t["until"]:
             self.tickets.pop(d.register, None)
             return d
-        if (d.check not in self.TICKET_WAIVES or d.source.startswith("Unknown host")
+        if (d.check not in self.TICKET_WAIVES or d.source.startswith(("Unknown host", "Unknown device"))
                 or d.source in self.lockdowns or abs(d.new - t["value"]) > max(1e-6, 1e-3 * abs(t["value"]))):
             return d
         if not dry_run:

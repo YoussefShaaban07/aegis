@@ -1,0 +1,24 @@
+# Keeps the public demo on Render's free plan awake during working hours, so a visitor (or a live demo) never
+# waits through the ~35 s cold start. Free services sleep after 15 min without traffic; this pings every 10 min,
+# 6:00-17:59 US Central (12-23 UTC), Mon-Fri. GitHub can delay scheduled runs by a few minutes.
+# Before a meeting, run it by hand too: Actions -> Keep demo awake -> Run workflow.
+name: Keep demo awake
+on:
+  schedule:
+    - cron: "*/10 12-23 * * 1-5"
+  workflow_dispatch:
+permissions: {}
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping the demo (waits through a cold start)
+        run: |
+          for i in 1 2 3; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 120 https://aegis-srp7.onrender.com/ || true)
+            echo "attempt $i: HTTP $code"
+            [ "$code" = "200" ] && exit 0
+            sleep 20
+          done
+          echo "::warning::demo did not answer 200"

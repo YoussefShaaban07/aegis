@@ -92,7 +92,7 @@ async function load(){
     +ld.map(l=>`<div class="item"><b>LOCKDOWN</b> ${esc(l.source)}: refused ${l.blocks} times (last ${esc(l.last)}). Possible intrusion. Only safer changes allowed.<button onclick='clearLock(${JSON.stringify(l.source)})'>Clear lockdown</button></div>`).join('');
   $('t-ph').classList.toggle('bad',p.ph>8.5||p.ph<6.5);$('t-cl').classList.toggle('bad',p.chlorine_residual<.2||p.chlorine_residual>4);$('t-lv').classList.toggle('bad',p.tank_level<10||p.tank_level>95);
   $('v-g').textContent=s.guard_mode.toUpperCase();$('v-int').textContent=s.integrity.ok?'PLC readings consistent':'PLC readings suspect';
-  $('inc').innerHTML=(s.incidents||[]).length?(s.incidents).map(i=>`<div class="item"><b>#${i.id} · ${esc(i.severity)}</b> · ${i.count} ${i.count===1?'event':'events'} · ${ago(i.opened)}<br>${esc(i.title)}
+  $('inc').innerHTML=(s.incidents||[]).length?(s.incidents).map(i=>`<div class="item"><b>Alert #${i.id} · ${esc(i.severity)}</b> · ${i.count} ${i.count===1?'event':'events'} · ${ago(i.opened)}<br>${esc(i.title)}
     ${i.acked_by?`<div class="muted">acknowledged by ${esc(i.acked_by)}</div>`:`<button class="big" onclick="ack(${i.id})">Acknowledge</button>`}</div>`).join(''):'<div class="muted">None.</div>';
   // Sentinel: the SMS-style summary, and one Approve / Reject per pending fix it proposed
   try{const a=await (await fetch('/api/agent/incidents')).json();
@@ -100,8 +100,10 @@ async function load(){
     const pend=(s.proposals||[]).filter(x=>x.source==='Sentinel'&&x.status==='pending');
     $('sen-card').style.display=done.length||pend.length?'':'none';
     $('sen').innerHTML=done.map(i=>{const mine=pend.filter(x=>(i.proposals||[]).includes(x.id));
-      return `<div class="item"><b>#${i.id} · ${esc(SEN[i.classification]||i.classification)}</b> · ${esc(i.confidence)} confidence
-        <div style="white-space:pre-wrap;margin:4px 0">${esc(i.sms||i.summary||'')}</div>
+      return `<div class="item"><b>Sentinel #${i.id} · ${esc(SEN[i.classification]||i.classification)}</b> · ${esc(i.confidence)} confidence
+        <div style="white-space:pre-wrap;margin:4px 0">${esc((i.sms||i.summary||'').split('\n').filter(l=>!/fix(es)? waiting for your approval|No setpoint changes proposed/.test(l)).join('\n'))}</div>
+        ${(i.fixes||[]).filter(x=>x.status!=='pending').map(x=>`<div class="muted">Fix ${esc(x.name)} &rarr; ${esc(x.value)}: <b>${esc({approved:'applied after approval',rejected:'rejected',blocked:'blocked by the guard on re-check'}[x.status]||x.status)}</b>${x.decided_by?' by '+esc(x.decided_by):''}</div>`).join('')}
+        ${(i.fixes||[]).length?'':'<div class="muted">No setpoint changes proposed.</div>'}
         ${mine.map(x=>`<div style="margin:6px 0"><b>${esc(x.name)} → ${esc(x.value)}</b><div class="muted">${esc(x.reason).slice(0,160)}</div>
           <button class="big" onclick='decide(${x.id},true,${JSON.stringify(x.name+" = "+x.value)})'>Approve</button>
           <button onclick='decide(${x.id},false,${JSON.stringify(x.name+" = "+x.value)})'>Reject</button></div>`).join('')}
@@ -110,10 +112,14 @@ async function load(){
   // blocked AI proposals count too (they're judged as dry runs, so they aren't in the write log)
   const aiBlk=(s.proposals||[]).filter(x=>x.status==='blocked').map(x=>({source:'AI copilot (proposal)',register:x.name,new:x.value,
     unit:x.unit||'',reason:x.guard||'',t:x.t||x.created||x.decided_at,check:'ai'}));
-  const blk=[...(s.log||[]).filter(d=>!d.allowed),...aiBlk].sort((a,b)=>(b.t||0)-(a.t||0)).slice(0,5);
+  // same source, register, value and rule repeated (an attacker retrying) -> one row with a count
+  const grp=new Map();
+  for(const d of [...(s.log||[]).filter(d=>!d.allowed),...aiBlk].sort((a,b)=>(b.t||0)-(a.t||0))){
+    const k=[d.source,d.register,d.new,d.check].join('|');const g=grp.get(k);if(g)g.n++;else grp.set(k,{...d,n:1});}
+  const blk=[...grp.values()].slice(0,5);
   const WAIVE=['step','ramp','cycling','predict'];
-  $('blk').innerHTML=blk.length?blk.map(d=>`<div class="item"><b>${esc(d.source)}</b> tried ${esc(d.register)} = ${esc(d.new)} ${esc(d.unit)}<div class="muted">${esc(d.reason).slice(0,160)} · ${ago(d.t)}</div>${
-    WAIVE.includes(d.check)&&!/^Unknown host/.test(d.source)?`<button onclick='allowOnce(${JSON.stringify(d.register)},${+d.new})'>Allow this value once</button>`:''}</div>`).join(''):'<div class="muted">Nothing blocked recently.</div>';
+  $('blk').innerHTML=blk.length?blk.map(d=>`<div class="item"><b>${esc(d.source)}</b> tried ${esc(d.register)} = ${esc(d.new)} ${esc(d.unit)}${d.n>1?` <b>&times;${d.n}</b>`:''}<div class="muted">${esc(d.reason).slice(0,160)} · ${ago(d.t)}</div>${
+    WAIVE.includes(d.check)&&!/^Unknown (host|device)/.test(d.source)?`<button onclick='allowOnce(${JSON.stringify(d.register)},${+d.new})'>Allow this value once</button>`:''}</div>`).join(''):'<div class="muted">Nothing blocked recently.</div>';
   $('tix').innerHTML=(s.tickets||[]).map(t=>`<div class="item"><b>ALLOWED ONCE</b> ${esc(t.register)} = ${esc(t.value)} (by ${esc(t.by)}); waiting for the HMI to send it.</div>`).join('');
 }
 load();setInterval(load,3000);

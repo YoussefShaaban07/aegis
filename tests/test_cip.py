@@ -303,3 +303,22 @@ def test_july_2026_micrologix_campaign_actions_are_refused(rig):
     assert len(blocked) == 3
     assert any("Set Attribute Single" in d.register and "0xF5" in d.reason for d in blocked)
     assert any("download" in d.register.lower() and ("T0843", "Program Download") in d.techniques for d in blocked)
+
+
+def test_pccc_client_survives_an_idle_drop(rig):
+    """Safe-hold keeps its EtherNet/IP session open; if the far end closed it while idle, the next write must
+    reopen it instead of failing (the same bug made the demo's first attack after 2 idle minutes fail)."""
+    short = CIPGuard(rig.guard, "127.0.0.1", rig.plc_port, rig.tags, idle_timeout=0.2)
+    srv = rig.run(short.serve("127.0.0.1", 0))
+    port = srv.sockets[0].getsockname()[1]
+    rig.guard.mode = "monitor"
+
+    async def go():
+        c = PCCCClient("127.0.0.1", port)
+        await c.read_state(rig.tags)
+        await asyncio.sleep(0.5)                                # the guard drops the idle session
+        await c.write_tag(rig.tags.holding["distribution_rate"], 450)
+        await c.close()
+    rig.run(go())
+    srv.close()
+    assert rig.plant.setpoint("distribution_rate") == 450

@@ -381,19 +381,31 @@ class Client:
     async def call_pdu(self, pdu: bytes, unit: int | None = None) -> bytes:
         """Send a raw PDU, return the raw response PDU (raises ModbusError on exception replies)."""
         async with self._lock:
-            try:
-                if self.writer is None:
-                    await self.connect()
-                self._tid = (self._tid + 1) & 0xFFFF
-                u = self.unit if unit is None else unit
-                self.writer.write(rtu_frame(u, pdu) if self.framing == "rtu" else frame(self._tid, u, pdu))
-                await self.writer.drain()
-                _, _, out = await asyncio.wait_for(
-                    read_rtu_response(self.reader) if self.framing == "rtu" else read_frame(self.reader),
-                    self.timeout)
-            except (OSError, ConnectionError, asyncio.IncompleteReadError, asyncio.TimeoutError):
-                self.writer = None
-                raise ConnectionError(f"no response from {self.host}:{self.port}")
+            for attempt in (0, 1):
+                reused = self.writer is not None
+                try:
+                    if self.writer is None:
+                        await self.connect()
+                    self._tid = (self._tid + 1) & 0xFFFF
+                    u = self.unit if unit is None else unit
+                    self.writer.write(rtu_frame(u, pdu) if self.framing == "rtu" else frame(self._tid, u, pdu))
+                    await self.writer.drain()
+                    _, _, out = await asyncio.wait_for(
+                        read_rtu_response(self.reader) if self.framing == "rtu" else read_frame(self.reader),
+                        self.timeout)
+                    break
+                except (OSError, ConnectionError, asyncio.IncompleteReadError, asyncio.TimeoutError) as ex:
+                    if self.writer:
+                        self.writer.close()
+                    self.writer = None
+                    # A kept-open connection the PLC (or a firewall) closed while idle fails at once with EOF or a
+                    # reset, before the request is processed. Reconnect and send it once more: Modbus writes set a
+                    # value, so a repeat is harmless. A timeout means the PLC is slow or gone: fail safe, no retry.
+                    stale = isinstance(ex, (asyncio.IncompleteReadError, ConnectionResetError, BrokenPipeError,
+                                            ConnectionAbortedError))
+                    if attempt == 0 and reused and stale:
+                        continue
+                    raise ConnectionError(f"no response from {self.host}:{self.port}")
         if out[0] & 0x80:
             raise ModbusError(out[1])
         return out

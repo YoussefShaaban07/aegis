@@ -36,6 +36,7 @@ class AgentSettings(BaseModel):
 class Service:
     def __init__(self, audit, alerter, proposals, guard_policy, orders, status_fn, demo: bool, registry_fn=None):
         self.history = PlantHistory()
+        self.proposals = proposals
         cfg = DEMO_WINDOWS if demo else None
         if os.getenv("AEGIS_AGENT_QUIET_S"):
             cfg = {**(cfg or {}), "quiet_s": float(os.getenv("AEGIS_AGENT_QUIET_S"))}
@@ -106,6 +107,18 @@ class Service:
             started = []
         return done
 
+    def _fixes(self, r: dict) -> list[dict]:
+        """Live status of each fix this investigation filed (pending / approved / rejected / blocked), so the
+        screens never show a fix as waiting after someone approved it."""
+        out = []
+        for st in (r.get("recovery") or {}).get("steps") or []:
+            pid = st.get("proposal_id")
+            p = self.proposals.get(pid) if (pid and self.proposals is not None) else None
+            if p:
+                out.append({"id": pid, "name": p.get("name"), "value": p.get("value"), "old": p.get("old"),
+                            "unit": p.get("unit", ""), "status": p.get("status"), "decided_by": p.get("decided_by")})
+        return out
+
     def listing(self) -> list[dict]:
         out = []
         for inc in self.incidents.list()[:30]:
@@ -116,6 +129,7 @@ class Service:
                         "sms": r.get("sms"),
                         "severity": (r.get("report") or {}).get("severity"), "mode": r.get("mode"),
                         "proposals": [s.get("proposal_id") for s in (r.get("recovery") or {}).get("steps") or []],
+                        "fixes": self._fixes(r),
                         "validity": (r.get("validation") or {}).get("validity")})
         return out
 

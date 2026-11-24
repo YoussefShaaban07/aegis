@@ -91,6 +91,7 @@ def test_allow_once_ticket_lets_one_value_past_a_wrong_block_and_nothing_else():
 
     assert not g.check("naoh_dose", 240, st, "Operator HMI", "10.0.0.5:1").allowed      # other value: no
     assert not g.check("naoh_dose", 230, st, "Unknown host 9.9.9.9", "9.9.9.9:1").allowed  # stranger: no
+    assert not g.check("naoh_dose", 230, st, "Unknown device (unit 77)", "9.9.9.9:1").allowed  # unknown unit ID: no
     assert g.check("naoh_dose", 230, st, "Operator HMI", "10.0.0.5:1", dry_run=True).allowed   # dry run: not used up
     d = g.check("naoh_dose", 230, st, "Operator HMI", "10.0.0.5:1")
     assert d.allowed and d.reason.startswith("ALLOWED ONCE by maria")
