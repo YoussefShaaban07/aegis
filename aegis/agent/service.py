@@ -20,7 +20,7 @@ from pydantic import BaseModel
 
 from . import standin
 from .casebase import CaseBase
-from .incidents import AWAITING_APPROVAL, REPORTED, IncidentManager
+from .incidents import AWAITING_APPROVAL, CLOSED, REPORTED, IncidentManager
 from .loop import Sentinel
 from .tools import PlantHistory
 
@@ -136,12 +136,21 @@ class Service:
         for inc in self.incidents.list()[:30]:
             r = self.results.get(inc.id) or {}
             v = (r.get("verdict") or {}).get("classification") or {}
+            fixes = self._fixes(r)
+            if inc.state == AWAITING_APPROVAL and fixes and not any(f["status"] == "pending" for f in fixes):
+                # every fix was approved or rejected: nothing is waiting any more
+                self.incidents._set(inc, CLOSED, self.incidents._now(None))
+            scope = (r.get("verdict") or {}).get("scope") or {}
             out.append({**inc.summary(), "classification": v.get("primary"), "confidence": v.get("confidence"),
                         "summary": (r.get("verdict") or {}).get("summary_for_operator"),
                         "sms": r.get("sms"),
                         "severity": (r.get("report") or {}).get("severity"), "mode": r.get("mode"),
                         "proposals": [s.get("proposal_id") for s in (r.get("recovery") or {}).get("steps") or []],
-                        "fixes": self._fixes(r),
+                        "fixes": fixes,
+                        # how Sentinel decided, in plain words, each reason with the audit entries behind it
+                        "why": [{"text": c.get("text"), "cite": c.get("cite") or []} for c in v.get("rationale") or []],
+                        "where": {"sources": scope.get("sources") or [], "ips": scope.get("ips") or [],
+                                  "registers": scope.get("registers") or []},
                         "validity": (r.get("validation") or {}).get("validity")})
         return out
 

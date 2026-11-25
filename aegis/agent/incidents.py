@@ -227,6 +227,7 @@ class IncidentManager:
         if self.audit is not None:
             self.poll()
         self._sealed |= set(self.incidents)
+        self._recent_writes.clear()           # writes before the reset are not evidence for what comes after
 
     def _match(self, e: dict, keyed: bool) -> Incident | None:
         """Open incident this event belongs to (or a recently finished one to reopen)."""

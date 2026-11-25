@@ -102,7 +102,9 @@ async function load(){
     $('sen').innerHTML=done.map(i=>{const mine=pend.filter(x=>(i.proposals||[]).includes(x.id));
       return `<div class="item"><b>Sentinel #${i.id} · ${esc(SEN[i.classification]||i.classification)}</b> · ${esc(i.confidence)} confidence
         <div style="white-space:pre-wrap;margin:4px 0">${esc((i.sms||i.summary||'').split('\n').filter(l=>!/fix(es)? waiting for your approval|No setpoint changes proposed/.test(l)).join('\n'))}</div>
-        ${(i.fixes||[]).filter(x=>x.status!=='pending').map(x=>`<div class="muted">Fix ${esc(x.name)} &rarr; ${esc(x.value)}: <b>${esc({approved:'applied after approval',rejected:'rejected',blocked:'blocked by the guard on re-check'}[x.status]||x.status)}</b>${x.decided_by?' by '+esc(x.decided_by):''}</div>`).join('')}
+        ${(i.where&&(i.where.sources||[]).length)?`<div class="muted">Came from: ${esc(i.where.sources.join(', '))}${(i.where.ips||[]).length?' at '+esc(i.where.ips.join(', ')):''}</div>`:''}
+        ${(i.why||[]).length?`<ul class="muted" style="margin:4px 0 4px 16px;padding:0">${i.why.slice(0,3).map(c=>`<li>${esc(c.text)}</li>`).join('')}</ul>`:''}
+        ${(i.fixes||[]).filter(x=>x.status!=='pending').map(x=>`<div class="muted">Fix ${esc(x.name)} &rarr; ${esc(x.value)}: <b>${esc({approved:'applied after approval',rejected:'rejected',blocked:'blocked by the guard on re-check'}[x.status]||x.status)}</b>${x.decided_by?' by '+esc(String(x.decided_by).replace(/^(\S+) \(\1\)$/,'$1')):''}</div>`).join('')}
         ${(i.fixes||[]).length?'':'<div class="muted">No setpoint changes proposed.</div>'}
         ${mine.map(x=>`<div style="margin:6px 0"><b>${esc(x.name)} → ${esc(x.value)}</b><div class="muted">${esc(x.reason).slice(0,160)}</div>
           <button class="big" onclick='decide(${x.id},true,${JSON.stringify(x.name+" = "+x.value)})'>Approve</button>
