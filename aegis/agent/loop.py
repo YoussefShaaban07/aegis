@@ -70,6 +70,9 @@ def consistent(cls: str, F: dict | None) -> bool:
     if blocked and v("source_known") is False and cls not in ("external_attack", "ai_manipulation",
                                                               "insufficient_evidence"):
         return False                          # an unknown device writing to the PLC is never weather or an operator
+    if (not blocked and v("unknown_write_through") and v("forecast_warnings")
+            and cls in ("process_or_weather", "operator_error", "benign_false_positive")):
+        return False                          # same fact when the guard was off: the unknown write got through
     if cls == "external_attack" and v("registered_source") and not v("recon_fc"):
         return False                          # a registered IP + label is the plant's own machine
     if cls == "plc_or_sensor_integrity" and not any(v(k) for k in ("drift_without_decision", "physics_mismatch",

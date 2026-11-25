@@ -34,8 +34,6 @@ def extract(ev: Evidence, twin: bool = True) -> dict:
     trig = set(inc.trigger_ids)
     inc_dec = [e for e in dec if e["id"] in set(inc.entry_ids)]
     by_src = Counter(e["data"].get("source") for e in inc_dec if e["id"] in trig)
-    if not by_src:      # nothing written triggered it (e.g. a forecast warning after allowed writes): the writers
-        by_src = Counter(e["data"].get("source") for e in inc_dec)
     primary = by_src.most_common(1)[0][0] if by_src else None
     # behaviour uses every write from the primary source in the evidence window: an attacker's first
     # writes are usually allowed and come before anything opened the incident
@@ -229,6 +227,14 @@ def extract(ev: Evidence, twin: bool = True) -> dict:
     auth = ev.of("auth_failure")
     F["auth_failures"] = _f(len(auth), [e["id"] for e in auth])
 
+    # writes from a device the guard doesn't know that passed with the guard OFF: with nothing blocked these
+    # are the only trace of an attack. Not in NUMERIC: the learned model's
+    # inputs stay as they were trained.
+    thru = [e for e in inc_dec if e["data"].get("check") == "disabled"          # passed with the guard OFF
+            and str(e["data"].get("source", "")).startswith("Unknown ")
+            and e["data"].get("register") in SETPOINTS and e["data"].get("new") != e["data"].get("old")]
+    F["unknown_write_through"] = _f(len(thru), [e["id"] for e in thru])
+
     # --- twin: is the risk the writes or the weather?
     F["harm_forecast_without_writes"] = _f(None)
     F["writes_make_forecast_worse"] = _f(None)
@@ -245,13 +251,6 @@ def extract(ev: Evidence, twin: bool = True) -> dict:
             undo = {r: v for r, (v, _) in regs_first.items()}
             ids = [i for _, i in regs_first.values()]
             if undo:
-                # replay from just before the first write: at the end of the window the water the writes
-                # already made (e.g. caustic water in the clearwell) is in the state, and undoing the setpoint
-                # can't un-make it, so the "without the writes" forecast would wrongly still look harmful
-                first_t = min(e["t"] for e in mine if e["id"] in ids)
-                tw0 = ev.twin(first_t - 1e-6)
-                if tw0:
-                    twin_m, state = tw0
                 r = _compare(twin_m, state, undo, 6)        # "with" = incident writes removed
                 F["harm_forecast_without_writes"] = _f(r["with"]["excursion"] > 0, ids)
             else:                                            # no writes to remove: today's forecast

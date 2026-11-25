@@ -302,7 +302,12 @@ class IncidentManager:
         if trigger and e["kind"] == "forecast_warning":
             # the forecast went bad after writes that were allowed (guard off / monitor, or within the rules):
             # those writes are the evidence of who changed what, so they belong in the incident
-            ctx = [w for tw, w in self._recent_writes if 0 <= e["t"] - tw <= self.cfg["forecast_write_window_s"]]
+            # only writes from devices the guard doesn't know that passed with the guard OFF: a known operator's
+            # routine change before the weather turned is not evidence (attaching those made weather look like
+            # operator error), and with the guard on, a blocked write opens the incident anyway
+            ctx = [w for tw, w in self._recent_writes if 0 <= e["t"] - tw <= self.cfg["forecast_write_window_s"]
+                   and w["data"].get("check") == "disabled"                 # passed with the guard OFF
+                   and str(w["data"].get("source", "")).startswith("Unknown ")]
             earlier = [w["id"] for w in ctx]
         self._add(inc, e, trigger, why, urgent, earlier)
         for w in ctx:

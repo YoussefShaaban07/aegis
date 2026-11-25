@@ -55,18 +55,14 @@ def classify(F: dict) -> dict:
     if blocked and v(F, "correction_follows") and v(F, "human_present"):
         return out("operator_error", "medium", "known operator, present, corrected the write", "correction_follows",
                    "human_present")
+    if blocked == 0 and v(F, "unknown_write_through") and v(F, "forecast_warnings"):
+        # nothing was blocked because the guard was OFF, and a device the guard doesn't know changed a setpoint
+        # before the forecast went bad: Oldsmar with no guard
+        return out("external_attack", "medium", "a setpoint change from an unknown device got through, then the "
+                   "forecast went unsafe", "unknown_write_through", "forecast_warnings")
     if blocked == 0 and v(F, "harm_forecast_without_writes"):
         return out("process_or_weather", "medium", "forecast unsafe even without the incident's writes",
                    "harm_forecast_without_writes", "forecast_warnings")
-    if (blocked == 0 and v(F, "forecast_warnings") and (v(F, "n_allowed") or 0)
-            and v(F, "harm_forecast_without_writes") is False):
-        # nothing was blocked (guard off / monitor, or each write within the rules), but the twin says the
-        # forecast would be safe without the incident's writes: the writes did it (Oldsmar with the guard off)
-        if not v(F, "source_known"):
-            return out("external_attack", "medium", "a write from an unknown source got through and the forecast "
-                       "is unsafe only because of it", "primary_source", "source_known", "forecast_warnings")
-        return out("operator_error", "low", "a known source's write got through and the forecast is unsafe only "
-                   "because of it", "primary_source", "forecast_warnings")
     if blocked and pushy:
         return out("compromised_trusted_source", "low", "push/probe/persistence pattern from a trusted label",
                    "monotone_push", "regular_interval", "probing", "writes_after_block")
