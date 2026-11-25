@@ -55,6 +55,11 @@ def classify(F: dict) -> dict:
     if blocked and v(F, "correction_follows") and v(F, "human_present"):
         return out("operator_error", "medium", "known operator, present, corrected the write", "correction_follows",
                    "human_present")
+    if blocked == 0 and v(F, "unknown_write_through") and v(F, "forecast_warnings"):
+        # nothing was blocked because the guard was OFF, and a device the guard doesn't know changed a setpoint
+        # before the forecast went bad: Oldsmar with no guard
+        return out("external_attack", "medium", "a setpoint change from an unknown device got through, then the "
+                   "forecast went unsafe", "unknown_write_through", "forecast_warnings")
     if blocked == 0 and v(F, "harm_forecast_without_writes"):
         return out("process_or_weather", "medium", "forecast unsafe even without the incident's writes",
                    "harm_forecast_without_writes", "forecast_warnings")

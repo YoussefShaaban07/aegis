@@ -8,6 +8,13 @@
 4. Rehearse with **▶ Guided demo** (sign in as `engineer` / `engineer`, PIN `2468`) until each step's line comes naturally. Whole run: ~3 minutes.
 5. Have `docs/dashboard.png`, `docs/copilot-reply-guard.png`, `docs/operator-view.png` and an incident report open in a browser tab as a backup if the laptop misbehaves.
 
+## Before a meeting (checklist)
+
+1. The live site must run the latest `main`: open `https://aegis-srp7.onrender.com/api/agent/incidents`. "please log in" = new version; "Not Found" = an old deploy (Render dashboard -> the service -> Manual Deploy -> Deploy latest commit).
+2. 10 minutes before: open the site (or run Actions -> **Keep demo awake** -> Run workflow), sign in as engineer, type the PIN, click **Pitch demo**, press Space through all 5 steps once. Idle time before the pitch is fine now (Nov 24 fix: the first command after 2 idle minutes used to fail).
+3. Then **Pitch demo** again for the real run; it resets the plant. Step 5 scrolls to the Sentinel card; open the report link and the operator phone view from the guide, and approve the fix there to show the human-in-the-loop.
+4. Backup: `run.bat` on the laptop (no network).
+
 ## Presenting from the public site (Render)
 
 What went wrong at the expo: the Oldsmar step froze on the Render site and ate the pitch time; the pitch had never been rehearsed end to end there. Since then (branch `sentinel`): pitch steps fast-forward the simulation on the server instead of waiting on timers and show an error instead of hanging; the PIN is checked before step 1; and a presenter lock stops other visitors from changing the shared plant during your pitch.
@@ -40,8 +47,8 @@ Any Modbus app on a phone works too (host = laptop IP, port 5502, holding regist
 ## Things to say carefully (accuracy)
 
 - Oldsmar 2021: the lye setpoint was raised from 100 to 11,100 ppm; **later reporting questioned whether it was an outside hacker**. Say "widely reported".
-- July 2026: FBI/EPA alert of attacks on internet-facing water PLCs in at least seven states (loss of pressure, flooding). Those were **Rockwell MicroLogix PLCs**; they also speak Modbus TCP, but the attackers may have used Rockwell's own protocol, which Aegis doesn't parse.
-- EPA 2024: over 70% of inspected systems didn't fully comply with basic cybersecurity requirements.
+- July 2026: FBI/EPA PSA I-073026-PSA (Jul 30): utilities in at least seven states reported incidents since Jul 27, some degrading water operations; the targets were internet-facing **Rockwell MicroLogix 1100/1400** PLCs (source: https://www.ic3.gov/PSA/2026/PSA260730.pdf). Aegis also parses that PLC family's EtherNet/IP (PCCC) traffic, tested against the open-source pycomm3 client **on a simulated MicroLogix only**. Don't claim it would have stopped those attacks: reported activity included changing the PLCs' configuration (IP addresses, passwords), and what exactly was sent hasn't been published.
+- EPA May 2024 enforcement alert: over 70% of community water systems inspected since Sept 2023 violated basic Safe Drinking Water Act §1433 requirements (source: https://www.epa.gov/enforcement/enforcement-alert-drinking-water-systems-address-cybersecurity-vulnerabilities). It's about compliance (risk assessments, emergency plans), not 70% being hacked.
 - Everything Aegis measures was measured **on simulators**, one of them deliberately built with physics the twin gets wrong. **Not on a real plant.** Say that before a judge asks.
 - The AI copilot: if you didn't run the red team with a real key, don't claim how often real models fall for injections.
 

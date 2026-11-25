@@ -615,6 +615,8 @@ def scenario(name: str, who: dict = Depends(role("operator", demo_only=True))):
 def reset(who: dict = Depends(role("operator", demo_only=True))):
     p, g = S["plant"], S["guard"]
     p.reset()
+    g.flush_suppressed(force=True)     # log any pending "N blocks suppressed" summary, then forget the bursts:
+    g._rec.clear()                     # otherwise a rerun's attack is counted as more of the last run's flood
     g.log.clear(); g._changes.clear(); g._attempts.clear(); g._dirs.clear(); g._big_dirs.clear(); g.counts.clear()
     S["alerter"].recent.clear(); S["alerter"]._last.clear(); S["alerter"].incidents.clear()
     S["proposals"].items.clear()

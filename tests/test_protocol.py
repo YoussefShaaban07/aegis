@@ -164,9 +164,9 @@ def test_idle_connections_dropped_and_client_cap():
         with pytest.raises(ConnectionError):
             await c.read_holding(0, 1)                                # third client refused
         await asyncio.sleep(0.5)                                      # a and b idle out
-        with pytest.raises(ConnectionError):
-            await a.read_holding(0, 1)
-        assert (await a.read_holding(0, 1)) == [150]                  # auto-reconnect
+        # the first call after an idle drop reconnects and resends once (it used to fail: the demo's first
+        # attack after 2 idle minutes came back "exception 11")
+        assert (await a.read_holding(0, 1)) == [150]
         srv.close()
     asyncio.run(run())
 
@@ -290,4 +290,18 @@ def test_read_coalescing_spares_the_plc():
         await c.write(NAOH, 105)
         assert (await c.read_holding(NAOH, 1)) == [105]
         await c.close(); plc2.close(); gsrv.close()
+    asyncio.run(run())
+
+
+def test_guard_write_after_plc_idle_drop_goes_through():
+    """The PLC drops idle connections; the guard's kept-open upstream must not fail the next write."""
+    async def run():
+        plc = await modbus.serve(Plant(noise=False).handle, "127.0.0.1", 0, idle_timeout=0.2)
+        port = plc.sockets[0].getsockname()[1]
+        up = modbus.Client("127.0.0.1", port, timeout=1.0)
+        assert (await up.read_holding(0, 1)) == [150]
+        await asyncio.sleep(0.5)                                      # PLC closes the idle connection
+        await up.write(NAOH, 110)                                     # first call after the drop: works
+        assert (await up.read_holding(NAOH, 1)) == [110]
+        plc.close()
     asyncio.run(run())

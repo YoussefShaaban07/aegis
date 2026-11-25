@@ -227,6 +227,14 @@ def extract(ev: Evidence, twin: bool = True) -> dict:
     auth = ev.of("auth_failure")
     F["auth_failures"] = _f(len(auth), [e["id"] for e in auth])
 
+    # writes from a device the guard doesn't know that passed with the guard OFF: with nothing blocked these
+    # are the only trace of an attack. Not in NUMERIC: the learned model's
+    # inputs stay as they were trained.
+    thru = [e for e in inc_dec if e["data"].get("check") == "disabled"          # passed with the guard OFF
+            and str(e["data"].get("source", "")).startswith("Unknown ")
+            and e["data"].get("register") in SETPOINTS and e["data"].get("new") != e["data"].get("old")]
+    F["unknown_write_through"] = _f(len(thru), [e["id"] for e in thru])
+
     # --- twin: is the risk the writes or the weather?
     F["harm_forecast_without_writes"] = _f(None)
     F["writes_make_forecast_worse"] = _f(None)

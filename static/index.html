@@ -85,7 +85,7 @@ details.demo>.in{padding:0 14px 12px}
 #guide{position:fixed;right:16px;bottom:16px;width:420px;max-width:calc(100vw - 32px);background:var(--panel2);border:1px solid var(--proc);
   border-radius:3px;padding:12px 14px;z-index:40;box-shadow:0 6px 24px rgba(0,0,0,.25);display:none}
 #guide h3{margin:0 0 4px;font-size:15px}#guide .say{background:var(--input);border-left:3px solid var(--blue);padding:8px 10px;margin:8px 0;font-size:13px}
-#guide.pitch{width:340px;padding-top:8px;padding-bottom:8px}#guide.pitch #g-d,#guide.pitch .say{display:none}#guide.pitch #g-st{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+#guide.pitch{width:340px;padding-top:8px;padding-bottom:8px}#guide.pitch #g-d,#guide.pitch .say{display:none}#guide.pitch #g-st{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
 #guide .meta{font-size:11.5px;color:var(--muted)}#guide .gst{font-size:12.5px;color:var(--warn);min-height:16px}
 #login{position:fixed;inset:0;background:var(--bg);display:none;align-items:center;justify-content:center;z-index:50}
 #login .box{background:var(--panel);border:1px solid var(--line);border-radius:3px;padding:24px;width:360px;max-width:calc(100vw - 32px)}
@@ -530,7 +530,9 @@ const STEPS=[
    $('g-st').innerHTML=`Sentinel: <b>${esc(nm)}</b> (${esc(i.confidence)} confidence), citations ${Math.round(100*(i.validity??1))}% verified, `+
      `${fixes} fix${fixes===1?'':'es'} waiting for approval. <a href="/api/agent/incidents/${i.id}/report" target="_blank">Open the report</a> · `+
      `<a href="/operator" target="_blank">Operator phone view</a>`;
-   await load();if(typeof senLoad==='function')await senLoad();}},
+   await load();if(typeof senLoad==='function')await senLoad();
+   // bring the Sentinel card up into view: on a 1366x768 screen it sits below the fold, behind the guide
+   const h=$('agentinc')&&$('agentinc').previousElementSibling;if(h)h.scrollIntoView({behavior:'smooth',block:'start'});}},
  {t:'A lying controller',d:'Malware inside the PLC secretly doses lye 200 while its registers still say 100. No command passes through Aegis.',
   say:'"What if the controller itself is hacked, like Stuxnet? Aegis runs the chemistry alongside the plant. When the water stops matching what the controller claims, it raises the alarm."',
   run:async()=>{await post('/api/reset');await post('/api/attack/plc-compromise',{freeze_sensors:false});
@@ -539,11 +541,12 @@ const STEPS=[
   say:'"Every decision is in a tamper-evident log, and Aegis writes the incident report. No new hardware, no PLC replacement: one box in front of what small utilities already own."',
   run:async()=>{tab('evi');window.open('/api/report?minutes=30','_blank');}},
 ];
-let gi=-1, ran=false, ORDER=null;
+let gi=-1, ran=false, ORDER=null, ggen=0;   // ggen: a step from an earlier start/exit must not touch the guide
 const PITCH=[1,2,3,4,5];    // live demo: guard off, guard on, the twin, the AI, Sentinel (step 0 runs silently first)
 function guideShow(){const s=STEPS[ORDER[gi]];ran=false;$('g-n').textContent=(ORDER.length<STEPS.length?'Pitch step ':'Step ')+`${gi+1} of ${ORDER.length}`;$('g-t').textContent=s.t;
   $('g-d').textContent=s.d;$('g-say').textContent=s.say;$('g-st').textContent='';$('g-next').textContent='Run step ▶';}
-async function guideStart(mode){stopBooth();boothWanted=false;ORDER=mode==='pitch'?PITCH:STEPS.map((_,i)=>i);gi=0;$('guide').classList.toggle('pitch',mode==='pitch');$('guide').style.display='block';guideShow();
+async function guideStart(mode){ggen++;$('g-next').disabled=false;stopBooth();boothWanted=false;ORDER=mode==='pitch'?PITCH:STEPS.map((_,i)=>i);gi=0;scrollTo({top:0});$('guide').classList.toggle('pitch',mode==='pitch');$('guide').style.display='block';guideShow();
+  if(document.activeElement&&document.activeElement!==document.body)document.activeElement.blur();   // Space must reach the guide
   if(mode==='pitch'){$('g-st').textContent='preparing: checking sign-in and PIN…';
     try{await needPin();   // check before the audience is watching: steps 1-2 need the engineer PIN
       // presenter lock: other visitors of the shared demo can watch but not change the plant during the pitch
@@ -554,15 +557,20 @@ async function guideStart(mode){stopBooth();boothWanted=false;ORDER=mode==='pitc
       $('g-st').textContent='preparing: plant reset…';await STEPS[0].run();$('g-st').textContent='Ready. Space or → runs each step.';}
     catch(e){$('g-st').innerHTML='<b style="color:#c0392b">Not ready: '+esc(e.message||String(e))+'</b>';}}}
 addEventListener('keydown',e=>{if($('guide').style.display!=='block'||/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName))return;
+  // a button keeps focus after a mouse click (e.g. "Pitch demo"); Space would then also "click" it on key-up and
+  // restart or skip a step. Take focus off it first, and ignore auto-repeat from a held key.
+  if(document.activeElement&&document.activeElement.tagName==='BUTTON'&&(e.key===' '||e.key==='Enter'))document.activeElement.blur();
+  if(e.repeat&&(e.key===' '||e.key==='ArrowRight')){e.preventDefault();return;}
   if(e.key===' '||e.key==='ArrowRight'){e.preventDefault();if(!$('g-next').disabled)guideGo(1);}else if(e.key==='ArrowLeft'){e.preventDefault();guideGo(-1);}});
-function guideStop(){$('guide').style.display='none';speed(60);
+function guideStop(){ggen++;$('g-next').disabled=false;$('guide').style.display='none';speed(60);
   fetch('/api/presenter/release',{method:'POST',headers:H}).catch(()=>{});}
 async function guideGo(dir){const b=$('g-next');
   if(dir<0){gi=Math.max(0,gi-1);guideShow();return;}
   if(ran){if(gi>=ORDER.length-1)return;gi++;guideShow();if(ORDER!==PITCH)return;}  // next press: move on (pitch mode also runs it: one press per step)
-  b.disabled=true;$('g-st').textContent='running…';
-  try{await STEPS[ORDER[gi]].run();if(!/offline|Routine|^Sentinel:/.test($('g-st').textContent))$('g-st').textContent=ORDER===PITCH?(gi<ORDER.length-1?'Done · Space for the next step':'Done'):'Done: talk over the result, then go on';}
-  catch(e){$('g-st').textContent='Error: '+(e.message||e);b.disabled=false;return;}
+  b.disabled=true;$('g-st').textContent='running…';const my=ggen;
+  if(ORDER===PITCH&&STEPS[ORDER[gi]].t!=='Sentinel investigates')scrollTo({top:0,behavior:'smooth'});   // the plant is at the top
+  try{await STEPS[ORDER[gi]].run();if(my!==ggen)return;if(!/offline|Routine|^Sentinel:/.test($('g-st').textContent))$('g-st').textContent=ORDER===PITCH?(gi<ORDER.length-1?'Done · Space for the next step':'Done'):'Done: talk over the result, then go on';}
+  catch(e){if(my!==ggen)return;$('g-st').textContent='Error: '+(e.message||e);b.disabled=false;return;}
   b.disabled=false;ran=true;b.textContent=gi<ORDER.length-1?'Next step ▶':(ORDER.length<STEPS.length?'Done: back to the slides':'Finished');}
 // ---- Booth loop (expo table): the three blocked attacks on repeat, captions big enough to read from the aisle
 let booth=false,boothGen=0,boothWanted=false,wakeLock=null,lastInput=Date.now();
@@ -633,7 +641,7 @@ async function load(){let s;try{const r=await fetch('/api/state');if(r.status===
   $('llm').textContent=s.llm?'model connected':s.llm_scripted?'scripted demo model':'offline: add GROQ_API_KEY';
   $('alcfg').innerHTML=s.alerts_configured?`texts on: ${esc((s.alert_channels||[]).join(' + '))} <button class="mini" onclick="testText()">Send test text</button>`:'texts not configured (dashboard only)';
   $('incidents').innerHTML=(s.incidents||[]).map(i=>`<div class="verdict ${i.severity==='critical'&&!i.acked_by?'bad':''}" style="margin:0 0 8px">
-    <b>Incident #${i.id}</b> · ${esc(i.severity)} · ${i.count} event${i.count>1?'s':''} grouped (one text sent${i.level?`, escalated to contact ${i.level+1}`:''})<br>${esc(i.title)}
+    <b>Alert #${i.id}</b> · ${esc(i.severity)} · ${i.count} event${i.count>1?'s':''} grouped (one text sent${i.level?`, escalated to contact ${i.level+1}`:''})<br>${esc(i.title)}
     <div style="margin-top:6px">${i.acked_by?`<span class="okm">Acknowledged by ${esc(i.acked_by)}</span>`:`<button onclick="post('/api/incidents/${i.id}/ack').then(load)">Acknowledge</button> <span class="trace">unacknowledged critical incidents escalate to the next contact every 10 min</span>`}</div></div>`).join('');
   $('holds').innerHTML=(s.lockdowns||[]).map(l=>`<div class="verdict bad" style="margin:0 0 8px"><b>LOCKDOWN</b> ${esc(l.source)} was refused ${l.blocks} times (last: ${esc(l.last)}). Possible intrusion or a misconfigured HMI. It can only make changes that make the plant safer.
     <div style="margin-top:6px"><button onclick="post('/api/lockdown/clear',{source:${esc(JSON.stringify(l.source))}}).then(load)">Clear lockdown</button> <span class="trace">only after checking who sent those commands; logged</span></div></div>`).join('')+(s.holds||[]).map(h=>`<div class="verdict bad" style="margin:0 0 8px"><b>SAFE-HOLD</b> ${esc(h.register)} held at ${fmt(h.value)} (${esc(h.reason)}; ${h.remaining_min} min left). Modbus writes that move it are refused unless the twin calls them corrective.
@@ -670,14 +678,19 @@ async function senSteps(id,keep){const el=document.getElementById('sensteps'+id)
   if(senOpen.has(id)&&!keep){senOpen.delete(id);el.innerHTML='';return;}
   senOpen.add(id);const r=await fetch(`/api/agent/incidents/${id}`);if(!r.ok)return;const j=await r.json();
   el.innerHTML=((j.result||{}).steps||[]).map(x=>`<div>&bull; <b>${esc(x.tool||x.kind)}</b> ${esc(x.args?JSON.stringify(x.args):'')} &rarr; ${esc(x.summary||'')}</div>`).join('')||'No steps yet.';}
+function senFixes(i){   // live status of each fix, not the text written when the investigation finished
+  const f=i.fixes||[];if(!f.length)return '';
+  const W={pending:'waiting for approval (above, or on the operator phone view)',approved:'applied after approval',
+    rejected:'rejected',blocked:'blocked by the guard on re-check'};
+  return f.map(x=>`<div class="trace">Fix: ${esc(x.name)} ${x.old!=null?esc(x.old)+' &rarr; ':'&rarr; '}${esc(x.value)} ${esc(x.unit||'')} &middot; <b>${esc(W[x.status]||x.status)}</b>${x.decided_by?' by '+esc(x.decided_by):''}</div>`).join('');}
 function senCard(i){
   const props=(i.proposals||[]).filter(Boolean);
   return `<div class="sen"><span class="badge ${esc(i.severity||'')}">${esc(SEN_NAMES[i.classification]||'Open')}</span>`+
     (i.confidence?` <span class="trace" style="margin:0 6px">confidence ${esc(i.confidence)}</span>`:'')+
-    `<span class="trace" style="margin:0">#${i.id} &middot; ${esc(i.state)} &middot; ${i.events} events`+
+    `<span class="trace" style="margin:0">Sentinel #${i.id} &middot; ${esc(i.state)} &middot; ${i.events} events`+
     (i.validity!=null?` &middot; citations ${Math.round(100*i.validity)}% verified`:'')+`</span>`+
     (i.summary?`<pre>${esc(i.summary)}</pre>`:'<div class="trace">Collecting evidence&hellip;</div>')+
-    (props.length?`<div class="trace">Fix proposals waiting: ${props.map(x=>'#'+x).join(', ')} (approve above)</div>`:'')+
+    senFixes(i)+
     (i.classification?`<div><a href="/api/agent/incidents/${i.id}/report" target="_blank">Full report</a> &middot; <a href="#" onclick="senSteps(${i.id});return false">How Sentinel got here</a></div><div class="steps" id="sensteps${i.id}"></div>`:'')+
     `</div>`;}
 async function senLoad(){let j;try{const r=await fetch('/api/agent/incidents');if(!r.ok)return;j=await r.json();}catch(e){return;}

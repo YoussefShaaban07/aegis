@@ -91,3 +91,63 @@ def test_guided_sentinel_step_investigates_now(client, monkeypatch):     # noqa:
     ramp = [i for i in j["incidents"] if "chlorine_dose" in i["registers"] and i["classification"]]
     assert ramp and ramp[0]["classification"] == "external_attack", j
     assert ramp[0]["proposals"] and ramp[0]["validity"] == 1.0
+
+
+def test_sentinel_step_works_on_every_rerun(client):     # noqa: F811
+    """Rehearse, then present: the Sentinel step must find a new incident every time. Before the fix the guard's
+    log-flood counter survived the plant reset, so a rerun's blocked writes were counted as more of the last
+    run's burst and never logged, and Sentinel had nothing to investigate."""
+    for run in range(3):
+        client.post("/api/reset")
+        client.post("/api/mode", json={"mode": "enforce", "pin": "2468"})
+        before = {x["id"]: x["events"] for x in client.get("/api/agent/incidents").json()["incidents"]}
+        client.post("/api/attack/ramp?wait=1")
+        j = client.post("/api/agent/investigate-now").json()
+        new = [x for x in j["incidents"] if x["classification"] and x["events"] > before.get(x["id"], 0)]
+        assert new and new[0]["classification"] == "external_attack", (run, j)
+
+
+def test_orphaned_investigation_does_not_stall_sentinel(client):     # noqa: F811
+    """An incident left INVESTIGATING with nothing working on it used to block every later investigation
+    (one at a time). investigate-now and the background loop must pick it up."""
+    from aegis.server import S
+    client.post("/api/reset")
+    client.post("/api/mode", json={"mode": "enforce", "pin": "2468"})
+    client.post("/api/attack/ramp?wait=1")
+    a = S["agent"]
+    a.incidents.poll()
+    inc = next(i for i in a.incidents.list() if "chlorine_dose" in i.registers)
+    a.incidents._set(inc, "INVESTIGATING", 0.0)           # orphan: state says running, no task
+    assert inc in a.orphans()
+    j = client.post("/api/agent/investigate-now").json()
+    assert inc.id in j["investigated"] and inc.state in ("AWAITING_APPROVAL", "REPORTED"), j
+
+
+def test_listing_shows_live_fix_status(client):     # noqa: F811
+    """The screens read each fix's status from the listing; after approval it must not still say 'waiting'."""
+    client.post("/api/reset")
+    client.post("/api/mode", json={"mode": "enforce", "pin": "2468"})
+    client.post("/api/attack/ramp?wait=1")
+    j = client.post("/api/agent/investigate-now").json()
+    inc = next(x for x in j["incidents"] if x["fixes"])
+    fx = inc["fixes"][0]
+    assert fx["status"] == "pending" and fx["name"] == "chlorine_dose"
+    assert client.post(f"/api/proposals/{fx['id']}/approve").status_code == 200
+    again = next(x for x in client.get("/api/agent/incidents").json()["incidents"] if x["id"] == inc["id"])
+    assert again["fixes"][0]["status"] == "approved"
+
+
+def test_guard_off_oldsmar_is_an_attack_not_weather(client):     # noqa: F811
+    """Pitch step 1: guard OFF, one write sets lye to 11,100 and the forecast goes bad. Nothing is blocked, so
+    Sentinel used to see only the forecast warning and call it weather. The write that got through is the
+    evidence: it is attached, and the twin replay starts from before it."""
+    client.post("/api/reset")
+    client.post("/api/mode", json={"mode": "off", "pin": "2468"})
+    client.post("/api/attack/lye")
+    for _ in range(36):
+        if client.get("/api/state").json()["plant"]["ph"] > 8.5:
+            break
+        client.post("/api/sim/advance", json={"minutes": 5})
+    j = client.post("/api/agent/investigate-now").json()
+    inc = next(x for x in j["incidents"] if x["classification"])
+    assert inc["classification"] == "external_attack", inc
