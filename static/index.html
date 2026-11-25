@@ -682,16 +682,24 @@ function senFixes(i){   // live status of each fix, not the text written when th
   const f=i.fixes||[];if(!f.length)return '';
   const W={pending:'waiting for approval (above, or on the operator phone view)',approved:'applied after approval',
     rejected:'rejected',blocked:'blocked by the guard on re-check'};
-  return f.map(x=>`<div class="trace">Fix: ${esc(x.name)} ${x.old!=null?esc(x.old)+' &rarr; ':'&rarr; '}${esc(x.value)} ${esc(x.unit||'')} &middot; <b>${esc(W[x.status]||x.status)}</b>${x.decided_by?' by '+esc(x.decided_by):''}</div>`).join('');}
+  return f.map(x=>`<div class="trace">Fix: ${esc(x.name)} ${x.old!=null?esc(x.old)+' &rarr; ':'&rarr; '}${esc(x.value)} ${esc(x.unit||'')} &middot; <b>${esc(W[x.status]||x.status)}</b>${x.decided_by?' by '+esc(String(x.decided_by).replace(/^(\S+) \(\1\)$/,'$1')):''}</div>`).join('');}
+const SEN_STATE={COLLECTING:'collecting evidence',READY:'queued',INVESTIGATING:'investigating',REPORTED:'reported',
+  AWAITING_APPROVAL:'fix waiting for approval',CLOSED:'closed',REOPENED:'reopened',FAILED_FALLBACK:'reported (fallback)'};
+function senWhere(i){const w=i.where||{};if(!(w.sources||[]).length&&!(w.ips||[]).length)return '';
+  return `<div class="trace" style="margin:4px 0"><b>Came from:</b> ${esc((w.sources||[]).join(', ')||'?')}`+
+    ((w.ips||[]).length?` at ${esc(w.ips.join(', '))}`:'')+((w.registers||[]).length?` &middot; touched ${esc(w.registers.join(', '))}`:'')+`</div>`;}
+function senWhy(i){const w=i.why||[];if(!w.length)return '';
+  return `<div class="trace" style="margin:4px 0 2px"><b>Why Sentinel thinks so</b> (each reason links to the log entries behind it):</div><ul class="trace" style="margin:0 0 6px 18px;padding:0">`+
+    w.map(c=>`<li>${esc(c.text)} ${(c.cite||[]).slice(0,4).map(n=>`<a href="/api/audit/entry/${n}" target="_blank">#${n}</a>`).join(' ')}</li>`).join('')+`</ul>`;}
 function senCard(i){
   const props=(i.proposals||[]).filter(Boolean);
   return `<div class="sen"><span class="badge ${esc(i.severity||'')}">${esc(SEN_NAMES[i.classification]||'Open')}</span>`+
     (i.confidence?` <span class="trace" style="margin:0 6px">confidence ${esc(i.confidence)}</span>`:'')+
-    `<span class="trace" style="margin:0">Sentinel #${i.id} &middot; ${esc(i.state)} &middot; ${i.events} events`+
+    `<span class="trace" style="margin:0">Sentinel #${i.id} &middot; ${esc(SEN_STATE[i.state]||i.state)} &middot; ${i.events} events`+
     (i.validity!=null?` &middot; citations ${Math.round(100*i.validity)}% verified`:'')+`</span>`+
     (i.summary?`<pre>${esc(i.summary)}</pre>`:'<div class="trace">Collecting evidence&hellip;</div>')+
-    senFixes(i)+
-    (i.classification?`<div><a href="/api/agent/incidents/${i.id}/report" target="_blank">Full report</a> &middot; <a href="#" onclick="senSteps(${i.id});return false">How Sentinel got here</a></div><div class="steps" id="sensteps${i.id}"></div>`:'')+
+    senWhere(i)+senWhy(i)+senFixes(i)+
+    (i.classification?`<div><a href="/api/agent/incidents/${i.id}/report" target="_blank">Full report</a> &middot; <a href="#" onclick="senSteps(${i.id});return false">Investigation steps (what it looked at)</a></div><div class="steps" id="sensteps${i.id}"></div>`:'')+
     `</div>`;}
 async function senLoad(){let j;try{const r=await fetch('/api/agent/incidents');if(!r.ok)return;j=await r.json();}catch(e){return;}
   const m=document.getElementById('agentmode');
